@@ -1,0 +1,5 @@
+import { PageHero } from '@/components/page-blocks';
+import { ReportPreview } from '@/components/site';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
+export default function ReportPage() { return <><PageHero eyebrow="Demonstração" title="Veja um exemplo de consulta Olho no Doc." description="Explore uma prévia do relatório e entenda como as informações são organizadas. Todos os dados são fictícios."/><section className="section full-report"><div className="report-label">DADOS DEMONSTRATIVOS · ABC1D23</div><ReportPreview/><div className="report-detail-grid"><div><span className="eyebrow">Resumo da consulta</span><h2>Um resultado que ajuda você a fazer as perguntas certas.</h2></div><div><p>O relatório pode apresentar dados cadastrais, apontamentos e informações disponíveis para a consulta escolhida. A disponibilidade varia conforme o produto.</p><Link className="button" href="/consultas">Consultar outro veículo <ArrowRight size={16}/></Link></div></div></section></>; }

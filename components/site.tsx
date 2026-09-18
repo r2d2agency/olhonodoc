@@ -1,0 +1,27 @@
+'use client';
+
+import Link from 'next/link';
+import { ArrowRight, Check, ChevronDown, Menu, Search, ShieldCheck, X } from 'lucide-react';
+import { useState } from 'react';
+import { Product } from '@/data/products';
+
+export function Header() {
+  const [open, setOpen] = useState(false);
+  return <header className="site-header"><div className="header-inner">
+    <Link href="/" className="brand"><span className="brand-mark">◉</span><span>olho<span>no</span>doc</span></Link>
+    <nav className="desktop-nav"><Link href="/consultas">Consultas</Link><Link href="/como-funciona">Como funciona</Link><Link href="/exemplo-relatorio">Relatório</Link><Link href="/precos">Preços</Link><Link href="/blog">Conteúdos</Link></nav>
+    <div className="header-actions"><Link className="login-link" href="/login">Entrar</Link><Link className="button button-small" href="/consultas">Consultar placa <ArrowRight size={15}/></Link><button className="menu-button" aria-label="Abrir menu" onClick={() => setOpen(!open)}>{open ? <X/> : <Menu/>}</button></div>
+  </div>{open && <nav className="mobile-nav"><Link href="/consultas">Consultas</Link><Link href="/como-funciona">Como funciona</Link><Link href="/exemplo-relatorio">Exemplo de relatório</Link><Link href="/precos">Preços</Link><Link href="/blog">Conteúdos</Link><Link href="/login">Entrar</Link></nav>}</header>;
+}
+
+export function Footer() { return <footer className="footer"><div className="footer-top"><div><Link href="/" className="brand brand-light"><span className="brand-mark">◉</span><span>olho<span>no</span>doc</span></Link><p>Informação para você decidir melhor<br/>antes de comprar um veículo.</p></div><div className="footer-links"><div><strong>Consultas</strong><Link href="/consultas/consulta-premium">Consulta Premium</Link><Link href="/consultas/consulta-essencial">Consulta Essencial</Link><Link href="/comparar-consultas">Comparar consultas</Link></div><div><strong>Institucional</strong><Link href="/como-funciona">Como funciona</Link><Link href="/sobre">Sobre</Link><Link href="/faq">FAQ</Link><Link href="/contato">Contato</Link></div><div><strong>Conteúdos</strong><Link href="/blog">Blog</Link><Link href="/exemplo-relatorio">Exemplo de relatório</Link><Link href="/termos-de-uso">Termos de uso</Link><Link href="/politica-de-privacidade">Privacidade</Link></div></div></div><div className="footer-bottom"><span>© 2026 Olho no Doc. Conteúdo demonstrativo.</span><span>Consulte antes de comprar.</span></div></footer>; }
+
+export function PlateInput({ dark = false }: { dark?: boolean }) { const [plate, setPlate] = useState(''); return <div className={`plate-form ${dark ? 'plate-form-dark' : ''}`}><label htmlFor="plate">Digite a placa</label><div className="plate-row"><div className="plate-input"><span>BR</span><input id="plate" value={plate} onChange={(event) => setPlate(event.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7).toUpperCase())} placeholder="ABC1D23" maxLength={7}/></div><Link href="/consultas" className="button">Consultar veículo <ArrowRight size={17}/></Link></div><div className="plate-note"><ShieldCheck size={14}/> Consulta demonstrativa, sem dados reais</div></div>; }
+
+export function ProductCard({ product, featured = false }: { product: Product; featured?: boolean }) { return <article className={`product-card ${featured ? 'featured' : ''}`}>{featured && <div className="featured-label">Mais escolhida</div>}<div className="product-card-top"><span className="eyebrow">Consulta {product.accent && `· ${product.accent}`}</span><span className="card-arrow"><ArrowRight size={19}/></span></div><h3>{product.name}</h3><p>{product.description}</p><ul>{product.features.slice(0, 3).map((feature) => <li key={feature}><Check size={15}/>{feature}</li>)}</ul><div className="product-card-bottom"><div><small>A partir de</small><strong>{product.price}</strong></div><Link href={`/consultas/${product.slug}`} aria-label={`Ver ${product.name}`}><ArrowRight size={20}/></Link></div></article>; }
+
+export function FAQ({ items }: { items: string[] }) { const [active, setActive] = useState<number | null>(null); return <div className="faq-list">{items.map((item, index) => <div className={`faq-item ${active === index ? 'active' : ''}`} key={item}><button onClick={() => setActive(active === index ? null : index)}><span>{item}</span><ChevronDown size={18}/></button>{active === index && <p>As consultas exibem informações demonstrativas organizadas para ajudar você a avaliar o veículo. A disponibilidade pode variar conforme a consulta escolhida.</p>}</div>)}</div>; }
+
+export function ReportPreview() { return <div className="report-shell"><div className="report-top"><span className="report-brand">olho<span>no</span>doc</span><span className="report-status"><span/> Consulta encontrada</span></div><div className="report-vehicle"><div><span className="eyebrow">Veículo consultado</span><h3>ABC1D23</h3><p>SUV demonstrativo · 2021/2022</p></div><span className="report-chip">DADOS DEMONSTRATIVOS</span></div><div className="report-grid">{[['Dados cadastrais','OK','ok'],['Roubo e furto','OK','ok'],['Leilão','Nenhum apontamento','ok'],['Restrições','Atenção','warn'],['Financiamento','Ver detalhes','neutral'],['Sinistro','Não informado','neutral']].map(([name, status, tone]) => <div className="report-row" key={name}><span>{name}</span><strong className={tone}>{status}</strong></div>)}</div></div>; }
+
+export function SearchBar() { return <div className="search-bar"><Search size={18}/><input placeholder="Busque uma dúvida ou assunto"/><span>⌘ K</span></div>; }

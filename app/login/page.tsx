@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function LoginPage() { return <section className="auth-page"><div className="auth-box"><span className="eyebrow">Área do cliente</span><h1>Entre para acessar suas consultas.</h1><p>A autenticação será conectada em uma próxima etapa.</p><form><label>E-mail<input type="email" placeholder="voce@email.com"/></label><label>Senha<input type="password" placeholder="Sua senha"/></label><button className="button">Entrar</button></form><Link href="/" className="text-link">Voltar para o início</Link></div></section>; }

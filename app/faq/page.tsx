@@ -1,0 +1,3 @@
+import { GenericContent } from '@/components/page-blocks';
+import { FAQ, SearchBar } from '@/components/site';
+export default function FaqPage() { return <GenericContent eyebrow="Central de ajuda" title="Perguntas frequentes." description="Encontre respostas sobre consultas, resultados, pagamento e segurança."><SearchBar/><div className="faq-category"><span className="eyebrow">Consultas e resultados</span><FAQ items={['O que é uma consulta veicular?', 'Preciso informar o Renavam?', 'Quanto tempo leva para receber o resultado?', 'Como recebo minha consulta?', 'Posso consultar qualquer veículo?', 'A consulta substitui uma vistoria cautelar?']}/></div></GenericContent>; }
