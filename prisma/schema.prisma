@@ -21,6 +21,7 @@ enum OrderStatus {
 
 enum UserRole {
   CUSTOMER
+  ADMIN
   SUPERADMIN
 }
 

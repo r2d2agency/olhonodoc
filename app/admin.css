@@ -36,6 +36,10 @@
 .admin-user-row strong,.admin-user-row small { display:block; }
 .admin-user-row strong { font-size:.86rem; }
 .admin-user-row small { margin-top:4px; color:var(--muted); font-size:.72rem; }
-.icon-danger { display:grid; place-items:center; width:36px; height:36px; border:1px solid #e7c6c0; background:#fff; color:#a1473a; }
+.admin-user-actions { display:flex; gap:8px; }
+.icon-danger,.icon-promote { display:grid; place-items:center; width:36px; height:36px; background:#fff; }
+.icon-danger { border:1px solid #e7c6c0; color:#a1473a; }
+.icon-promote { border:1px solid #b8d8c9; color:var(--green); }
 .icon-danger:hover { background:#fff4f2; }
+.icon-promote:hover { background:#f1faf5; }
 @media (max-width:620px) { .admin-header { display:block; padding:65px 20px 50px; } .admin-header .button { margin-top:25px; } .admin-section { padding:40px 20px 75px; } .admin-overview,.admin-form { grid-template-columns:1fr; } .admin-form .wide,.admin-form .button { grid-column:auto; } .admin-card { padding:22px; } }

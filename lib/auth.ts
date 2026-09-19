@@ -17,6 +17,14 @@ export async function hashPassword(password: string) {
   return `${salt}:${derivedKey.toString('hex')}`;
 }
 
+export async function verifyPassword(password: string, storedHash: string | null) {
+  if (!storedHash) return false;
+  const [salt, expected] = storedHash.split(':');
+  if (!salt || !expected) return false;
+  const derivedKey = await scryptAsync(password, salt, 64) as Buffer;
+  return derivedKey.toString('hex') === expected;
+}
+
 export async function createSession(userId: string) {
   const token = randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
@@ -29,6 +37,12 @@ export async function getCurrentUser() {
   if (!token) return null;
   const session = await prisma.session.findFirst({ where: { tokenHash: hashValue(token), expiresAt: { gt: new Date() } }, include: { user: true } });
   return session?.user ?? null;
+}
+
+export async function requireAdmin() {
+  const user = await getCurrentUser();
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN')) return null;
+  return user;
 }
 
 export async function requireSuperadmin() {
