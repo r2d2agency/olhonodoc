@@ -14,3 +14,10 @@ export async function POST(request: Request) {
   const user = await prisma.user.upsert({ where: { email }, update: { name: name || undefined, role: 'SUPERADMIN' }, create: { email, name: name || null, role: 'SUPERADMIN', passwordHash: null } });
   return NextResponse.json({ data: { id: user.id, name: user.name, email: user.email, role: user.role } }, { status: 201 });
 }
+
+export async function GET() {
+  const currentUser = await requireSuperadmin();
+  if (!currentUser) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 403 });
+  const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' }, select: { id: true, name: true, username: true, email: true, role: true, createdAt: true } });
+  return NextResponse.json({ data: users });
+}

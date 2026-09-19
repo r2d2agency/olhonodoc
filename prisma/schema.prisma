@@ -97,7 +97,7 @@ model Order {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   product     Product     @relation(fields: [productId], references: [id])
-  customer    Customer?   @relation(fields: [customerId], references: [id])
+  customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: Cascade)
   query       VehicleQuery?
 
   @@index([plate])
@@ -110,7 +110,7 @@ model VehicleQuery {
   normalizedPlate String
   report          Json?
   queriedAt       DateTime @default(now())
-  order           Order    @relation(fields: [orderId], references: [id])
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([normalizedPlate])
 }
