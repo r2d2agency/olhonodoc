@@ -1,13 +1,21 @@
-import { createHash, randomBytes, randomInt } from 'node:crypto';
+import { createHash, randomBytes, randomInt, scrypt } from 'node:crypto';
+import { promisify } from 'node:util';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 
 const CODE_TTL_MINUTES = 10;
 const SESSION_TTL_DAYS = 30;
+const scryptAsync = promisify(scrypt);
 
 export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 export const hashValue = (value: string) => createHash('sha256').update(value).digest('hex');
 export const newCode = () => randomInt(100000, 1000000).toString();
+
+export async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString('hex');
+  const derivedKey = await scryptAsync(password, salt, 64) as Buffer;
+  return `${salt}:${derivedKey.toString('hex')}`;
+}
 
 export async function createSession(userId: string) {
   const token = randomBytes(32).toString('hex');
