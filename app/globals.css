@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+@import './admin.css';
 
 :root { --navy:#071b33; --blue:#0d2947; --blue-soft:#123b5d; --green:#0c8f62; --ink:#101820; --muted:#53606d; --line:#dfe6eb; --pale:#f5f7f9; --white:#fff; }
 * { box-sizing:border-box; } html { scroll-behavior:smooth; } body { margin:0; color:var(--ink); background:var(--white); font-family:'DM Sans',sans-serif; font-size:16px; } a { color:inherit; text-decoration:none; } button,input { font:inherit; } button { cursor:pointer; } p { color:var(--muted); line-height:1.65; } h1,h2,h3 { font-family:'Manrope',sans-serif; letter-spacing:0; line-height:1.1; margin:0; } h2 { font-size:clamp(2rem,4vw,3.4rem); max-width:680px; } h3 { font-size:1.15rem; }
