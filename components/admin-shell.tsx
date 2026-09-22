@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, ChevronDown, LayoutDashboard, Menu, Search, Settings, ShieldCheck, Users, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Bell, ChevronDown, LayoutDashboard, LogOut, Menu, Search, Settings, ShieldCheck, Users, X } from 'lucide-react';
 import { useState } from 'react';
 
 const sections = [
@@ -20,6 +21,6 @@ const sections = [
 
 export function AdminSidebar() { const [collapsed, setCollapsed] = useState(false); const [mobileOpen, setMobileOpen] = useState(false); return <><aside className={`admin-sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}><div className="admin-sidebar-brand"><Link href="/admin" aria-label="Dashboard Olho no Doc"><img src="/logo-olho-no-doc.png" alt="Olho no Doc"/></Link><button className="admin-sidebar-close" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><X size={18}/></button></div><nav>{sections.map((section) => <div className="admin-nav-group" key={section.label}><span className="admin-nav-label">{section.label}</span>{section.items.map(({ href, label, icon: Icon }) => <Link href={href} className="admin-nav-item" key={href} title={collapsed ? label : undefined} onClick={() => setMobileOpen(false)}><Icon size={17}/><span>{label}</span></Link>)}</div>)}</nav><button className="admin-collapse" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}><ChevronDown size={16}/><span>{collapsed ? 'Expandir' : 'Recolher menu'}</span></button></aside><button className="admin-mobile-toggle" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={21}/></button></>; }
 
-export function AdminTopbar({ name }: { name: string }) { return <header className="admin-topbar"><div className="admin-global-search"><Search size={17}/><input placeholder="Buscar cliente, placa, pedido ou consulta..." aria-label="Busca global"/></div><div className="admin-topbar-actions"><select aria-label="Período"><option>Hoje</option><option>Ontem</option><option>7 dias</option><option>30 dias</option><option>90 dias</option></select><button aria-label="Notificações"><Bell size={18}/><span className="notification-dot"/></button><div className="admin-profile"><span>{name.slice(0, 1).toUpperCase()}</span><strong>{name}</strong></div></div></header>; }
+export function AdminTopbar({ name }: { name: string }) { const router = useRouter(); async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); router.replace('/login'); router.refresh(); } return <header className="admin-topbar"><div className="admin-global-search"><Search size={17}/><input placeholder="Buscar cliente, placa, pedido ou consulta..." aria-label="Busca global"/></div><div className="admin-topbar-actions"><select aria-label="Período"><option>Hoje</option><option>Ontem</option><option>7 dias</option><option>30 dias</option><option>90 dias</option></select><button aria-label="Notificações"><Bell size={18}/><span className="notification-dot"/></button><div className="admin-profile"><span>{name.slice(0, 1).toUpperCase()}</span><strong>{name}</strong><button className="admin-logout" onClick={logout} aria-label="Sair"><LogOut size={15}/> Sair</button></div></div></header>; }
 
 export function AdminShell({ children, name }: { children: React.ReactNode; name: string }) { return <div className="admin-app"><AdminSidebar/><div className="admin-main"><AdminTopbar name={name}/><main className="admin-content">{children}</main></div></div>; }
