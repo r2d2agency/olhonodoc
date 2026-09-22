@@ -17,6 +17,23 @@ enum ProductFeatured {
   FEATURED
 }
 
+enum CouponDiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum CouponTargetType {
+  EMAIL
+  CPF
+  CUSTOMER
+}
+
+enum CouponStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
 enum OrderStatus {
   PENDING
   PAID
@@ -90,30 +107,96 @@ model Product {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   orders      Order[]
+  coupons     Coupon[]
 }
 
 model Customer {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  phone     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  orders    Order[]
+  id           String   @id @default(cuid())
+  name         String?
+  email        String   @unique
+  phone        String?
+  cpf          String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  orders       Order[]
+  assignments  CouponAssignment[]
+  redemptions  CouponRedemption[]
+}
+
+model Coupon {
+  id                String             @id @default(cuid())
+  code              String             @unique
+  description       String?
+  discountType      CouponDiscountType
+  value             Int
+  status            CouponStatus        @default(ACTIVE)
+  startsAt          DateTime?
+  endsAt            DateTime?
+  maxRedemptions    Int?
+  redemptionCount   Int                @default(0)
+  perCustomerLimit  Int?
+  minOrderCents     Int?
+  maxDiscountCents  Int?
+  productId         String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  product           Product?           @relation(fields: [productId], references: [id])
+  assignments       CouponAssignment[]
+  redemptions       CouponRedemption[]
+  orders            Order[]
+
+  @@index([status, startsAt, endsAt])
+}
+
+model CouponAssignment {
+  id           String          @id @default(cuid())
+  couponId     String
+  targetType   CouponTargetType
+  targetValue  String
+  customerId   String?
+  coupon       Coupon           @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  customer     Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdAt    DateTime        @default(now())
+
+  @@unique([couponId, targetType, targetValue])
+  @@index([targetType, targetValue])
+}
+
+model CouponRedemption {
+  id          String    @id @default(cuid())
+  couponId    String
+  orderId     String    @unique
+  customerId  String?
+  code        String
+  discountCents Int
+  createdAt   DateTime  @default(now())
+  reversedAt  DateTime?
+  coupon      Coupon    @relation(fields: [couponId], references: [id])
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([couponId, createdAt])
+  @@index([customerId, couponId])
 }
 
 model Order {
-  id          String      @id @default(cuid())
-  plate       String
-  productId   String
-  customerId  String?
-  status      OrderStatus @default(PENDING)
-  amountCents Int
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  product     Product     @relation(fields: [productId], references: [id])
-  customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  query       VehicleQuery?
+  id             String             @id @default(cuid())
+  plate          String
+  productId      String
+  customerId     String?
+  couponId       String?
+  status         OrderStatus        @default(PENDING)
+  amountCents    Int
+  subtotalCents  Int?
+  discountCents  Int                @default(0)
+  totalCents     Int?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  product        Product            @relation(fields: [productId], references: [id])
+  customer       Customer?          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  coupon         Coupon?            @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  redemption     CouponRedemption?
+  query          VehicleQuery?
 
   @@index([plate])
   @@index([status])
