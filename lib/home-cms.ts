@@ -25,7 +25,7 @@ export const defaultSections: HomeSectionConfig[] = [
 ];
 
 function safeUrl(value: unknown, fallback = '') {
-  if (typeof value !== 'string' || value.length > 500) return fallback;
+  if (typeof value !== 'string' || value.length > 4_000_000) return fallback;
   if (!value) return fallback;
   if (value.startsWith('/') || /^https?:\/\//i.test(value)) return value;
   return fallback;
@@ -41,7 +41,7 @@ export function getDefaultHomeConfig() { return { theme: defaultTheme, sections:
 export async function getHomeConfig() {
   try {
     const [themeSetting, sections] = await Promise.all([prisma.setting.findUnique({ where: { key: 'home.theme' } }), prisma.homeSection.findMany({ where: { status: 'ACTIVE' }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] })]);
-    return { theme: parseTheme(themeSetting?.value), sections: sections.length ? sections.map((section) => ({ id: section.id, type: HOME_SECTION_TYPES.includes(section.type as HomeSectionType) ? section.type as HomeSectionType : 'hero', name: section.name, visible: true, settings: section.settings as Record<string, unknown> })) : defaultSections };
+    return { theme: parseTheme(themeSetting?.value), sections: sections.length ? sections.map((section) => ({ id: section.id, type: HOME_SECTION_TYPES.includes(section.type as HomeSectionType) ? section.type as HomeSectionType : 'hero', name: section.name, visible: section.status === 'ACTIVE', settings: section.settings as Record<string, unknown> })) : defaultSections };
   } catch { return getDefaultHomeConfig(); }
 }
 
