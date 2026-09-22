@@ -15,6 +15,7 @@ async function main() {
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   const name = process.env.ADMIN_NAME?.trim() || 'Superadmin';
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL não configurada.');
 
   if (!email || !email.includes('@')) throw new Error('Defina ADMIN_EMAIL com um e-mail válido.');
   if (!password || password.length < 12) throw new Error('ADMIN_PASSWORD deve ter pelo menos 12 caracteres.');

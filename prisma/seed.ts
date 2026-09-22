@@ -11,9 +11,21 @@ const products = [
 ];
 
 async function main() {
-  for (const product of products) {
-    await prisma.product.upsert({ where: { slug: product.slug }, update: product, create: product });
+  for (const [index, product] of products.entries()) {
+    await prisma.product.upsert({ where: { slug: product.slug }, update: { ...product, sortOrder: index, featured: index === 0 ? 'FEATURED' : 'NONE', ctaText: 'Ver consulta' }, create: { ...product, sortOrder: index, featured: index === 0 ? 'FEATURED' : 'NONE', ctaText: 'Ver consulta' } });
   }
+  const sections = [
+    { type: 'hero', name: 'Hero principal', sortOrder: 0, settings: { status: 'active' } },
+    { type: 'benefits', name: 'Benefícios', sortOrder: 1, settings: { status: 'active' } },
+    { type: 'premium', name: 'Consulta Premium', sortOrder: 2, settings: { status: 'active', productSlug: 'consulta-premium' } },
+    { type: 'report', name: 'Preview de relatório', sortOrder: 3, settings: { status: 'active' } },
+    { type: 'steps', name: 'Como funciona', sortOrder: 4, settings: { status: 'active' } },
+    { type: 'products', name: 'Consultas disponíveis', sortOrder: 5, settings: { status: 'active' } },
+    { type: 'blog', name: 'Blog', sortOrder: 6, settings: { status: 'active' } },
+    { type: 'faq', name: 'FAQ', sortOrder: 7, settings: { status: 'active' } },
+    { type: 'cta', name: 'CTA final', sortOrder: 8, settings: { status: 'active' } }
+  ];
+  for (const section of sections) await prisma.homeSection.upsert({ where: { id: `home-${section.type}` }, update: section, create: { ...section, id: `home-${section.type}` } });
 }
 
 main().finally(() => prisma.$disconnect());
