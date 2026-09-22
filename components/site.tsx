@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Check, ChevronDown, Menu, Search, ShieldCheck, X } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -8,7 +9,7 @@ import { Product } from '@/data/products';
 export function Header() {
   const [open, setOpen] = useState(false);
   return <header className="site-header"><div className="header-inner">
-    <Link href="/" className="brand"><span className="brand-mark">◉</span><span>olho<span>no</span>doc</span></Link>
+    <Link href="/" className="brand" aria-label="Olho no Doc"><Image src="/logo-olho-no-doc.png" alt="Olho no Doc — Sua tranquilidade é nosso foco" width={210} height={142} priority/></Link>
     <nav className="desktop-nav"><details className="nav-dropdown"><summary>Consultas <ChevronDown size={14}/></summary><div className="nav-dropdown-menu">{['consulta-premium','consulta-essencial','roubo-furto','dados-veiculo','financiamento'].map((slug) => <Link key={slug} href={`/consultas/${slug}`}>{slug === 'roubo-furto' ? 'Roubo e furto' : slug === 'dados-veiculo' ? 'Dados do veículo' : slug === 'consulta-premium' ? 'Consulta Premium' : slug === 'consulta-essencial' ? 'Consulta Essencial' : 'Financiamento'}</Link>)}<Link href="/consultas">Ver todas as consultas <ArrowRight size={14}/></Link></div></details><Link href="/como-funciona">Como funciona</Link><Link href="/exemplo-relatorio">Relatório</Link><Link href="/precos">Preços</Link><Link href="/blog">Conteúdos</Link></nav>
     <div className="header-actions"><Link className="login-link" href="/login">Entrar</Link><Link className="button button-small" href="/consultas">Consultar placa <ArrowRight size={15}/></Link><button className="menu-button" aria-label="Abrir menu" onClick={() => setOpen(!open)}>{open ? <X/> : <Menu/>}</button></div>
   </div>{open && <nav className="mobile-nav"><Link href="/consultas">Consultas</Link><Link href="/como-funciona">Como funciona</Link><Link href="/exemplo-relatorio">Exemplo de relatório</Link><Link href="/precos">Preços</Link><Link href="/blog">Conteúdos</Link><Link href="/login">Entrar</Link></nav>}</header>;
