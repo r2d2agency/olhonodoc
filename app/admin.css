@@ -67,3 +67,4 @@
 .admin-payment-note{margin-top:16px}.admin-payment-note h2{margin:0 0 8px;font-size:1rem}.admin-payment-note p{margin:0;color:#5a6d7a;font-size:.8rem}
 .admin-order-table-search{display:flex;gap:10px;min-width:280px}.admin-order-table-search input{max-width:190px}
 .admin-recovery-card{margin-bottom:18px}.admin-recovery-card .admin-order-table{border:0;border-radius:0}
+.admin-supplier-form{margin-bottom:18px}.admin-supplier-form h2,.admin-cms-card h2{margin:0 0 14px;font-size:1rem}.admin-table-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-table-actions button{padding:7px 10px;border:1px solid #dce7ed;border-radius:7px;background:#fff;color:#334956;font-size:.72rem}.admin-table-actions .admin-cms-primary{border-color:#14a97c;text-decoration:none}
