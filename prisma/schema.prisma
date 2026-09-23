@@ -213,6 +213,55 @@ model VehicleQuery {
   @@index([normalizedPlate])
 }
 
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Article {
+  id             String        @id @default(cuid())
+  slug           String        @unique
+  title          String
+  excerpt        String?
+  content        String
+  status         ContentStatus @default(DRAFT)
+  seoTitle       String?
+  seoDescription String?
+  publishedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([status, publishedAt])
+}
+
+model FaqEntry {
+  id        String        @id @default(cuid())
+  question  String
+  answer    String
+  status    ContentStatus @default(PUBLISHED)
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([status, sortOrder])
+}
+
+model MarketingCampaign {
+  id         String        @id @default(cuid())
+  name       String
+  source     String
+  medium     String
+  campaign   String
+  content    String?
+  targetUrl  String
+  status     ContentStatus @default(DRAFT)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([status, createdAt])
+}
+
 model Setting {
   id        String   @id @default(cuid())
   key       String   @unique
