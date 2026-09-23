@@ -49,13 +49,22 @@ export async function getSmtpConfiguration(): Promise<SmtpConfiguration | null> 
   return { host: SMTP_HOST, port, user: SMTP_USER, from: EMAIL_FROM, secure: port === 465, password: SMTP_PASSWORD };
 }
 
+function getEnvironmentSmtpConfiguration(): PublicSmtpConfiguration {
+  const port = Number(process.env.SMTP_PORT || 587);
+  return { host: process.env.SMTP_HOST || '', port: Number.isInteger(port) ? port : 587, user: process.env.SMTP_USER || '', from: process.env.EMAIL_FROM || '', secure: port === 465, passwordConfigured: Boolean(process.env.SMTP_PASSWORD) };
+}
+
 export async function getPublicSmtpConfiguration(): Promise<PublicSmtpConfiguration> {
-  const row = await prisma.setting.findUnique({ where: { key: SETTING_KEY } });
-  if (row) {
-    const saved = row.value as Record<string, unknown>;
-    return { host: typeof saved.host === 'string' ? saved.host : '', port: Number(saved.port) || 587, user: typeof saved.user === 'string' ? saved.user : '', from: typeof saved.from === 'string' ? saved.from : '', secure: saved.secure === true, passwordConfigured: typeof saved.passwordEncrypted === 'string' && Boolean(saved.passwordEncrypted) };
+  try {
+    const row = await prisma.setting.findUnique({ where: { key: SETTING_KEY } });
+    if (row) {
+      const saved = row.value as Record<string, unknown>;
+      return { host: typeof saved.host === 'string' ? saved.host : '', port: Number(saved.port) || 587, user: typeof saved.user === 'string' ? saved.user : '', from: typeof saved.from === 'string' ? saved.from : '', secure: saved.secure === true, passwordConfigured: typeof saved.passwordEncrypted === 'string' && Boolean(saved.passwordEncrypted) };
+    }
+  } catch (error) {
+    console.error('[smtp-settings] falha ao consultar configuração persistida; usando variáveis de ambiente', error instanceof Error ? error.message : error);
   }
-  return { host: process.env.SMTP_HOST || '', port: Number(process.env.SMTP_PORT || 587), user: process.env.SMTP_USER || '', from: process.env.EMAIL_FROM || '', secure: Number(process.env.SMTP_PORT) === 465, passwordConfigured: Boolean(process.env.SMTP_PASSWORD) };
+  return getEnvironmentSmtpConfiguration();
 }
 
 export async function saveSmtpConfiguration(input: { host: string; port: number; user: string; from: string; secure: boolean; password?: string }) {

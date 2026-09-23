@@ -44,5 +44,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   if (body?.action !== 'test-email' || typeof body.email !== 'string' || !/^\S+@\S+\.\S+$/.test(body.email)) return NextResponse.json({ error: 'Informe um e-mail válido para teste.' }, { status: 400 });
   try { await sendSmtpTest(body.email); return NextResponse.json({ message: 'E-mail de teste enviado.' }); }
-  catch { return NextResponse.json({ error: 'Não foi possível enviar o e-mail de teste. Verifique a configuração SMTP.' }, { status: 503 }); }
+  catch (error) {
+    console.error('[admin/settings] falha ao enviar e-mail de teste', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Não foi possível enviar o e-mail de teste. Verifique a configuração SMTP.' }, { status: 503 });
+  }
 }
