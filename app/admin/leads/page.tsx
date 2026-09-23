@@ -1,0 +1,10 @@
+'use client';
+import { useEffect, useState } from 'react';
+
+type Lead = { id: string; name: string | null; email: string | null; createdAt: string; orders: { id: string; plate: string; status: string; amountCents: number; product: { name: string } }[] };
+const money = (cents: number) => (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+export default function LeadsPage() { const [items, setItems] = useState<Lead[]>([]); const [error, setError] = useState(''); const [query, setQuery] = useState('');
+  useEffect(() => { fetch('/api/admin/leads').then(async response => { const body = await response.json(); if (!response.ok) throw new Error(body.error); setItems(body.data); }).catch(e => setError(e.message)); }, []);
+  const filtered = items.filter(item => `${item.name || ''} ${item.email || ''} ${item.orders.map(order => order.plate).join(' ')}`.toLowerCase().includes(query.toLowerCase()));
+  return <main className="admin-cms"><header className="admin-cms-header"><div><span className="admin-cms-kicker">COMERCIAL / AQUISIÇÃO</span><h1>Leads</h1><p>Usuários que iniciaram relacionamento ou realizaram pedidos.</p></div><input className="admin-input" placeholder="Buscar nome, e-mail ou placa" value={query} onChange={e => setQuery(e.target.value)}/></header>{error && <div className="admin-cms-message error">{error}</div>}<section className="admin-order-summary">Leads encontrados: <strong>{filtered.length}</strong></section><div className="admin-order-table"><table><thead><tr><th>Contato</th><th>Primeiro registro</th><th>Pedidos</th><th>Último produto / placa</th><th>Valor</th></tr></thead><tbody>{filtered.map(item => { const last = item.orders[0]; return <tr key={item.id}><td><strong>{item.name || 'Sem nome'}</strong><small>{item.email || 'Sem e-mail'}</small></td><td>{new Date(item.createdAt).toLocaleDateString('pt-BR')}</td><td>{item.orders.length}</td><td>{last ? `${last.product.name} · ${last.plate}` : 'Nenhum pedido'}</td><td>{last ? money(last.amountCents) : '—'}</td></tr>; })}{filtered.length === 0 && <tr><td colSpan={5}>Nenhum lead encontrado.</td></tr>}</tbody></table></div></main>;
+}
