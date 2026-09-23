@@ -54,6 +54,9 @@ model User {
   email        String?  @unique
   passwordHash String?
   role         UserRole @default(CUSTOMER)
+  notifyNewConsultationOrders Boolean @default(false)
+  notifyConsultationStatusChanges Boolean @default(false)
+  notifySystemAlerts Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   authCodes    AuthCode[]
