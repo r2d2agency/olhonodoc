@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
+import { CouponStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireSuperadmin } from '@/lib/auth';
-import { CouponStatus } from '@prisma/client';
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
