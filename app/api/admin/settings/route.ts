@@ -38,6 +38,17 @@ export async function PUT(request: Request) {
   catch { return NextResponse.json({ error: 'Não foi possível salvar.' }, { status: 500 }); }
 }
 
+function getSmtpError(error: unknown) {
+  const detail = error instanceof Error ? error.message : '';
+  if (detail.includes('SMTP não configurado')) return { code: 'SMTP_NOT_CONFIGURED', error: 'SMTP não configurado. Preencha servidor, porta, usuário, senha e remetente.' };
+  if (detail.includes('SMTP_ENCRYPTION_KEY')) return { code: 'SMTP_ENCRYPTION_KEY_INVALID', error: 'A chave SMTP_ENCRYPTION_KEY não está configurada corretamente no servidor.' };
+  if (detail.includes('Credencial SMTP inválida')) return { code: 'SMTP_CREDENTIAL_INVALID', error: 'A senha SMTP salva não pode ser descriptografada. Salve a configuração novamente.' };
+  if (/auth|authentication|credentials|login|senha/i.test(detail)) return { code: 'SMTP_AUTH_FAILED', error: 'O servidor SMTP recusou as credenciais. Confira usuário e senha.' };
+  if (/wrong version number|tls_validate_record_header|SSL routines/i.test(detail)) return { code: 'SMTP_TLS_MISMATCH', error: 'A segurança TLS não combina com a porta SMTP. Use TLS/SSL ativado na porta 465 ou desativado na porta 587.' };
+  if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT|timeout|connect/i.test(detail)) return { code: 'SMTP_CONNECTION_FAILED', error: 'Não foi possível conectar ao servidor SMTP. Confira host, porta, TLS e firewall.' };
+  return { code: 'SMTP_SEND_FAILED', error: 'O servidor SMTP rejeitou o envio. Confira os dados e o remetente autorizado.' };
+}
+
 export async function POST(request: Request) {
   const user = await requireSuperadmin();
   if (!user) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 403 });
@@ -45,7 +56,8 @@ export async function POST(request: Request) {
   if (body?.action !== 'test-email' || typeof body.email !== 'string' || !/^\S+@\S+\.\S+$/.test(body.email)) return NextResponse.json({ error: 'Informe um e-mail válido para teste.' }, { status: 400 });
   try { await sendSmtpTest(body.email); return NextResponse.json({ message: 'E-mail de teste enviado.' }); }
   catch (error) {
-    console.error('[admin/settings] falha ao enviar e-mail de teste', error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: 'Não foi possível enviar o e-mail de teste. Verifique a configuração SMTP.' }, { status: 503 });
+    const smtpError = getSmtpError(error);
+    console.error(`[admin/settings] ${smtpError.code}`, error instanceof Error ? error.message : error);
+    return NextResponse.json(smtpError, { status: 503 });
   }
 }
