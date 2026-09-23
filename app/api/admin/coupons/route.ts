@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { CouponDiscountType, CouponStatus } from '@prisma/client';
+import { CouponDiscountType, CouponStatus, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireSuperadmin } from '@/lib/auth';
 import { normalizeCouponCode } from '@/lib/coupons';
@@ -11,6 +11,7 @@ export async function GET() {
     return NextResponse.json(coupons);
   } catch (error) {
     console.error('Admin coupon list failed', error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021') return NextResponse.json({ error: 'Banco de dados desatualizado: execute prisma db push no ambiente de produção.' }, { status: 503 });
     return NextResponse.json({ error: 'Não foi possível carregar os cupons' }, { status: 500 });
   }
 }
