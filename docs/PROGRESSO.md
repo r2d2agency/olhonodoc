@@ -79,11 +79,73 @@
 
 ---
 
-# Fase 3 — Checkout, pagamento e consulta real (próxima fase)
+# Fase 3 — Fluxo principal: consulta, checkout, pagamento e laudo
+
+## Fluxo de negócio confirmado
+
+O produto terá duas portas de entrada para a compra, com o mesmo checkout e a mesma área do cliente:
+
+### Entrada A — Landing page / Hero
+
+1. No hero da landing page, o visitante informa a placa.
+2. O sistema valida e normaliza a placa.
+3. A placa é enviada à integração da **Company Conferi** para consulta básica/agregada.
+4. A resposta inicial mostra somente dados básicos autorizados, como marca, modelo e cor.
+5. A página exibe o aviso/CTA de que o laudo completo exige uma consulta paga.
+6. O visitante é direcionado à página de planos, levando a placa e a origem da campanha.
+7. Ele escolhe o plano/consulta, compara diferenças, recursos e preço.
+
+### Entrada B — Área do cliente
+
+1. Cliente autenticado acessa `/minha-conta`.
+2. Pode informar uma nova placa ou escolher veículo já salvo.
+3. Visualiza planos, consultas, pacotes, ofertas e preços disponíveis.
+4. Escolhe a consulta e segue para o mesmo checkout da entrada A.
+5. Após a compra, o pedido aparece na área do cliente e o cliente pode adquirir novas consultas.
+
+### Checkout e criação da conta
+
+1. O checkout recebe placa, produto e cupom, mas nunca confia no total enviado pelo navegador.
+2. O visitante preenche nome, e-mail, dados necessários e cria a senha nessa etapa; se já possuir conta, autentica-se.
+3. O servidor cria/associa a conta, cliente, veículo e pedido em transação segura.
+4. O gateway processa o pagamento online.
+5. O cliente vê sucesso, pendência ou falha e retorna para sua área.
+
+### Pós-pagamento e segunda confirmação da placa
+
+1. O pagamento confirmado deixa a consulta como `PENDENTE`/`AGUARDANDO_PROCESSAMENTO` na área do cliente.
+2. O sistema confirma novamente a placa antes de consumir a consulta paga.
+3. A placa é enviada à Company Conferi pelo adapter de integração.
+4. Deve existir webhook/callback autenticado para a Company Conferi informar o processamento.
+5. Quando pronta, a Company Conferi retorna um JSON completo.
+6. O sistema valida, normaliza e armazena o JSON sem expor payload sensível.
+7. O JSON normalizado alimenta a tela do laudo e a geração de PDF.
+8. O cliente visualiza o status e baixa o PDF autorizado na área do cliente.
+9. Falhas, timeout e indisponibilidade geram retry controlado e estado visível, sem duplicar a consulta.
+
+## Telas e integrações necessárias
+
+- 🟡 Hero/landing: placa, consulta básica/agregada, aviso de laudo completo e encaminhamento aos planos.
+- 🟡 Página de planos: comparação, recursos, preço, pacote/oferta e preservação da placa.
+- 🔴 Checkout: dados pessoais, criação de conta/senha, cupom, resumo, pagamento e estados de retorno.
+- 🟡 `/minha-conta`: nova aquisição, veículos, consultas pendentes/concluídas, ofertas, pacotes e preços.
+- 🔴 `/admin/integracoes`: configuração segura da Company Conferi, credenciais, endpoint, webhook, health check e teste.
+- 🔴 Webhook Company Conferi: autenticação, idempotência, validação de assinatura, correlação pedido/consulta e armazenamento do retorno.
+- 🔴 Laudo: visualização do JSON normalizado e geração/download de PDF.
+- 🟡 `/admin/consultas`: fila, status, payload sanitizado, retry, erro, SLA e reprocessamento manual.
+- 🟡 `/admin/pedidos` e `/admin/pagamentos`: reconciliação entre pedido, pagamento e consulta.
+
+## Estados sugeridos
+
+`DRAFT` → `AWAITING_PAYMENT` → `PAID` → `PLATE_CONFIRMATION_PENDING` → `SUBMITTED_TO_PROVIDER` → `PROCESSING` → `COMPLETED` → `REPORT_AVAILABLE`.
+
+Estados de exceção: `PAYMENT_FAILED`, `CANCELLED`, `PROVIDER_TIMEOUT`, `PROVIDER_ERROR`, `REPORT_FAILED`.
+
+Cada transição deve ser autorizada, registrada e idempotente.
 
 ## Lacuna principal
 
-🔴 Existe `POST /api/checkout/validate-coupon`, mas não foi localizado fluxo completo de criação de pedido, cobrança, webhook, confirmação, provedor de consulta ou entrega de relatório.
+🔴 Existe `POST /api/checkout/validate-coupon`, mas ainda não existe o fluxo completo de consulta básica/agregada, criação de conta no checkout, criação de pedido, cobrança, webhook, confirmação de placa, integração Company Conferi ou entrega de PDF.
 
 ## Entregas
 
@@ -206,6 +268,7 @@ Categorias e conteúdo; campanhas/UTM e atribuição; templates transacionais; a
 |---|---|---|---|
 | 2026-09-23 | Fase 2 | Configuração SMTP, diagnóstico TLS e fallback | ✅ concluído |
 | 2026-09-23 | Roadmap | Inventário completo inicial salvo neste arquivo | ✅ concluído |
+| 2026-09-23 | Fase 3 | Fluxo confirmado: hero → consulta básica Company Conferi → planos → checkout/criação de conta → pagamento → webhook → laudo PDF → área do cliente | 🟡 especificado |
 
 ## Regra para próximas alterações
 
