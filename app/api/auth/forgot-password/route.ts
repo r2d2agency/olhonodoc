@@ -6,6 +6,13 @@ import { sendPasswordReset } from '@/lib/email';
 
 const genericResponse = { message: 'Se houver uma conta com esse e-mail, enviaremos instruções para redefinir a senha.' };
 
+function getPublicOrigin(request: Request) {
+  const configured = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+  if (configured) return configured.replace(/\/$/, '');
+  if (process.env.NODE_ENV !== 'production') return new URL(request.url).origin;
+  throw new Error('NEXT_PUBLIC_APP_URL não configurada.');
+}
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const email = typeof body?.email === 'string' ? normalizeEmail(body.email) : '';
@@ -18,8 +25,7 @@ export async function POST(request: Request) {
   await prisma.authCode.deleteMany({ where: { userId: user.id, consumedAt: null } });
   await prisma.authCode.create({ data: { userId: user.id, codeHash: `reset:${hashValue(token)}`, expiresAt: new Date(Date.now() + 30 * 60 * 1000) } });
   try {
-    const origin = new URL(request.url).origin;
-    await sendPasswordReset(user.email, `${origin}/redefinir-senha?token=${token}`);
+    await sendPasswordReset(user.email, `${getPublicOrigin(request)}/redefinir-senha?token=${token}`);
   } catch {
     return NextResponse.json(genericResponse);
   }
