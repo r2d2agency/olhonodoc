@@ -74,7 +74,7 @@ model User {
   updatedAt    DateTime @updatedAt
   authCodes    AuthCode[]
   sessions     Session[]
-  customer     Customer?
+  customers    Customer[]
 }
 
 model AuthCode {
@@ -133,7 +133,7 @@ model Product {
 
 model Customer {
   id           String   @id @default(cuid())
-  userId       String?  @unique
+  userId       String?
   name         String?
   email        String   @unique
   phone        String?
@@ -144,6 +144,8 @@ model Customer {
   orders       Order[]
   assignments  CouponAssignment[]
   redemptions  CouponRedemption[]
+
+  @@index([userId])
 }
 
 model Coupon {
@@ -184,6 +186,7 @@ model CouponAssignment {
   @@unique([couponId, targetType, targetValue])
   @@index([targetType, targetValue])
 }
+
 
 model CouponRedemption {
   id          String    @id @default(cuid())
