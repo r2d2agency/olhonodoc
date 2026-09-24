@@ -6,9 +6,10 @@ import { prisma } from '@/lib/prisma';
 const products: CompanyProduct[] = ['conferi-agregados', 'conferi-auto-pericia-gold', 'conferi-bin', 'conferi-estadual', 'conferi-crlv', 'conferi-gravame'];
 
 export async function POST(request: Request) {
-  const user = await requireSuperadmin();
-  if (!user) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 403 });
-  const body = await request.json().catch(() => null);
+  try {
+    const user = await requireSuperadmin();
+    if (!user) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 403 });
+    const body = await request.json().catch(() => null);
   const product = typeof body?.product === 'string' ? body.product : '';
   const plate = typeof body?.plate === 'string' ? body.plate : undefined;
   const chassi = typeof body?.chassi === 'string' ? body.chassi : undefined;
@@ -22,5 +23,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[company-test] failed', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Não foi possível testar a Company.' }, { status: 502 });
+    }
+  } catch (error) {
+    console.error('[company-test] route failed', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Falha interna ao preparar o teste da Company.' }, { status: 500 });
   }
 }
