@@ -6,6 +6,8 @@ export type CompanyEnvironment = 'homologation' | 'production';
 export type CompanyProduct = 'conferi-agregados' | 'conferi-auto-pericia-gold' | 'conferi-bin' | 'conferi-estadual' | 'conferi-crlv' | 'conferi-gravame';
 export type CompanyInput = { placa?: string; chassi?: string; motor?: string; cambio?: string; produto?: string; uf?: string; documento?: string; renavam?: string; codigo_consulta?: string };
 export type CompanyResponse = { solicitacao?: { acao?: number | string; mensagem?: string; dataHora?: string; codigoConsulta?: string; status?: string }; hashPesquisa?: string; [key: string]: unknown };
+export type CompanyRequestResult = { data: CompanyResponse; httpStatus: number; contentType: string; durationMs: number; endpoint: string; rawPreview: string };
+export class CompanyTransportError extends Error { constructor(public readonly diagnostic: { kind: string; httpStatus?: number; contentType?: string; endpoint: string; durationMs: number; rawPreview: string }, message: string) { super(message); this.name = 'CompanyTransportError'; } }
 
 const endpoints: Record<CompanyEnvironment, Record<CompanyProduct, string>> = {
   homologation: {
@@ -37,12 +39,29 @@ export function validateCompanyInput(product: CompanyProduct, input: CompanyInpu
   if (product === 'conferi-crlv' && input.uf && !['SP', 'MA', 'MT', 'MG', 'PA', 'PR', 'TO'].includes(input.uf.toUpperCase())) throw new Error('UF não suportada para CRLV.');
 }
 
-export async function requestCompany(product: CompanyProduct, environment: CompanyEnvironment, credentials: { usuario: string; senha: string }, input: CompanyInput) {
+export async function requestCompany(product: CompanyProduct, environment: CompanyEnvironment, credentials: { usuario: string; senha: string }, input: CompanyInput): Promise<CompanyResponse> {
+  const result = await requestCompanyDetailed(product, environment, credentials, input);
+  return result.data;
+}
+
+export async function requestCompanyDetailed(product: CompanyProduct, environment: CompanyEnvironment, credentials: { usuario: string; senha: string }, input: CompanyInput): Promise<CompanyRequestResult> {
   validateCompanyInput(product, input);
-  const response = await fetch(endpoints[environment][product], { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ usuario: credentials.usuario, senha: credentials.senha, parametros: input }), signal: AbortSignal.timeout(30000) });
-  if (!response.ok) throw new Error(`Company HTTP ${response.status}`);
-  const data = await response.json() as CompanyResponse;
-  return data;
+  const endpoint = endpoints[environment][product];
+  const started = Date.now();
+  let response: Response;
+  try {
+    response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ usuario: credentials.usuario, senha: credentials.senha, parametros: input }), signal: AbortSignal.timeout(30000) });
+  } catch (error) {
+    throw new CompanyTransportError({ kind: 'NETWORK', endpoint, durationMs: Date.now() - started, rawPreview: '' }, error instanceof Error ? error.message : 'Falha de rede com a Company.');
+  }
+  const contentType = response.headers.get('content-type') || '';
+  const raw = await response.text();
+  const rawPreview = raw.slice(0, 4000);
+  if (!response.ok) throw new CompanyTransportError({ kind: response.status >= 500 ? 'PROVIDER_5XX' : response.status === 401 || response.status === 403 ? 'PROVIDER_AUTH' : 'PROVIDER_HTTP', httpStatus: response.status, contentType, endpoint, durationMs: Date.now() - started, rawPreview }, `Company respondeu HTTP ${response.status}.`);
+  let data: CompanyResponse;
+  try { data = JSON.parse(raw) as CompanyResponse; }
+  catch { throw new CompanyTransportError({ kind: 'INVALID_RESPONSE', httpStatus: response.status, contentType, endpoint, durationMs: Date.now() - started, rawPreview }, 'A Company retornou um formato diferente de JSON.'); }
+  return { data, httpStatus: response.status, contentType, durationMs: Date.now() - started, endpoint, rawPreview };
 }
 
 export function companyAction(response: CompanyResponse) { const action = Number(response.solicitacao?.acao); return { action, status: action === 4 ? 'PROCESSING' : action === 0 ? 'NOT_FOUND' : action === 1 ? 'COMPLETED' : action === 2 ? 'AUTH_ERROR' : action === 3 ? 'INVALID_INPUT' : action === 6 ? 'NO_CREDITS' : action === 8 ? 'FORBIDDEN' : action === 9 ? 'EXPIRED' : 'FAILED' } as const; }
