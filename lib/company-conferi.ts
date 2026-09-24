@@ -9,12 +9,12 @@ export type CompanyResponse = { solicitacao?: { acao?: number | string; mensagem
 
 const endpoints: Record<CompanyEnvironment, Record<CompanyProduct, string>> = {
   homologation: {
-    'conferi-agregados': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-agregados/json',
-    'conferi-auto-pericia-gold': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-veiculo/json',
-    'conferi-bin': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-bin/json',
-    'conferi-estadual': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-estadual/json',
-    'conferi-crlv': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-crlv/json',
-    'conferi-gravame': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-gravame/json'
+    'conferi-agregados': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-agregados?responseType=json',
+    'conferi-auto-pericia-gold': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-veiculo?responseType=json',
+    'conferi-bin': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-bin?responseType=json',
+    'conferi-estadual': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-estadual?responseType=json',
+    'conferi-crlv': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-crlv?responseType=json',
+    'conferi-gravame': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-gravame?responseType=json'
   },
   production: {
     'conferi-agregados': 'https://webservice.companyconferi.com.br/api-clientes/conferi-agregados/json',
@@ -33,6 +33,7 @@ export function validateCompanyInput(product: CompanyProduct, input: CompanyInpu
   if (!input.placa && !input.chassi && !input.motor && !input.cambio) throw new Error('Informe uma placa, chassi, motor ou câmbio.');
   if (product === 'conferi-gravame' && !input.chassi) throw new Error('Gravame exige chassi.');
   if (product === 'conferi-auto-pericia-gold') input.produto = 'conferi-auto-pericia-gold';
+  if (input.uf) input.uf = input.uf.toUpperCase();
   if (product === 'conferi-crlv' && input.uf && !['SP', 'MA', 'MT', 'MG', 'PA', 'PR', 'TO'].includes(input.uf.toUpperCase())) throw new Error('UF não suportada para CRLV.');
 }
 
