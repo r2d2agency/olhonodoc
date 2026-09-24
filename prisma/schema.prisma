@@ -74,6 +74,7 @@ model User {
   updatedAt    DateTime @updatedAt
   authCodes    AuthCode[]
   sessions     Session[]
+  customer     Customer?
 }
 
 model AuthCode {
@@ -132,12 +133,14 @@ model Product {
 
 model Customer {
   id           String   @id @default(cuid())
+  userId       String?  @unique
   name         String?
   email        String   @unique
   phone        String?
   cpf          String?  @unique
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   orders       Order[]
   assignments  CouponAssignment[]
   redemptions  CouponRedemption[]

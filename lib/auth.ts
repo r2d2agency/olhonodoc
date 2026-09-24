@@ -8,6 +8,9 @@ const SESSION_TTL_DAYS = 30;
 const scryptAsync = promisify(scrypt);
 
 export const normalizeEmail = (email: string) => email.trim().toLowerCase();
+export const normalizeDigits = (value: string) => value.replace(/\D/g, '');
+export const normalizeCpf = (value: string) => normalizeDigits(value);
+export const normalizePhone = (value: string) => normalizeDigits(value);
 export const hashValue = (value: string) => createHash('sha256').update(value).digest('hex');
 export const newCode = () => randomInt(100000, 1000000).toString();
 
