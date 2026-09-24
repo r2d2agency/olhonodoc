@@ -25,5 +25,5 @@ export async function PATCH(request: Request) {
   const existing = await prisma.customer.findFirst({ where: { OR: [{ userId: user.id }, { email: user.email! }] } });
   const customer = existing ? await prisma.customer.update({ where: { id: existing.id }, data }) : await prisma.customer.create({ data: { email: user.email!, ...data } });
   await prisma.user.update({ where: { id: user.id }, data: { name } });
-  return NextResponse.json({ data: { name, email: user.email, ...data, cpf: customer.cpf || '' } });
+  return NextResponse.json({ data: { ...data, email: user.email, cpf: customer.cpf || '' } });
 }
