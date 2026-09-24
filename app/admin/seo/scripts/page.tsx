@@ -1,0 +1,3 @@
+import { prisma } from '@/lib/prisma';
+export const dynamic = 'force-dynamic';
+export default async function SeoScriptsPage() { const row = await prisma.setting.findUnique({ where: { key: 'seo.scripts' } }); return <main className="admin-cms"><header className="admin-cms-header"><div><span className="admin-cms-kicker">SEO / SCRIPTS E PIXELS</span><h1>Scripts e pixels</h1><p>Gerencie scripts de medição com cuidado. Conteúdo não configurado não é executado.</p></div></header><section className="admin-panel-card"><h2>Estado da configuração</h2>{row ? <p>Existe uma configuração salva. A edição será liberada com validação por ambiente.</p> : <p>Nenhum script ou pixel configurado.</p>}</section></main>; }

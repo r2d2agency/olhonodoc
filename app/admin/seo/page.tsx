@@ -1,0 +1,3 @@
+import { prisma } from '@/lib/prisma';
+export const dynamic = 'force-dynamic';
+export default async function SeoPage() { const row = await prisma.setting.findUnique({ where: { key: 'seo.defaults' } }); return <main className="admin-cms"><header className="admin-cms-header"><div><span className="admin-cms-kicker">SEO</span><h1>Visão geral SEO</h1><p>Defaults de SEO armazenados na configuração do site.</p></div></header><section className="admin-panel-card"><h2>Configuração</h2><pre>{JSON.stringify(row?.value || {}, null, 2)}</pre>{!row && <p>Nenhuma configuração SEO salva ainda.</p>}</section></main>; }
