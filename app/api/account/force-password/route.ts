@@ -1,0 +1,4 @@
+import { NextResponse } from 'next/server';
+import { getCurrentUser, hashPassword } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+export async function POST(request: Request) { const user = await getCurrentUser(); if (!user || !user.mustChangePassword) return NextResponse.json({ error: 'Redefinição não autorizada.' }, { status: 403 }); const body = await request.json().catch(() => null); const password = typeof body?.password === 'string' ? body.password : ''; if (password.length < 8) return NextResponse.json({ error: 'A senha deve ter pelo menos 8 caracteres.' }, { status: 400 }); await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(password), mustChangePassword: false } }); return NextResponse.json({ message: 'Senha atualizada com sucesso.' }); }

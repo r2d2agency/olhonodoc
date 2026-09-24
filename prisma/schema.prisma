@@ -66,6 +66,7 @@ model User {
   username     String?  @unique
   email        String?  @unique
   passwordHash String?
+  mustChangePassword Boolean @default(false)
   role         UserRole @default(CUSTOMER)
   notifyNewConsultationOrders Boolean @default(false)
   notifyConsultationStatusChanges Boolean @default(false)

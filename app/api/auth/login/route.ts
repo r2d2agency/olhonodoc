@@ -11,6 +11,6 @@ export async function POST(request: Request) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !(await verifyPassword(password, user.passwordHash))) return NextResponse.json({ error: 'E-mail ou senha inválidos.' }, { status: 401 });
     await createSession(user.id);
-    return NextResponse.json({ data: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    return NextResponse.json({ data: { id: user.id, name: user.name, email: user.email, role: user.role, mustChangePassword: user.mustChangePassword } });
   } catch { return NextResponse.json({ error: 'Não foi possível entrar agora.' }, { status: 500 }); }
 }
