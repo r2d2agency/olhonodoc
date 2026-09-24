@@ -14,7 +14,8 @@ export async function POST(request: Request) {
   if (query.companyStatus === 'COMPLETED' || query.companyStatus === 'NOT_FOUND') return NextResponse.json({ ok: true, duplicate: true });
   if (!query.providerProduct) return NextResponse.json({ error: 'Produto ausente.' }, { status: 503 });
   try {
-    const response = await requestCompany(query.providerProduct as CompanyProduct, configured.environment, { usuario: configured.usuario, senha: configured.senha }, { placa: query.normalizedPlate, codigo_consulta: codigo });
+    const savedParams = query.requestParams && typeof query.requestParams === 'object' ? query.requestParams as Record<string, string> : { placa: query.normalizedPlate };
+    const response = await requestCompany(query.providerProduct as CompanyProduct, configured.environment, { usuario: configured.usuario, senha: configured.senha }, { ...savedParams, codigo_consulta: codigo });
     const result = companyAction(response);
     await prisma.vehicleQuery.update({ where: { id: query.id }, data: { report: response as object, companyStatus: result.status, providerAction: result.action, providerMessage: response.solicitacao?.mensagem, providerStatusText: response.solicitacao?.status, hashPesquisa: response.hashPesquisa, responseReceivedAt: new Date(), attempts: { increment: 1 } } });
     return NextResponse.json({ ok: true, status: result.status });

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { OrderStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin, requireSuperadmin } from '@/lib/auth';
+import { submitOrderToCompany } from '@/lib/company-query';
 
 export async function GET(request: Request) {
   const user = await requireAdmin();

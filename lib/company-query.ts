@@ -13,7 +13,8 @@ export async function submitOrderToCompany(orderId: string) {
   const existing = await prisma.vehicleQuery.findUnique({ where: { orderId } });
   if (existing?.companyStatus === CompanyQueryStatus.COMPLETED || existing?.companyStatus === CompanyQueryStatus.PROCESSING) return existing;
   const config = await getCompanySettings();
-  const query = existing || await prisma.vehicleQuery.create({ data: { orderId, normalizedPlate, provider: 'company-conferi', providerProduct, environment: config.environment, companyStatus: CompanyQueryStatus.SUBMITTED, requestSentAt: new Date() } });
+  const requestParams = { placa: normalizedPlate, ...(providerProduct === 'conferi-auto-pericia-gold' ? { produto: providerProduct } : {}) };
+  const query = existing || await prisma.vehicleQuery.create({ data: { orderId, normalizedPlate, requestParams, provider: 'company-conferi', providerProduct, environment: config.environment, companyStatus: CompanyQueryStatus.SUBMITTED, requestSentAt: new Date() } });
   try {
     const detailed = await requestCompanyDetailed(providerProduct as CompanyProduct, config.environment, { usuario: config.usuario, senha: config.senha }, { placa: normalizedPlate, ...(providerProduct === 'conferi-auto-pericia-gold' ? { produto: providerProduct } : {}) });
     const result = companyAction(detailed.data);

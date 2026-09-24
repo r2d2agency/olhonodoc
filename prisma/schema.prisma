@@ -227,6 +227,7 @@ model VehicleQuery {
   orderId         String   @unique
   normalizedPlate String
   report          Json?
+  requestParams   Json?
   queriedAt       DateTime @default(now())
   provider        String?
   providerProduct String?
