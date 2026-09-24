@@ -235,7 +235,7 @@ model VehicleQuery {
   providerAction  Int?
   providerMessage String?
   providerStatusText String?
-  codigoConsulta  String?  @unique
+  codigoConsulta  String?
   hashPesquisa    String?
   requestSentAt   DateTime?
   responseReceivedAt DateTime?
@@ -246,6 +246,7 @@ model VehicleQuery {
   @@index([normalizedPlate])
   @@index([companyStatus])
   @@index([providerProduct])
+  @@index([codigoConsulta])
 }
 
 enum ContentStatus {

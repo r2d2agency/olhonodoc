@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const codigo = typeof body?.codigo_consulta === 'string' ? body.codigo_consulta : typeof body?.codigoConsulta === 'string' ? body.codigoConsulta : '';
   if (!codigo) return NextResponse.json({ error: 'codigo_consulta obrigatório.' }, { status: 400 });
-  const query = await prisma.vehicleQuery.findUnique({ where: { codigoConsulta: codigo } });
+  const query = await prisma.vehicleQuery.findFirst({ where: { codigoConsulta: codigo }, orderBy: { queriedAt: 'desc' } });
   if (!query) return NextResponse.json({ error: 'Consulta não encontrada.' }, { status: 404 });
   if (query.companyStatus === 'COMPLETED' || query.companyStatus === 'NOT_FOUND') return NextResponse.json({ ok: true, duplicate: true });
   if (!query.providerProduct) return NextResponse.json({ error: 'Produto ausente.' }, { status: 503 });
