@@ -9,5 +9,5 @@ export default async function MinhaContaPage({ searchParams }: { searchParams: {
   const user = await getCurrentUser();
   if (!user || user.role !== 'CUSTOMER') redirect('/login?next=/minha-conta');
   const products = await getCatalogProducts();
-  return <CustomerPortal name={user.name || user.email || 'Cliente'} products={products} initialPlate={searchParams.placa || ''} source={searchParams.origem || ''}/>;
+  return <CustomerPortal name={user.name || user.email || 'Cliente'} email={user.email || ''} products={products} initialPlate={searchParams.placa || ''} source={searchParams.origem || ''}/>;
 }
