@@ -53,3 +53,14 @@ export async function requireSuperadmin() {
   if (!user || user.role !== 'SUPERADMIN') return null;
   return user;
 }
+
+export type AdminArea = 'OPERATIONAL' | 'ADMINISTRATIVE';
+export function hasAdminAccess(user: { role: string; adminAccessLevel?: string | null }, area: AdminArea) {
+  if (user.role === 'SUPERADMIN') return true;
+  if (user.role !== 'ADMIN') return false;
+  return user.adminAccessLevel === area;
+}
+export async function requireAdminAccess(area: AdminArea) {
+  const user = await getCurrentUser();
+  return user && hasAdminAccess(user, area) ? user : null;
+}

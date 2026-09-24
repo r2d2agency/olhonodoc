@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSuperadmin } from '@/lib/auth';
 
-const userSelect = { id: true, name: true, email: true, role: true, createdAt: true, notifyNewConsultationOrders: true, notifyConsultationStatusChanges: true, notifySystemAlerts: true } as const;
+const userSelect = { id: true, name: true, email: true, role: true, adminAccessLevel: true, createdAt: true, notifyNewConsultationOrders: true, notifyConsultationStatusChanges: true, notifySystemAlerts: true } as const;
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const currentUser = await requireSuperadmin();

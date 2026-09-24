@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, normalizeEmail, requireSuperadmin } from '@/lib/auth';
 
-const userSelect = { id: true, name: true, email: true, role: true, createdAt: true, notifyNewConsultationOrders: true, notifyConsultationStatusChanges: true, notifySystemAlerts: true } as const;
+const userSelect = { id: true, name: true, email: true, role: true, adminAccessLevel: true, createdAt: true, notifyNewConsultationOrders: true, notifyConsultationStatusChanges: true, notifySystemAlerts: true } as const;
 
 export async function POST(request: Request) {
   const currentUser = await requireSuperadmin();

@@ -47,6 +47,11 @@ enum UserRole {
   SUPERADMIN
 }
 
+enum AdminAccessLevel {
+  OPERATIONAL
+  ADMINISTRATIVE
+}
+
 enum CompanyQueryStatus {
   SUBMITTED
   PROCESSING
@@ -68,6 +73,7 @@ model User {
   passwordHash String?
   mustChangePassword Boolean @default(false)
   role         UserRole @default(CUSTOMER)
+  adminAccessLevel AdminAccessLevel?
   notifyNewConsultationOrders Boolean @default(false)
   notifyConsultationStatusChanges Boolean @default(false)
   notifySystemAlerts Boolean @default(false)

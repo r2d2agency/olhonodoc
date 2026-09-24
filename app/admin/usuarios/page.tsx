@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { AdminPageHeader } from '@/components/admin-primitives';
 import { BellRing, Check, LoaderCircle, Plus, Shield, Trash2, UserRound, X } from 'lucide-react';
 
-type InternalUser = { id: string; name: string | null; email: string | null; role: 'ADMIN' | 'SUPERADMIN'; createdAt: string; notifyNewConsultationOrders: boolean; notifyConsultationStatusChanges: boolean; notifySystemAlerts: boolean };
+type InternalUser = { id: string; name: string | null; email: string | null; role: 'ADMIN' | 'SUPERADMIN'; adminAccessLevel?: 'OPERATIONAL' | 'ADMINISTRATIVE' | null; createdAt: string; notifyNewConsultationOrders: boolean; notifyConsultationStatusChanges: boolean; notifySystemAlerts: boolean };
 type Preference = 'notifyNewConsultationOrders' | 'notifyConsultationStatusChanges' | 'notifySystemAlerts';
 const preferenceLabels: { key: Preference; label: string; description: string }[] = [
   { key: 'notifyNewConsultationOrders', label: 'Novos pedidos de consulta', description: 'Preferência para alertas de pedidos recém-criados.' },
