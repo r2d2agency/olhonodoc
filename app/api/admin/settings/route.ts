@@ -3,13 +3,20 @@ import { requireSuperadmin } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getPublicSmtpConfiguration, saveSmtpConfiguration } from '@/lib/smtp-settings';
 import { sendSmtpTest } from '@/lib/email';
+import { encryptSmtpPassword } from '@/lib/smtp-settings';
 
 const allowed = new Set(['brand', 'site.settings', 'seo.defaults', 'contact']);
+const companyDefaults = { environment: 'homologation', usuario: '', passwordConfigured: false, webhookTokenConfigured: false } as const;
 
 export async function GET(request: Request) {
   const user = await requireSuperadmin();
   if (!user) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 403 });
   const key = new URL(request.url).searchParams.get('key') || 'brand';
+  if (key === 'company.conferi') {
+    const row = await prisma.setting.findUnique({ where: { key } });
+    const value = row?.value as Record<string, unknown> | undefined;
+    return NextResponse.json({ ...companyDefaults, ...value, password: undefined, passwordConfigured: typeof value?.passwordEncrypted === 'string', webhookToken: undefined, webhookTokenConfigured: typeof value?.webhookToken === 'string' });
+  }
   if (key === 'email.smtp') {
     try { return NextResponse.json(await getPublicSmtpConfiguration()); }
     catch { return NextResponse.json({ error: 'Não foi possível carregar a configuração de SMTP.' }, { status: 500 }); }
@@ -23,6 +30,17 @@ export async function PUT(request: Request) {
   const user = await requireSuperadmin();
   if (!user) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 403 });
   const body = await request.json().catch(() => null);
+  if (body?.key === 'company.conferi') {
+    const value = body.value;
+    if (!value || typeof value !== 'object' || !['homologation', 'production'].includes(value.environment) || typeof value.usuario !== 'string' || (value.senha !== undefined && typeof value.senha !== 'string') || (value.webhookToken !== undefined && typeof value.webhookToken !== 'string')) return NextResponse.json({ error: 'Configuração Company inválida.' }, { status: 400 });
+    const previous = await prisma.setting.findUnique({ where: { key: 'company.conferi' } });
+    const prior = previous?.value as Record<string, unknown> | undefined;
+    const passwordEncrypted = value.senha ? encryptSmtpPassword(value.senha) : prior?.passwordEncrypted;
+    if (!passwordEncrypted) return NextResponse.json({ error: 'Informe a senha da Company.' }, { status: 400 });
+    const saved = { environment: value.environment, usuario: value.usuario.trim(), passwordEncrypted, webhookToken: value.webhookToken || prior?.webhookToken || '' };
+    const row = await prisma.setting.upsert({ where: { key: 'company.conferi' }, create: { key: 'company.conferi', value: saved }, update: { value: saved } });
+    return NextResponse.json({ ...companyDefaults, environment: (row.value as Record<string, unknown>).environment, usuario: (row.value as Record<string, unknown>).usuario, passwordConfigured: true, webhookTokenConfigured: Boolean((row.value as Record<string, unknown>).webhookToken) });
+  }
   if (body?.key === 'email.smtp') {
     const value = body.value;
     if (!value || typeof value !== 'object' || typeof value.host !== 'string' || !value.host.trim() || typeof value.user !== 'string' || !value.user.trim() || typeof value.from !== 'string' || !/^\S+@\S+\.\S+$/.test(value.from) || !Number.isInteger(value.port) || value.port < 1 || value.port > 65535 || typeof value.secure !== 'boolean' || (value.password !== undefined && typeof value.password !== 'string')) return NextResponse.json({ error: 'Parâmetros SMTP inválidos.' }, { status: 400 });

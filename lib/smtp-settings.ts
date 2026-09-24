@@ -15,7 +15,7 @@ export function encryptSmtpPassword(password: string) {
   return `${iv.toString('base64')}.${cipher.getAuthTag().toString('base64')}.${encrypted.toString('base64')}`;
 }
 
-function decryptSmtpPassword(value: string) {
+export function decryptSmtpPassword(value: string) {
   const [ivText, tagText, encryptedText] = value.split('.');
   if (!ivText || !tagText || !encryptedText) throw new Error('Credencial SMTP inválida.');
   const decipher = createDecipheriv('aes-256-gcm', encryptionKey(), Buffer.from(ivText, 'base64'));

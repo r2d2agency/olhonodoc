@@ -47,6 +47,19 @@ enum UserRole {
   SUPERADMIN
 }
 
+enum CompanyQueryStatus {
+  SUBMITTED
+  PROCESSING
+  COMPLETED
+  NOT_FOUND
+  AUTH_ERROR
+  INVALID_INPUT
+  NO_CREDITS
+  FORBIDDEN
+  EXPIRED
+  FAILED
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String?
@@ -106,6 +119,10 @@ model Product {
   ctaText     String?
   seoTitle    String?
   seoDescription String?
+  provider      String?
+  providerProduct String?
+  providerEndpointKey String?
+  providerInputType String?
   status      ProductStatus @default(ACTIVE)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -211,9 +228,24 @@ model VehicleQuery {
   normalizedPlate String
   report          Json?
   queriedAt       DateTime @default(now())
+  provider        String?
+  providerProduct String?
+  environment     String?
+  companyStatus   CompanyQueryStatus?
+  providerAction  Int?
+  providerMessage String?
+  providerStatusText String?
+  codigoConsulta  String?  @unique
+  hashPesquisa    String?
+  requestSentAt   DateTime?
+  responseReceivedAt DateTime?
+  attempts        Int      @default(0)
+  lastError       String?
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([normalizedPlate])
+  @@index([companyStatus])
+  @@index([providerProduct])
 }
 
 enum ContentStatus {
