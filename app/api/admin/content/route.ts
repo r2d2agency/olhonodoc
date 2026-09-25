@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if (!isContentKind(kind)) return NextResponse.json({ error: 'Tipo de conteúdo inválido.' }, { status: 400 });
   try {
     if (kind === 'faq') return NextResponse.json({ data: await prisma.faqEntry.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }] }) });
-    return NextResponse.json({ data: await prisma.article.findMany({ orderBy: { updatedAt: 'desc' } }) });
+    return NextResponse.json({ data: await prisma.article.findMany({ include: { category: { select: { id: true, name: true, slug: true } } }, orderBy: { updatedAt: 'desc' } }) });
   } catch (error) { console.error('Admin content list failed', error); return NextResponse.json({ error: 'Não foi possível carregar conteúdo.' }, { status: 500 }); }
 }
 
@@ -49,7 +49,8 @@ export async function POST(request: Request) {
     if (typeof body.seoTitle === 'string' && body.seoTitle.length > 180) return NextResponse.json({ error: 'Título SEO excede o limite de 180 caracteres.' }, { status: 400 });
     if (typeof body.seoDescription === 'string' && body.seoDescription.length > 320) return NextResponse.json({ error: 'Descrição SEO excede o limite de 320 caracteres.' }, { status: 400 });
     const status = isContentStatus(body.status) ? body.status : ContentStatus.DRAFT;
-    const article = await prisma.article.create({ data: { title, slug, content, excerpt: typeof body.excerpt === 'string' ? body.excerpt : null, status, seoTitle: typeof body.seoTitle === 'string' ? body.seoTitle : null, seoDescription: typeof body.seoDescription === 'string' ? body.seoDescription : null, publishedAt: status === ContentStatus.PUBLISHED ? new Date() : null } });
+    const categoryId = typeof body.categoryId === 'string' && body.categoryId ? body.categoryId : null;
+    const article = await prisma.article.create({ data: { title, slug, content, categoryId, excerpt: typeof body.excerpt === 'string' ? body.excerpt : null, status, seoTitle: typeof body.seoTitle === 'string' ? body.seoTitle : null, seoDescription: typeof body.seoDescription === 'string' ? body.seoDescription : null, publishedAt: status === ContentStatus.PUBLISHED ? new Date() : null } });
     return NextResponse.json({ data: article }, { status: 201 });
   } catch (error) {
     console.error('Admin content create failed', error);
