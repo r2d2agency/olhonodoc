@@ -61,7 +61,8 @@ export async function requestCompanyDetailed(product: CompanyProduct, environmen
   let data: CompanyResponse;
   try { data = JSON.parse(raw) as CompanyResponse; }
   catch { throw new CompanyTransportError({ kind: 'INVALID_RESPONSE', httpStatus: response.status, contentType, endpoint, durationMs: Date.now() - started, rawPreview }, 'A Company retornou um formato diferente de JSON.'); }
-  return { data, httpStatus: response.status, contentType, durationMs: Date.now() - started, endpoint, rawPreview };
+  const normalized = data.conferi && typeof data.conferi === 'object' ? data.conferi as CompanyResponse : data;
+  return { data: normalized, httpStatus: response.status, contentType, durationMs: Date.now() - started, endpoint, rawPreview };
 }
 
 export function companyAction(response: CompanyResponse) { const action = Number(response.solicitacao?.acao); return { action, status: action === 4 ? 'PROCESSING' : action === 0 ? 'NOT_FOUND' : action === 1 ? 'COMPLETED' : action === 2 ? 'AUTH_ERROR' : action === 3 ? 'INVALID_INPUT' : action === 6 ? 'NO_CREDITS' : action === 8 ? 'FORBIDDEN' : action === 9 ? 'EXPIRED' : 'FAILED' } as const; }
