@@ -1,0 +1,5 @@
+import { NextResponse } from 'next/server';
+import { requireSuperadmin } from '@/lib/auth';
+import { getPublicPaymentConfiguration, savePaymentConfiguration } from '@/lib/payment-provider';
+export async function GET() { const user = await requireSuperadmin(); if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 }); return NextResponse.json(await getPublicPaymentConfiguration()); }
+export async function PUT(request: Request) { const user = await requireSuperadmin(); if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 }); const body = await request.json().catch(() => null); if (!body || !['none', 'mercadopago', 'asaas'].includes(body.activeProvider) || !['sandbox', 'production'].includes(body.environment)) return NextResponse.json({ error: 'Provedor ou ambiente inválido.' }, { status: 400 }); await savePaymentConfiguration({ activeProvider: body.activeProvider, environment: body.environment, mercadopago: body.mercadopago || {}, asaas: body.asaas || {} }); return NextResponse.json(await getPublicPaymentConfiguration()); }
