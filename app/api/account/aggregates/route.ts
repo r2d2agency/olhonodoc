@@ -12,6 +12,6 @@ export async function POST(request: Request) {
     const config = await getCompanySettings();
     const detailed = await requestCompanyDetailed('conferi-agregados', config.environment, { usuario: config.usuario, senha: config.senha }, { placa: plate });
     const result = companyAction(detailed.data);
-    return NextResponse.json({ data: { status: result.status, action: result.action, request: detailed.data.solicitacao || null, aggregates: detailed.data.agregados || null, hashPesquisa: detailed.data.hashPesquisa || null } });
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Não foi possível consultar os dados do veículo.' }, { status: 502 }); }
+    return NextResponse.json({ data: { status: result.status, action: result.action, httpStatus: detailed.httpStatus, durationMs: detailed.durationMs, request: detailed.data.solicitacao || null, aggregates: detailed.data.agregados || null, hashPesquisa: detailed.data.hashPesquisa || null } });
+  } catch (error) { console.error('[account-aggregates] failed', error instanceof Error ? error.message : error); return NextResponse.json({ error: error instanceof Error ? error.message : 'Não foi possível consultar os dados do veículo.' }, { status: 502 }); }
 }
