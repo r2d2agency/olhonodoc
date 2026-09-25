@@ -23,7 +23,7 @@
 .product-card { border-color:#dce8ee; box-shadow:var(--shadow); }
 .faq-section { background:#f5f9fb; }
 .site-footer { background:#061b2f; }
-@media (max-width: 760px) {
+@media (max-width: 760px) { html{font-size:15px} .brand img{max-width:160px;height:auto}.header-inner{padding-left:16px;padding-right:16px}.header-actions .login-link{font-size:.72rem}.menu-button{width:36px;height:36px}.page-hero h1{font-size:clamp(2rem,9vw,3rem)}
   .site-header { position:absolute; }
   .header-inner { height:68px; padding:0 18px; gap:12px; }
   .brand img { width:145px; height:auto; }
