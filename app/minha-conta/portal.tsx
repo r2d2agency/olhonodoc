@@ -25,16 +25,13 @@ export default function CustomerPortal({ name, email, products, initialPlate, so
   const vehicleCount = new Set(queries.map((query) => query.plate)).size;
   useEffect(() => { if (!initialPlate) return; const normalized = initialPlate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(); setAggregateLoading(true); fetch('/api/account/aggregates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plate: normalized }) }).then(async (response) => { const body = await response.json(); if (!response.ok) throw new Error(body.error || 'Não foi possível consultar o veículo.'); if (body.data.status === 'AUTH_ERROR') throw new Error(body.data.request?.mensagem || 'A Company rejeitou as credenciais.'); if (body.data.status === 'INVALID_INPUT') throw new Error(body.data.request?.mensagem || 'A placa foi rejeitada pela Company.'); if (body.data.status === 'FAILED') throw new Error(body.data.request?.mensagem || 'A Company não conseguiu concluir a consulta.'); setAggregate(body.data.aggregates || null); }).catch((error) => setAggregateError(error instanceof Error ? error.message : 'Não foi possível consultar o veículo.')).finally(() => setAggregateLoading(false)); }, [initialPlate]);
 
-  function submitPlate(event: React.FormEvent<HTMLFormElement>) {
+  async function submitPlate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalized = plate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    if (normalized.length !== 7) {
-      setPlateError('Informe uma placa com 7 caracteres.');
-      return;
-    }
-    setPlateError('');
-    setShowPlans(true);
+    if (normalized.length !== 7) { setPlateError('Informe uma placa com 7 caracteres.'); return; }
+    setPlateError(''); setAggregate(null); setAggregateError(''); setAggregateLoading(true); setShowPlans(true);
     window.history.replaceState(null, '', `/minha-conta?placa=${normalized}${source ? `&origem=${encodeURIComponent(source)}` : ''}`);
+    try { const response = await fetch('/api/account/aggregates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plate: normalized }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error || 'Não foi possível consultar o veículo.'); if (body.data.status === 'AUTH_ERROR' || body.data.status === 'INVALID_INPUT' || body.data.status === 'FAILED') throw new Error(body.data.request?.mensagem || 'A Company não conseguiu concluir a consulta.'); setAggregate(body.data.aggregates || null); } catch (error) { setAggregateError(error instanceof Error ? error.message : 'Não foi possível consultar o veículo.'); } finally { setAggregateLoading(false); }
   }
 
   return <main className="customer-portal">
