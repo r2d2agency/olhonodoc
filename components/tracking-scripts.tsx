@@ -3,7 +3,7 @@
 import Script from 'next/script';
 import { useEffect, useState } from 'react';
 
-type Tracking = { ga4: string; googleAds: string; metaPixel: string; enabled: boolean; consentRequired: boolean };
+type Tracking = { ga4: string; googleAds: string; metaPixel: string; enabled: boolean; consentRequired: boolean; googleAdsConversion?: string };
 
 export default function TrackingScripts() {
   const [config, setConfig] = useState<Tracking | null>(null);
