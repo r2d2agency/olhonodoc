@@ -330,6 +330,17 @@ model MarketingCampaign {
   @@index([status, createdAt])
 }
 
+model SeoRedirect {
+  id        String   @id @default(cuid())
+  source    String   @unique
+  target    String
+  statusCode Int     @default(308)
+  enabled   Boolean  @default(true)
+  hitCount  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Setting {
   id        String   @id @default(cuid())
   key       String   @unique
