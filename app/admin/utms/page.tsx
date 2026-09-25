@@ -44,7 +44,7 @@ export default function UtmPage() {
       <section className="admin-cms-card">
         <div className="admin-cms-card-heading"><div><h2>Parâmetros da campanha</h2><p>Preencha os campos que se aplicam. A URL mantém parâmetros existentes.</p></div><span className="admin-cms-card-badge"><Link2 size={13}/> GERADOR</span></div>
         <form className="admin-utm-form" onSubmit={generate}>
-          {fields.map((field) => <label key={field.key} className={field.wide ? 'wide' : ''}>{field.label}{field.required && <span aria-hidden="true"> *</span>}<input required={field.required} type={field.key === 'targetUrl' ? 'url' : 'text'} placeholder={field.placeholder} value={form[field.key]} onChange={(event) => setForm({ ...form, [field.key]: event.target.value })}/></label>)}
+          {fields.map((field) => <label key={field.key} className={'wide' in field && field.wide ? 'wide' : ''}>{field.label}{'required' in field && field.required && <span aria-hidden="true"> *</span>}<input required={'required' in field && field.required} type={field.key === 'targetUrl' ? 'url' : 'text'} placeholder={field.placeholder} value={form[field.key]} onChange={(event) => setForm({ ...form, [field.key]: event.target.value })}/></label>)}
           <div className="wide"><button className="admin-cms-primary" type="submit">Gerar link <ArrowUpRight size={15}/></button></div>
         </form>
         {result && <div className="admin-utm-result"><div><strong>Link pronto para usar</strong><code>{result}</code></div><button className="admin-secondary-button" type="button" onClick={copy}><Copy size={14}/>{copied ? 'Copiado' : 'Copiar link'}</button></div>}
