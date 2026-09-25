@@ -276,6 +276,15 @@ enum ContentStatus {
   ARCHIVED
 }
 
+model BlogCategory {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  articles  Article[]
+}
+
 model Article {
   id             String        @id @default(cuid())
   slug           String        @unique
@@ -286,6 +295,8 @@ model Article {
   seoTitle       String?
   seoDescription String?
   publishedAt    DateTime?
+  categoryId     String?
+  category       BlogCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
