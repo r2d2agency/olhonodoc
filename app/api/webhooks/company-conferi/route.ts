@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getCompanySettings, validWebhookToken, requestCompany, companyAction, type CompanyProduct } from '@/lib/company-conferi';
+import { getCompanySettings, requestCompany, companyAction, type CompanyProduct } from '@/lib/company-conferi';
 
-export async function POST(request: Request) {
+async function processWebhook(codigo: string) {
+  if (!codigo) return NextResponse.json({ error: 'codigo_consulta obrigatório.' }, { status: 400 });
   let configured;
   try { configured = await getCompanySettings(); } catch { return NextResponse.json({ error: 'Webhook não configurado.' }, { status: 503 }); }
-  if (!validWebhookToken(request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') || request.headers.get('x-company-webhook-token'), configured.webhookToken)) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
-  const body = await request.json().catch(() => null);
-  const codigo = typeof body?.codigo_consulta === 'string' ? body.codigo_consulta : typeof body?.codigoConsulta === 'string' ? body.codigoConsulta : '';
-  if (!codigo) return NextResponse.json({ error: 'codigo_consulta obrigatório.' }, { status: 400 });
   const query = await prisma.vehicleQuery.findFirst({ where: { codigoConsulta: codigo }, orderBy: { queriedAt: 'desc' } });
   if (!query) return NextResponse.json({ error: 'Consulta não encontrada.' }, { status: 404 });
   if (query.companyStatus === 'COMPLETED' || query.companyStatus === 'NOT_FOUND') return NextResponse.json({ ok: true, duplicate: true });
@@ -21,3 +18,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, status: result.status });
   } catch (error) { await prisma.vehicleQuery.update({ where: { id: query.id }, data: { lastError: error instanceof Error ? error.message : 'Falha no re-fetch', attempts: { increment: 1 } } }); return NextResponse.json({ error: 'Re-fetch agendado para nova tentativa.' }, { status: 503 }); }
 }
+
+export async function GET(request: Request) { const url = new URL(request.url); return processWebhook(url.searchParams.get('codigo_consulta') || url.searchParams.get('codigoConsulta') || ''); }
+export async function POST(request: Request) { const body = await request.json().catch(() => null); return processWebhook(typeof body?.codigo_consulta === 'string' ? body.codigo_consulta : typeof body?.codigoConsulta === 'string' ? body.codigoConsulta : ''); }
