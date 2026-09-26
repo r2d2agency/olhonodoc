@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FileText, Plus, Save, Trash2 } from 'lucide-react';
 
-type Template = { id: string; name: string; channel: 'email' | 'whatsapp'; subject: string; body: string };
+type Template = { id: string; name: string; channel: 'email' | 'whatsapp'; subject: string; body: string; updatedAt?: string };
 const emptyTemplate: Template = { id: '', name: '', channel: 'email', subject: '', body: '' };
 const variables = ['{{nome}}', '{{produto}}', '{{placa}}', '{{valor}}', '{{pedido}}', '{{link}}'];
 
