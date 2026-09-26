@@ -58,7 +58,7 @@ export default function TemplatesPage() {
           <td><strong>{item.name}</strong></td>
           <td><span className={`admin-status ${item.channel === 'whatsapp' ? 'success' : 'neutral'}`}><i/>{item.channel === 'whatsapp' ? 'WhatsApp' : 'E-mail'}</span></td>
           <td>{item.subject || '—'}</td>
-          <td>{new Date(item.updatedAt).toLocaleDateString('pt-BR')}</td>
+          <td>{item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('pt-BR') : '—'}</td>
           <td><div className="admin-table-actions"><button className="table-action" onClick={() => { setDraft(item); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Editar</button><button className="table-action" onClick={() => remove(item.id)}><Trash2 size={13}/> Excluir</button></div></td>
         </tr>)}
       </tbody></table></div>
