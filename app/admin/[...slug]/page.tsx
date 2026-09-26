@@ -4,12 +4,14 @@ import { adminModules } from '@/app/admin/placeholder-pages';
 import CouponsPage from '@/app/admin/cupons/page';
 import AdminHomePage from '@/app/admin/site/home/page';
 import CampaignsPage from '@/app/admin/campanhas/page';
+import TemplatesPage from '@/app/admin/templates/page';
 
 export default function AdminModulePage({ params }: { params: { slug: string[] } }) {
   const key = params.slug[params.slug.length - 1];
   if (key === 'cupons') return <CouponsPage />;
   if (key === 'home') return <AdminHomePage />;
   if (key === 'campanhas') return <CampaignsPage />;
+  if (key === 'templates') return <TemplatesPage />;
   const module = adminModules[key];
   if (!module) notFound();
   return <AdminPlaceholderPage title={module.title} section={module.section}/>;
