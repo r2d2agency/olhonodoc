@@ -7,6 +7,7 @@ const supported = new Set<CompanyProduct>(['conferi-agregados', 'conferi-auto-pe
 export async function submitOrderToCompany(orderId: string) {
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { product: true } });
   if (!order) throw new Error('ORDER_NOT_FOUND');
+  if (order.status !== 'PAID' && !order.isBonus) throw new Error('ORDER_NOT_PAID');
   const providerProduct = order.product.providerProduct;
   if (!providerProduct || !supported.has(providerProduct as CompanyProduct)) throw new Error('PRODUCT_NOT_INTEGRATED');
   const normalizedPlate = order.plate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();

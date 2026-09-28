@@ -41,6 +41,25 @@ enum OrderStatus {
   COMPLETED
 }
 
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  AUTHORIZED
+  IN_PROCESS
+  REJECTED
+  CANCELLED
+  REFUNDED
+  CHARGEBACK
+  EXPIRED
+}
+
+enum PaymentEventStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  FAILED
+}
+
 enum UserRole {
   CUSTOMER
   ADMIN
@@ -230,6 +249,8 @@ model Order {
   subtotalCents  Int?
   discountCents  Int                @default(0)
   totalCents     Int?
+  isBonus        Boolean            @default(false)
+  bonusReason    String?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   product        Product            @relation(fields: [productId], references: [id])
@@ -237,9 +258,45 @@ model Order {
   coupon         Coupon?            @relation(fields: [couponId], references: [id], onDelete: SetNull)
   redemption     CouponRedemption?
   query          VehicleQuery?
+  payments       Payment[]
 
   @@index([plate])
   @@index([status])
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  orderId        String
+  provider       String
+  externalId     String?
+  status         PaymentStatus @default(PENDING)
+  amountCents    Int
+  idempotencyKey String        @unique
+  checkoutUrl    String?
+  rawResponse    Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  events         PaymentEvent[]
+
+  @@index([orderId])
+  @@index([provider, externalId])
+  @@index([status])
+}
+
+model PaymentEvent {
+  id             String            @id @default(cuid())
+  paymentId      String?
+  provider       String
+  externalEventId String
+  status         PaymentEventStatus @default(RECEIVED)
+  payload        Json?
+  createdAt      DateTime          @default(now())
+  processedAt    DateTime?
+  payment        Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, externalEventId])
+  @@index([paymentId])
 }
 
 model VehicleQuery {
