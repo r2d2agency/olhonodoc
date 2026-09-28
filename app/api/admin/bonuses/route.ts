@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import { requireAdminAccess, hashPassword, normalizeCpf, normalizeEmail, normalizePhone } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { sendBonusAccess } from '@/lib/email';
 
 function validPlate(value: string) {
   return /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(value) || /^[A-Z]{3}[0-9]{4}$/.test(value);
@@ -32,5 +33,7 @@ export async function POST(request: Request) {
     const order = await tx.order.create({ data: { plate, productId: product.id, customerId: customer.id, amountCents: 0, subtotalCents: product.priceCents, discountCents: product.priceCents, totalCents: 0, status: 'PAID', isBonus: true, bonusReason: reason } });
     return { userId: user.id, orderId: order.id };
   });
-  return NextResponse.json({ data: { ...result, email, temporaryPassword, message: 'Cliente bonificado criado. Entregue a senha temporária por canal seguro e dispare a consulta pelo admin.' } }, { status: 201 });
+  let emailSent = false;
+  try { await sendBonusAccess(email, name, `${new URL(request.url).origin}/login?next=/minha-conta`, temporaryPassword); emailSent = true; } catch { /* admin recebe fallback seguro para entrega manual */ }
+  return NextResponse.json({ data: { ...result, email, temporaryPassword, emailSent, message: emailSent ? 'Cliente criado e instruções enviadas por e-mail.' : 'Cliente criado. Entregue a senha temporária por canal seguro e dispare a consulta pelo admin.' } }, { status: 201 });
 }

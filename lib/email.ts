@@ -19,6 +19,10 @@ export async function sendPasswordReset(email: string, resetUrl: string) {
   await sendEmail(email, 'Redefina sua senha | Olho no Doc', `Para redefinir sua senha, acesse: ${resetUrl}. O link expira em 30 minutos. Se você não solicitou esta alteração, ignore este e-mail.`, `<div style="font-family:Arial,sans-serif"><h2>Olho no Doc</h2><p>Recebemos uma solicitação para redefinir sua senha.</p><p><a href="${resetUrl}">Criar uma nova senha</a></p><p>O link expira em 30 minutos. Se você não solicitou esta alteração, ignore este e-mail.</p></div>`);
 }
 
+export async function sendBonusAccess(email: string, name: string, accessUrl: string, temporaryPassword: string) {
+  await sendEmail(email, 'Sua consulta foi liberada | Olho no Doc', `Olá, ${name}. Sua consulta foi liberada. Acesse ${accessUrl} com o e-mail ${email} e a senha temporária ${temporaryPassword}. No primeiro acesso, você deverá trocar a senha.`, `<div style="font-family:Arial,sans-serif"><h2>Olho no Doc</h2><p>Olá, ${name}.</p><p>Sua consulta foi liberada pela nossa equipe.</p><p><a href="${accessUrl}">Acessar minha conta</a></p><p>E-mail: <strong>${email}</strong></p><p>Senha temporária: <strong>${temporaryPassword}</strong></p><p>Troque a senha no primeiro acesso.</p></div>`);
+}
+
 export async function sendSmtpTest(email: string) {
   await sendEmail(email, 'Teste de configuração de e-mail | Olho no Doc', 'A configuração de e-mail foi validada com sucesso.', '<div style="font-family:Arial,sans-serif"><h2>Olho no Doc</h2><p>A configuração de e-mail foi validada com sucesso.</p></div>');
 }

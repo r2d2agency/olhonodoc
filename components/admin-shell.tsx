@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, ChevronDown, LayoutDashboard, LogOut, Menu, Search, Settings, ShieldCheck, Users, X } from 'lucide-react';
+import { Bell, ChevronDown, FileText, LayoutDashboard, LogOut, Menu, Search, Settings, ShieldCheck, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 const sections = [
   { label: 'VISÃO GERAL', items: [{ href: '/admin', label: 'Dashboard', icon: LayoutDashboard }] },
   { label: 'COMERCIAL', items: [{ href: '/admin/clientes', label: 'Clientes', icon: Users }, { href: '/admin/leads', label: 'Leads', icon: Users }, { href: '/admin/carrinhos-abandonados', label: 'Carrinhos abandonados', icon: LayoutDashboard }, { href: '/admin/recuperacoes', label: 'Recuperações', icon: LayoutDashboard }] },
-  { label: 'OPERAÇÃO', items: [{ href: '/admin/consultas', label: 'Consultas realizadas', icon: LayoutDashboard }, { href: '/admin/fornecedores', label: 'Fornecedores', icon: Settings }] },
+  { label: 'OPERAÇÃO', items: [{ href: '/admin/consultas', label: 'Consultas realizadas', icon: LayoutDashboard }, { href: '/admin/consultas/bonificada', label: 'Consulta bonificada', icon: FileText }, { href: '/admin/fornecedores', label: 'Fornecedores', icon: Settings }] },
   { label: 'VENDAS', items: [{ href: '/admin/pedidos', label: 'Pedidos', icon: LayoutDashboard }, { href: '/admin/pagamentos', label: 'Pagamentos', icon: LayoutDashboard }] },
   { label: 'PRODUTOS', items: [{ href: '/admin/produtos', label: 'Consultas', icon: LayoutDashboard }, { href: '/admin/caracteristicas', label: 'Características', icon: Settings }, { href: '/admin/precos', label: 'Preços', icon: LayoutDashboard }, { href: '/admin/cupons', label: 'Cupons', icon: LayoutDashboard }] },
   { label: 'SITE', items: [{ href: '/admin/site/home', label: 'Home', icon: LayoutDashboard }, { href: '/admin/site/paginas', label: 'Páginas', icon: LayoutDashboard }, { href: '/admin/site/menu', label: 'Menu', icon: LayoutDashboard }, { href: '/admin/site/rodape', label: 'Rodapé', icon: LayoutDashboard }, { href: '/admin/site/banners', label: 'Banners', icon: LayoutDashboard }, { href: '/admin/site/midias', label: 'Mídias', icon: LayoutDashboard }] },
