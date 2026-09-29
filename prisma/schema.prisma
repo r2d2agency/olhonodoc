@@ -319,6 +319,9 @@ model VehicleQuery {
   responseReceivedAt DateTime?
   attempts        Int      @default(0)
   lastError       String?
+  reportPdf       Bytes?
+  reportPdfHash   String?
+  reportPdfGeneratedAt DateTime?
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([normalizedPlate])
