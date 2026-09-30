@@ -6,14 +6,15 @@ const asRecord = (value: unknown): Record<string, unknown> => value && typeof va
 const text = (source: Record<string, unknown>, key: string, fallback = 'Não informado') => { const value = source[key]; return value === undefined || value === null || value === '' || value === '0' ? fallback : String(value); };
 const esc = (input: string) => input.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
 const labelize = (key: string) => key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-const normalizeResponse = (response: CompanyResponse) => { const source = asRecord(response); return asRecord(source.response) as CompanyResponse; };
+const normalizeResponse = (response: CompanyResponse) => { const source = asRecord(response); return (source.response && typeof source.response === 'object' && !Array.isArray(source.response) ? source.response : source) as CompanyResponse; };
 
 const field = (label: string, value: string) => `<div class="data-cell"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`;
 
 export function goldReportHtml(input: CompanyResponse, plate: string, status: string, message: string) {
+  const envelope = asRecord(input);
   const response = normalizeResponse(input);
   const raw = asRecord(response.agregados);
-  const request = asRecord(response.solicitacao);
+  const request = { ...asRecord(envelope.request), ...asRecord(response.solicitacao) };
   const modules = [
     ['bin', 'Base BIN'], ['csv', 'Base CSV'], ['historicoRouboFurto', 'Roubo e furto'], ['estadual', 'Restrições estaduais'],
     ['decodificador', 'Decodificador'], ['gravame', 'Gravame'], ['sinistro', 'Sinistro'], ['indicioSinistro', 'Indícios de sinistro'],
