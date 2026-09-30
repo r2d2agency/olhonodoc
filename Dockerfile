@@ -18,7 +18,6 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV PUPPETEER_CACHE_DIR=/opt/puppeteer
-ENV PUPPETEER_EXECUTABLE_PATH=/opt/puppeteer/chrome/linux-154.0.8037.57/chrome-linux64/chrome
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
