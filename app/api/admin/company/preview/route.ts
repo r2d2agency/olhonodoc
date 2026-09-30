@@ -13,11 +13,14 @@ export async function POST(request: Request) {
   if (!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(plate) && !/^[A-Z]{3}[0-9]{4}$/.test(plate)) return NextResponse.json({ error: 'Informe uma placa válida.' }, { status: 400 });
   const supplied = body?.response;
   if (supplied !== undefined && (!supplied || typeof supplied !== 'object' || Array.isArray(supplied))) return NextResponse.json({ error: 'A resposta Company deve ser um objeto JSON.' }, { status: 400 });
-  const response = (supplied || demoResponse(plate)) as CompanyResponse;
+  const suppliedRecord = supplied as Record<string, unknown> | undefined;
+  const response = (suppliedRecord?.response && typeof suppliedRecord.response === 'object' && !Array.isArray(suppliedRecord.response) ? suppliedRecord.response : supplied || demoResponse(plate)) as CompanyResponse;
   const started = Date.now();
   try {
-    const status = String(response.solicitacao?.acao) === '1' ? 'COMPLETED' : 'PROCESSING';
-    const pdf = await renderGoldPdf(response, plate, status, supplied ? 'Pré-visualização com resposta fornecida pelo operador.' : 'Pré-visualização de teste — nenhuma consulta real foi realizada.');
+    const action = Number(response.solicitacao?.acao ?? suppliedRecord?.action);
+    const status = action === 1 ? 'COMPLETED' : action === 4 ? 'PROCESSING' : 'PROCESSING';
+    const previewMessage = supplied ? 'Pré-visualização com resposta fornecida pelo operador.' : 'Pré-visualização de teste — nenhuma consulta real foi realizada.';
+    const pdf = await renderGoldPdf(response, plate, status, previewMessage);
     console.info('[company-preview] PDF generated', { plateLength: plate.length, suppliedResponse: Boolean(supplied), bytes: pdf.length, durationMs: Date.now() - started });
     return new NextResponse(pdf, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="preview-pericia-${plate}.pdf"`, 'Cache-Control': 'no-store', 'X-Preview-Only': 'true' } });
   } catch (error) {
