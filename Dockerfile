@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends unzip ca-certif
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV PUPPETEER_CACHE_DIR=/opt/puppeteer
-RUN npx puppeteer browsers install chrome --install-deps
+RUN npx puppeteer browsers install chrome
 RUN npx prisma generate
 RUN npm run build
 
