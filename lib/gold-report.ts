@@ -14,7 +14,8 @@ export function goldReportHtml(response: CompanyResponse, plate: string, status:
 }
 
 export async function renderGoldPdf(response: CompanyResponse, plate: string, status: string, message: string) {
-  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  const browser = await puppeteer.launch({ ...(executablePath ? { executablePath } : {}), headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   try { const page = await browser.newPage(); await page.setContent(goldReportHtml(response, plate, status, message), { waitUntil: 'load' }); const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '8mm', right: '8mm', bottom: '8mm', left: '8mm' } }); return Buffer.from(pdf); } finally { await browser.close(); }
 }
 
