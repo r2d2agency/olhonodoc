@@ -2,16 +2,36 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser, normalizeDigits } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
+function validCpfCnpj(value: string) {
+  const digits = normalizeDigits(value);
+  if (digits.length === 11) {
+    if (/^(\d)\1{10}$/.test(digits)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += Number(digits[i]) * (10 - i);
+    let d1 = (sum * 10) % 11 % 10;
+    sum = 0;
+    for (let i = 0; i < 10; i++) sum += Number(digits[i]) * (11 - i);
+    let d2 = (sum * 10) % 11 % 10;
+    return Number(digits[9]) === d1 && Number(digits[10]) === d2;
+  }
+  if (digits.length === 14) {
+    if (/^(\d)\1{13}$/.test(digits)) return false;
+    const calc = (length: number) => { const weights = length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]; let sum = 0; for (let i = 0; i < length; i++) sum += Number(digits[i]) * weights[i]; const remainder = sum % 11; return remainder < 2 ? 0 : 11 - remainder; };
+    return Number(digits[12]) === calc(12) && Number(digits[13]) === calc(13);
+  }
+  return false;
+}
+
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user || user.role !== 'CUSTOMER' || !user.email) return NextResponse.json({ error: 'Faça login para continuar.' }, { status: 401 });
   const body = await request.json().catch(() => null);
   const productSlug = typeof body?.productSlug === 'string' ? body.productSlug : '';
-  const plate = typeof body?.plate === 'string' ? normalizeDigits(body.plate).toUpperCase() : '';
+  const plate = typeof body?.plate === 'string' ? body.plate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : '';
   const address = body?.address;
   const cpf = typeof body?.cpf === 'string' ? normalizeDigits(body.cpf) : '';
   const phone = typeof body?.phone === 'string' ? normalizeDigits(body.phone) : '';
-  if (!/^\d{11}$/.test(cpf)) return NextResponse.json({ error: 'Informe um CPF válido.' }, { status: 400 });
+  if (!validCpfCnpj(cpf)) return NextResponse.json({ error: 'Informe um CPF ou CNPJ válido.' }, { status: 400 });
   if (!/^\d{10,13}$/.test(phone)) return NextResponse.json({ error: 'Informe um WhatsApp válido.' }, { status: 400 });
   if (!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(plate) && !/^[A-Z]{3}[0-9]{4}$/.test(plate)) return NextResponse.json({ error: 'Placa inválida.' }, { status: 400 });
   if (!address || typeof address !== 'object' || !String(address.postalCode || '').replace(/\D/g, '').match(/^\d{8}$/) || !String(address.street || '').trim() || !String(address.number || '').trim() || !String(address.neighborhood || '').trim() || !String(address.city || '').trim() || !/^[A-Z]{2}$/.test(String(address.state || '').toUpperCase())) return NextResponse.json({ error: 'Preencha o endereço completo.' }, { status: 400 });
