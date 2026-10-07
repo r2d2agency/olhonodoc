@@ -68,7 +68,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
       const response = await fetch('/api/checkout/payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: order.orderId }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error);
-      window.location.href = body.data.checkoutUrl;
+      window.location.assign(body.data.checkoutUrl);
     } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível criar o pagamento.'); }
     finally { setLoading(false); }
   }

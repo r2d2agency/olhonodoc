@@ -12,7 +12,7 @@ export default function AdminModulePage({ params }: { params: { slug: string[] }
   if (key === 'home') return <AdminHomePage />;
   if (key === 'campanhas') return <CampaignsPage />;
   if (key === 'templates') return <TemplatesPage />;
-  const module = adminModules[key];
-  if (!module) notFound();
-  return <AdminPlaceholderPage title={module.title} section={module.section}/>;
+  const currentModule = adminModules[key];
+  if (!currentModule) notFound();
+  return <AdminPlaceholderPage title={currentModule.title} section={currentModule.section}/>;
 }
