@@ -45,10 +45,11 @@ export async function processPaymentEvent(provider: string, externalEventId: str
 export async function providerPaymentStatus(provider: string, externalId: string) {
   const config = await getPaymentConfiguration();
   if (provider === 'mercadopago') {
-    const response = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(externalId)}`, { headers: { Authorization: `Bearer ${config.mercadopago.accessToken}` }, signal: AbortSignal.timeout(10000) });
+    const response = await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(externalId)}`, { headers: { Authorization: `Bearer ${config.mercadopago.accessToken}` }, signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new Error('PROVIDER_STATUS_ERROR');
     const data = await response.json();
-    const status: NormalizedPaymentStatus = data.status === 'approved' ? 'APPROVED' : data.status === 'rejected' ? 'REJECTED' : data.status === 'cancelled' ? 'CANCELLED' : data.status === 'refunded' ? 'REFUNDED' : 'PENDING';
+    const paymentStatus = data.transactions?.payments?.[0];
+    const status: NormalizedPaymentStatus = paymentStatus?.status === 'processed' || paymentStatus?.status === 'accredited' ? 'APPROVED' : paymentStatus?.status === 'rejected' ? 'REJECTED' : paymentStatus?.status === 'cancelled' ? 'CANCELLED' : paymentStatus?.status === 'refunded' ? 'REFUNDED' : 'PENDING';
     return { status, data };
   }
   const host = config.environment === 'sandbox' ? 'https://sandbox.asaas.com' : 'https://api.asaas.com';

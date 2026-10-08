@@ -35,17 +35,25 @@ export async function createCardPayment(orderId: string, input: CardPaymentInput
   if (!config.mercadopago.accessToken) throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
   const idempotencyKey = `order:${order.id}`;
   const amount = order.totalCents ?? order.amountCents;
-  const response = await fetch('https://api.mercadopago.com/v1/payments', {
+  const response = await fetch('https://api.mercadopago.com/v1/orders', {
     method: 'POST',
     headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey },
     body: JSON.stringify({
-      transaction_amount: amount / 100,
-      token: input.cardToken,
-      description: `${order.product.name} - ${order.plate}`,
-      installments: input.installments,
-      payment_method_id: input.paymentMethodId,
+      type: 'online',
+      processing_mode: 'automatic',
+      total_amount: (amount / 100).toFixed(2),
       external_reference: order.id,
-      notification_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/webhooks/mercadopago`,
+      transactions: {
+        payments: [{
+          amount: (amount / 100).toFixed(2),
+          payment_method: {
+            id: input.paymentMethodId,
+            type: 'credit_card',
+            token: input.cardToken,
+            installments: input.installments,
+          },
+        }],
+      },
       payer: { email: input.payerEmail, identification: input.payerIdentification },
     }),
     signal: AbortSignal.timeout(15000),
@@ -54,7 +62,8 @@ export async function createCardPayment(orderId: string, input: CardPaymentInput
   if (!response.ok) throw new Error('PAYMENT_PROVIDER_ERROR');
   const externalId = String((rawResponse as any).id || '');
   if (!externalId) throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE');
-  const status: NormalizedPaymentStatus = (rawResponse as any).status === 'approved' ? 'APPROVED' : (rawResponse as any).status === 'rejected' ? 'REJECTED' : (rawResponse as any).status === 'cancelled' ? 'CANCELLED' : 'PENDING';
+  const paymentStatus = (rawResponse as any).transactions?.payments?.[0];
+  const status: NormalizedPaymentStatus = paymentStatus?.status === 'processed' || paymentStatus?.status === 'accredited' ? 'APPROVED' : paymentStatus?.status === 'rejected' ? 'REJECTED' : paymentStatus?.status === 'cancelled' ? 'CANCELLED' : 'PENDING';
   const payment = await prisma.payment.upsert({ where: { idempotencyKey }, create: { orderId, provider: 'mercadopago', externalId, status, amountCents: amount, idempotencyKey, rawResponse }, update: { externalId, status, rawResponse } });
   return { payment, status };
 }
@@ -76,17 +85,26 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
   if (!config.mercadopago.accessToken) throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
   const idempotencyKey = `order:${order.id}`;
   const amount = order.totalCents ?? order.amountCents;
+  const isPix = input.paymentMethodId === 'pix';
   let response: Response;
   try {
-    response = await fetch('https://api.mercadopago.com/v1/payments', {
+    response = await fetch('https://api.mercadopago.com/v1/orders', {
       method: 'POST',
       headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey },
       body: JSON.stringify({
-        transaction_amount: amount / 100,
-        description: `${order.product.name} - ${order.plate}`,
-        payment_method_id: input.paymentMethodId,
+        type: 'online',
+        processing_mode: 'automatic',
+        total_amount: (amount / 100).toFixed(2),
         external_reference: order.id,
-        notification_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/webhooks/mercadopago`,
+        transactions: {
+          payments: [{
+            amount: (amount / 100).toFixed(2),
+            payment_method: {
+              id: input.paymentMethodId,
+              type: isPix ? 'bank_transfer' : 'ticket',
+            },
+          }],
+        },
         payer: { email: input.payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
       }),
       signal: AbortSignal.timeout(8000),
@@ -107,7 +125,8 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
   }
   const externalId = String((rawResponse as any).id || '');
   if (!externalId) throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE');
-  const status: NormalizedPaymentStatus = (rawResponse as any).status === 'approved' ? 'APPROVED' : (rawResponse as any).status === 'rejected' ? 'REJECTED' : (rawResponse as any).status === 'cancelled' ? 'CANCELLED' : 'PENDING';
+  const paymentStatus = (rawResponse as any).transactions?.payments?.[0];
+  const status: NormalizedPaymentStatus = paymentStatus?.status === 'processed' || paymentStatus?.status === 'accredited' ? 'APPROVED' : paymentStatus?.status === 'rejected' ? 'REJECTED' : paymentStatus?.status === 'cancelled' ? 'CANCELLED' : 'PENDING';
   const payment = await prisma.payment.upsert({ where: { idempotencyKey }, create: { orderId, provider: 'mercadopago', externalId, status, amountCents: amount, idempotencyKey, rawResponse }, update: { externalId, status, rawResponse } });
   const transactionData = (rawResponse as any).point_of_interaction?.transaction_data;
   void logger.info('payment.offline.created', { orderId, method: input.paymentMethodId, providerPaymentId: externalId, status });
