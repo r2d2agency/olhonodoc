@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { decryptSmtpPassword, encryptSmtpPassword } from '@/lib/smtp-settings';
+import { logger } from '@/lib/logger';
 
 export type PaymentProvider = 'mercadopago' | 'asaas' | 'none';
 export type PaymentEnvironment = 'sandbox' | 'production';
@@ -94,12 +95,14 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
     const name = fetchError instanceof Error ? fetchError.name : '';
     const message = fetchError instanceof Error ? fetchError.message : '';
     console.error('[offline-payment] falha de rede ao chamar Mercado Pago', { name, message: message.slice(0, 120), method: input.paymentMethodId, orderId });
+    void logger.error('payment.offline.network_error', { name, message: message.slice(0, 120), method: input.paymentMethodId, orderId });
     throw new Error(name === 'TimeoutError' || /timeout|abort/i.test(message) ? 'MP_TIMEOUT' : 'MP_UNREACHABLE');
   }
   const rawResponse = await response.json().catch(() => ({}));
   if (!response.ok) {
     const cause = Array.isArray((rawResponse as any).cause) ? (rawResponse as any).cause.map((item: any) => item.description || item.code).join('; ') : (rawResponse as any).message || '';
     console.error('[offline-payment] Mercado Pago rejeitou a cobrança', { httpStatus: response.status, method: input.paymentMethodId, orderId, cause: cause || 'sem detalhe' });
+    void logger.error('payment.offline.provider_rejected', { httpStatus: response.status, method: input.paymentMethodId, orderId, cause: cause || 'sem detalhe' });
     throw new Error(cause ? `MP_ERROR: ${cause}` : 'PAYMENT_PROVIDER_ERROR');
   }
   const externalId = String((rawResponse as any).id || '');
@@ -107,6 +110,7 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
   const status: NormalizedPaymentStatus = (rawResponse as any).status === 'approved' ? 'APPROVED' : (rawResponse as any).status === 'rejected' ? 'REJECTED' : (rawResponse as any).status === 'cancelled' ? 'CANCELLED' : 'PENDING';
   const payment = await prisma.payment.upsert({ where: { idempotencyKey }, create: { orderId, provider: 'mercadopago', externalId, status, amountCents: amount, idempotencyKey, rawResponse }, update: { externalId, status, rawResponse } });
   const transactionData = (rawResponse as any).point_of_interaction?.transaction_data;
+  void logger.info('payment.offline.created', { orderId, method: input.paymentMethodId, providerPaymentId: externalId, status });
   return { payment, status, qrCode: transactionData?.qr_code || '', qrCodeBase64: transactionData?.qr_code_base64 || '', ticketUrl: transactionData?.ticket_url || (rawResponse as any).transaction_details?.external_resource_url || '' };
 }
 

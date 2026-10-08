@@ -3,6 +3,7 @@ import { getCurrentUser, normalizeDigits } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createOfflinePayment } from '@/lib/payment-provider';
 import { getPaymentConfiguration } from '@/lib/payment-provider';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     if (code === 'MP_TIMEOUT') return NextResponse.json({ error: 'O Mercado Pago demorou demais para responder. Tente novamente.' }, { status: 504 });
     if (code === 'MP_UNREACHABLE') return NextResponse.json({ error: 'Não foi possível conectar ao Mercado Pago. Verifique a rede do servidor.' }, { status: 502 });
     const status = code === 'PAYMENT_PROVIDER_NOT_CONFIGURED' ? 503 : code === 'ORDER_NOT_PAYABLE' ? 409 : 502;
+    void logger.error('payment.offline.route_failed', { orderId: order.id, method, code, httpStatus: status });
     return NextResponse.json({ error: status === 503 ? 'Pagamento ainda não configurado.' : status === 409 ? 'Este pedido não pode ser pago.' : 'Não foi possível gerar a cobrança.' }, { status });
   }
 }
