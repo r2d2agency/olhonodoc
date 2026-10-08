@@ -35,8 +35,10 @@ export default function PaymentMethodSelector({ orderId, publicKey, amountCents,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, method, payerIdentification: { type: 'CPF', number: payerCpf.replace(/\D/g, '') } }),
       });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error || 'Não foi possível gerar a cobrança.');
+      const raw = await response.text();
+      let body: any = {};
+      try { body = raw ? JSON.parse(raw) : {}; } catch { throw new Error(`O servidor respondeu HTTP ${response.status}. A aplicação pode estar desatualizada — faça o redeploy e tente de novo.`); }
+      if (!response.ok) throw new Error(body.error || `Não foi possível gerar a cobrança (HTTP ${response.status}).`);
       if (method === 'pix') setPixData({ qrCode: body.data.qrCode, qrCodeBase64: body.data.qrCodeBase64 });
       else setBoletoData({ ticketUrl: body.data.ticketUrl });
     } catch (e) { const message = e instanceof Error ? e.message : 'Não foi possível gerar a cobrança.'; setError(message); onError(message); }
