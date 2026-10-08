@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const config = await (await import('@/lib/payment-provider')).getPaymentConfiguration();
     if (config.activeProvider === 'mercadopago') {
       const publicKey = await getMercadoPagoPublicKey();
-      return NextResponse.json({ data: { provider: 'mercadopago', publicKey } });
+      return NextResponse.json({ data: { provider: 'mercadopago', publicKey, methods: config.mercadopago.methods } });
     }
     const payment = await createPaymentCheckout(order.id, new URL(request.url).origin);
     return NextResponse.json({ data: { provider: 'asaas', paymentId: payment.id, checkoutUrl: payment.checkoutUrl } });

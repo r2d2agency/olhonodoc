@@ -6,12 +6,12 @@ import { Check, Copy } from 'lucide-react';
 type Config = {
   activeProvider: 'none' | 'mercadopago' | 'asaas';
   environment: 'sandbox' | 'production';
-  mercadopago: { configured: boolean; publicKey: string; webhookConfigured: boolean };
+  mercadopago: { configured: boolean; publicKey: string; webhookConfigured: boolean; methods: { card: boolean; pix: boolean; boleto: boolean } };
   asaas: { configured: boolean; webhookConfigured: boolean };
 };
 type PreviewResult = { url: string; filename: string; size: number; popupBlocked: boolean };
 
-const empty: Config = { activeProvider: 'none', environment: 'sandbox', mercadopago: { configured: false, publicKey: '', webhookConfigured: false }, asaas: { configured: false, webhookConfigured: false } };
+const empty: Config = { activeProvider: 'none', environment: 'sandbox', mercadopago: { configured: false, publicKey: '', webhookConfigured: false, methods: { card: true, pix: true, boleto: true } }, asaas: { configured: false, webhookConfigured: false } };
 
 export default function IntegrationsPage() {
   const [config, setConfig] = useState<Config>(empty);
@@ -19,6 +19,7 @@ export default function IntegrationsPage() {
   const [savingAsaas, setSavingAsaas] = useState(false);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [secrets, setSecrets] = useState({ mpToken: '', mpPublic: '', mpWebhook: '', asaasKey: '', asaasWebhook: '' });
+  const [mpMethods, setMpMethods] = useState({ card: true, pix: true, boleto: true });
   const [messages, setMessages] = useState<{ mp?: string; asaas?: string; general?: string; preview?: string }>({});
   const [previewPlate, setPreviewPlate] = useState('');
   const [previewJson, setPreviewJson] = useState('');
@@ -27,7 +28,7 @@ export default function IntegrationsPage() {
   const [copied, setCopied] = useState<string>('');
 
   useEffect(() => {
-    fetch('/api/admin/payment-providers').then(async response => { if (!response.ok) throw new Error('Não foi possível carregar as configurações.'); return response.json(); }).then(setConfig).catch(error => setMessages({ preview: error instanceof Error ? error.message : 'Não foi possível carregar as configurações.' }));
+    fetch('/api/admin/payment-providers').then(async response => { if (!response.ok) throw new Error('Não foi possível carregar as configurações.'); return response.json(); }).then(body => { setConfig(body); if (body.mercadopago?.methods) setMpMethods(body.mercadopago.methods); }).catch(error => setMessages({ preview: error instanceof Error ? error.message : 'Não foi possível carregar as configurações.' }));
   }, []);
 
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
@@ -51,7 +52,7 @@ export default function IntegrationsPage() {
     setMessages(current => ({ ...current, [provider]: undefined }));
     try {
       const payload = isMp
-        ? { mercadopago: { accessToken: secrets.mpToken, publicKey: secrets.mpPublic || config.mercadopago.publicKey, webhookSecret: secrets.mpWebhook } }
+        ? { mercadopago: { accessToken: secrets.mpToken, publicKey: secrets.mpPublic || config.mercadopago.publicKey, webhookSecret: secrets.mpWebhook, methods: mpMethods } }
         : { asaas: { apiKey: secrets.asaasKey, webhookToken: secrets.asaasWebhook } };
       const response = await fetch('/api/admin/payment-providers', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const body = await response.json();
@@ -102,7 +103,7 @@ export default function IntegrationsPage() {
     <section className="admin-panel-card integration-general"><div className="integration-card-heading"><div><span className="integration-kicker">CONFIGURAÇÃO GERAL</span><h2>Provedor e ambiente</h2><p>Define qual gateway cobra e em qual ambiente as chamadas acontecem.</p></div></div><div className="integration-form-grid"><label>Provedor ativo<select value={config.activeProvider} onChange={e => setConfig({ ...config, activeProvider: e.target.value as Config['activeProvider'] })}><option value="none">Nenhum</option><option value="mercadopago">Mercado Pago</option><option value="asaas">Asaas</option></select></label><label>Ambiente<select value={config.environment} onChange={e => setConfig({ ...config, environment: e.target.value as Config['environment'] })}><option value="sandbox">Sandbox / Teste</option><option value="production">Produção</option></select></label></div><div className="integration-actions"><button className="admin-cms-primary" onClick={saveGeneral} disabled={savingGeneral}>{savingGeneral ? 'Salvando…' : 'Salvar provedor e ambiente'}</button>{messages.general && <span className={`integration-action-note ${/atualizados/i.test(messages.general) ? 'ok' : 'error'}`}>{messages.general}</span>}</div></section>
 
     <div className="integration-provider-grid">
-      <ProviderCard name="Mercado Pago" configured={config.mercadopago.configured} webhookUrl={`${origin}/api/webhooks/mercadopago`} webhookCopyLabel={copied === 'mp' ? 'Copiado' : 'Copiar webhook'} onCopyWebhook={() => copyWebhook('mp', `${origin}/api/webhooks/mercadopago`)} webhookNote="No painel do Mercado Pago (Suas integrações → Webhooks), cadastre esta URL em “Notificação de pagamento”. Lá mesmo eles geram uma chave secreta — copie e cole no campo abaixo. Ela é obrigatória: sem ela os avisos são rejeitados." onTest={testMercadoPago} onSave={() => saveProvider('mercadopago')} saving={savingMp} testing={false} message={messages.mp} fields={<><label>Access Token<input type="password" value={secrets.mpToken} placeholder={config.mercadopago.configured ? 'Já configurado · informe para trocar' : 'APP_USR-…'} onChange={e => setSecrets({ ...secrets, mpToken: e.target.value })}/></label><label>Public Key<input value={secrets.mpPublic} placeholder={config.mercadopago.publicKey || 'TEST-…'} onChange={e => setSecrets({ ...secrets, mpPublic: e.target.value })}/></label><label>Webhook secret · chave secreta gerada pelo Mercado Pago<input type="password" value={secrets.mpWebhook} placeholder={config.mercadopago.webhookConfigured ? 'Já configurado · informe para trocar' : 'Cole a chave secreta do painel do Mercado Pago'} onChange={e => setSecrets({ ...secrets, mpWebhook: e.target.value })}/></label></>}/>
+      <ProviderCard name="Mercado Pago" configured={config.mercadopago.configured} webhookUrl={`${origin}/api/webhooks/mercadopago`} webhookCopyLabel={copied === 'mp' ? 'Copiado' : 'Copiar webhook'} onCopyWebhook={() => copyWebhook('mp', `${origin}/api/webhooks/mercadopago`)} webhookNote="No painel do Mercado Pago (Suas integrações → Webhooks), cadastre esta URL em “Notificação de pagamento”. Lá mesmo eles geram uma chave secreta — copie e cole no campo abaixo. Ela é obrigatória: sem ela os avisos são rejeitados." onTest={testMercadoPago} onSave={() => saveProvider('mercadopago')} saving={savingMp} testing={false} message={messages.mp} fields={<><label>Access Token<input type="password" value={secrets.mpToken} placeholder={config.mercadopago.configured ? 'Já configurado · informe para trocar' : 'APP_USR-…'} onChange={e => setSecrets({ ...secrets, mpToken: e.target.value })}/></label><label>Public Key<input value={secrets.mpPublic} placeholder={config.mercadopago.publicKey || 'TEST-…'} onChange={e => setSecrets({ ...secrets, mpPublic: e.target.value })}/></label><label>Webhook secret · chave secreta gerada pelo Mercado Pago<input type="password" value={secrets.mpWebhook} placeholder={config.mercadopago.webhookConfigured ? 'Já configurado · informe para trocar' : 'Cole a chave secreta do painel do Mercado Pago'} onChange={e => setSecrets({ ...secrets, mpWebhook: e.target.value })}/></label><fieldset className="integration-methods"><legend>Métodos de pagamento</legend><label><input type="checkbox" checked={mpMethods.card} onChange={e => setMpMethods({ ...mpMethods, card: e.target.checked })}/> Cartão de crédito</label><label><input type="checkbox" checked={mpMethods.pix} onChange={e => setMpMethods({ ...mpMethods, pix: e.target.checked })}/> Pix</label><label><input type="checkbox" checked={mpMethods.boleto} onChange={e => setMpMethods({ ...mpMethods, boleto: e.target.checked })}/> Boleto</label></fieldset></>}/>
       <ProviderCard name="Asaas" configured={config.asaas.configured} webhookUrl={`${origin}/api/webhooks/asaas`} webhookCopyLabel={copied === 'asaas' ? 'Copiado' : 'Copiar webhook'} onCopyWebhook={() => copyWebhook('asaas', `${origin}/api/webhooks/asaas`)} webhookNote="No painel do Asaas, cadastre esta URL como webhook de cobranças e crie um token de sua preferência. O mesmo token deve ser colado no campo abaixo — os dois precisam ser idênticos." onTest={testAsaas} onSave={() => saveProvider('asaas')} saving={savingAsaas} testing={false} message={messages.asaas} fields={<><label>API Key<input type="password" value={secrets.asaasKey} placeholder={config.asaas.configured ? 'Já configurada · informe para trocar' : '$aact_…'} onChange={e => setSecrets({ ...secrets, asaasKey: e.target.value })}/></label><label>Token do webhook · criado por você<input type="password" value={secrets.asaasWebhook} placeholder={config.asaas.webhookConfigured ? 'Já configurado · informe para trocar' : 'Crie um token no Asaas e repita aqui'} onChange={e => setSecrets({ ...secrets, asaasWebhook: e.target.value })}/></label></>}/>
     </div>
   </main>;

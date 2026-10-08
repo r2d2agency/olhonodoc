@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CarFront, Check, CircleHelp, Clock3, CreditCard, LoaderCircle, LockKeyhole, MapPin, ShieldCheck, User } from 'lucide-react';
 import type { CatalogProduct } from '@/lib/catalog';
 import { captureAttribution, trackEvent } from '@/lib/tracking';
-import MercadoPagoCardForm from './mercadopago-card-form';
+import PaymentMethodSelector from './payment-method-selector';
 
 type Address = { postalCode: string; street: string; number: string; complement: string; neighborhood: string; city: string; state: string };
 const emptyAddress: Address = { postalCode: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' };
@@ -27,6 +27,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
   const [publicKey, setPublicKey] = useState('');
   const [checkoutUrl, setCheckoutUrl] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<{ card: boolean; pix: boolean; boleto: boolean }>({ card: true, pix: true, boleto: true });
 
   useEffect(() => {
     fetch('/api/account/profile').then(r => r.json()).then(body => { if (body.data) { setCpf(body.data.cpf || ''); setPhone(body.data.phone || ''); const a = body.data; setAddress({ postalCode: a.postalCode || '', street: a.street || '', number: a.number || '', complement: a.complement || '', neighborhood: a.neighborhood || '', city: a.city || '', state: a.state || '' }); } }).catch(() => undefined);
@@ -76,6 +77,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
       if (body.data.provider === 'mercadopago') {
         setPaymentProvider('mercadopago');
         setPublicKey(body.data.publicKey);
+        setPaymentMethods(body.data.methods || { card: true, pix: true, boleto: true });
       } else {
         setPaymentProvider('asaas');
         setCheckoutUrl(body.data.checkoutUrl);
@@ -85,7 +87,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     finally { setPaymentLoading(false); }
   }
 
-  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="done">2</span><span className="active">3</span></span><span className="eyebrow">PEDIDO PREPARADO</span><h1>Seu pedido está pronto para pagamento.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> criado com sucesso. Continue para o ambiente seguro do provedor de pagamento.</p><div className="checkout-order-summary"><div><small>Produto</small><strong>{product.name}</strong></div><div><small>Placa</small><strong>{plate}</strong></div><div><small>Valor</small><strong>{product.price}</strong></div></div>{error && <p className="form-error">{error}</p>}{!paymentProvider && <button className="button" onClick={pay} disabled={paymentLoading}>{paymentLoading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {paymentLoading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button>}{paymentProvider === 'mercadopago' && <MercadoPagoCardForm orderId={order.orderId} publicKey={publicKey} amountCents={order.amountCents || 0} payerEmail="" payerCpf={cpf} onSuccess={() => { window.location.assign('/minha-conta'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}<Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
+  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="done">2</span><span className="active">3</span></span><span className="eyebrow">PEDIDO PREPARADO</span><h1>Seu pedido está pronto para pagamento.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> criado com sucesso. Continue para o ambiente seguro do provedor de pagamento.</p><div className="checkout-order-summary"><div><small>Produto</small><strong>{product.name}</strong></div><div><small>Placa</small><strong>{plate}</strong></div><div><small>Valor</small><strong>{product.price}</strong></div></div>{error && <p className="form-error">{error}</p>}{!paymentProvider && <button className="button" onClick={pay} disabled={paymentLoading}>{paymentLoading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {paymentLoading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={order.amountCents || 0} payerEmail="" payerCpf={cpf} methods={paymentMethods} onSuccess={() => { window.location.assign('/minha-conta'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}<Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
 
   return <main className="checkout-page"><div className="checkout-shell">
     <section className="checkout-card">
