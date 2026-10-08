@@ -89,7 +89,11 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
     signal: AbortSignal.timeout(15000),
   });
   const rawResponse = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error('PAYMENT_PROVIDER_ERROR');
+  if (!response.ok) {
+    const cause = Array.isArray((rawResponse as any).cause) ? (rawResponse as any).cause.map((item: any) => item.description || item.code).join('; ') : (rawResponse as any).message || '';
+    console.error('[offline-payment] Mercado Pago rejeitou a cobrança', { httpStatus: response.status, method: input.paymentMethodId, orderId, cause: cause || 'sem detalhe' });
+    throw new Error(cause ? `MP_ERROR: ${cause}` : 'PAYMENT_PROVIDER_ERROR');
+  }
   const externalId = String((rawResponse as any).id || '');
   if (!externalId) throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE');
   const status: NormalizedPaymentStatus = (rawResponse as any).status === 'approved' ? 'APPROVED' : (rawResponse as any).status === 'rejected' ? 'REJECTED' : (rawResponse as any).status === 'cancelled' ? 'CANCELLED' : 'PENDING';

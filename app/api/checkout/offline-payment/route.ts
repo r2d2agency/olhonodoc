@@ -29,5 +29,10 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ data: { paymentId: result.payment.id, status: result.status, qrCode: result.qrCode, qrCodeBase64: result.qrCodeBase64, ticketUrl: result.ticketUrl } });
   }
-  catch (error) { const code = error instanceof Error ? error.message : ''; const status = code === 'PAYMENT_PROVIDER_NOT_CONFIGURED' ? 503 : code === 'ORDER_NOT_PAYABLE' ? 409 : 502; return NextResponse.json({ error: status === 503 ? 'Pagamento ainda não configurado.' : status === 409 ? 'Este pedido não pode ser pago.' : 'Não foi possível gerar o cobrança.' }, { status }); }
+  catch (error) {
+    const code = error instanceof Error ? error.message : '';
+    if (code.startsWith('MP_ERROR: ')) return NextResponse.json({ error: code.slice(9) }, { status: 502 });
+    const status = code === 'PAYMENT_PROVIDER_NOT_CONFIGURED' ? 503 : code === 'ORDER_NOT_PAYABLE' ? 409 : 502;
+    return NextResponse.json({ error: status === 503 ? 'Pagamento ainda não configurado.' : status === 409 ? 'Este pedido não pode ser pago.' : 'Não foi possível gerar a cobrança.' }, { status });
+  }
 }
