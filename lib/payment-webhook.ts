@@ -2,23 +2,26 @@ import { prisma } from '@/lib/prisma';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getPaymentConfiguration, type NormalizedPaymentStatus } from '@/lib/payment-provider';
 import { submitOrderToCompany } from '@/lib/company-query';
+import { logger } from '@/lib/logger';
 
 function safeEqual(left: string, right: string) {
   const a = Buffer.from(left); const b = Buffer.from(right);
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export function validMercadoPagoSignature(request: Request, dataId: string) {
-  return getPaymentConfiguration().then(config => {
-    const secret = config.mercadopago.webhookSecret;
-    if (!secret) return false;
-    const xSignature = request.headers.get('x-signature') || '';
-    const xRequestId = request.headers.get('x-request-id') || '';
-    const ts = xSignature.match(/ts=([^,]+)/)?.[1];
-    const v1 = xSignature.match(/v1=([^,]+)/)?.[1];
-    if (!ts || !v1) return false;
-    return safeEqual(createHmac('sha256', secret).update(`id:${dataId};request-id:${xRequestId};ts:${ts};`).digest('hex'), v1);
-  });
+export async function validMercadoPagoSignature(request: Request, dataId: string) {
+  const config = await getPaymentConfiguration();
+  const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET || config.mercadopago.webhookSecret;
+  if (!secret) { void logger.error('webhook.mercadopago.no_secret', { dataId }); return false; }
+  const xSignature = request.headers.get('x-signature') || '';
+  const xRequestId = request.headers.get('x-request-id') || '';
+  const ts = xSignature.match(/ts=([^,]+)/)?.[1];
+  const v1 = xSignature.match(/v1=([^,]+)/)?.[1];
+  if (!ts || !v1) { void logger.error('webhook.mercadopago.malformed_signature', { dataId, hasTs: Boolean(ts), hasV1: Boolean(v1) }); return false; }
+  const expected = createHmac('sha256', secret).update(`id:${dataId};request-id:${xRequestId};ts:${ts};`).digest('hex');
+  const valid = safeEqual(expected, v1);
+  if (!valid) void logger.error('webhook.mercadopago.invalid_signature', { dataId, ts });
+  return valid;
 }
 
 export async function processPaymentEvent(provider: string, externalEventId: string, externalPaymentId: string, normalizedStatus: NormalizedPaymentStatus, payload: unknown) {
