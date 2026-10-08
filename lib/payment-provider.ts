@@ -75,19 +75,27 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
   if (!config.mercadopago.accessToken) throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
   const idempotencyKey = `order:${order.id}`;
   const amount = order.totalCents ?? order.amountCents;
-  const response = await fetch('https://api.mercadopago.com/v1/payments', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey },
-    body: JSON.stringify({
-      transaction_amount: amount / 100,
-      description: `${order.product.name} - ${order.plate}`,
-      payment_method_id: input.paymentMethodId,
-      external_reference: order.id,
-      notification_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/webhooks/mercadopago`,
-      payer: { email: input.payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
-    }),
-    signal: AbortSignal.timeout(15000),
-  });
+  let response: Response;
+  try {
+    response = await fetch('https://api.mercadopago.com/v1/payments', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({
+        transaction_amount: amount / 100,
+        description: `${order.product.name} - ${order.plate}`,
+        payment_method_id: input.paymentMethodId,
+        external_reference: order.id,
+        notification_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/webhooks/mercadopago`,
+        payer: { email: input.payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (fetchError) {
+    const name = fetchError instanceof Error ? fetchError.name : '';
+    const message = fetchError instanceof Error ? fetchError.message : '';
+    console.error('[offline-payment] falha de rede ao chamar Mercado Pago', { name, message: message.slice(0, 120), method: input.paymentMethodId, orderId });
+    throw new Error(name === 'TimeoutError' || /timeout|abort/i.test(message) ? 'MP_TIMEOUT' : 'MP_UNREACHABLE');
+  }
   const rawResponse = await response.json().catch(() => ({}));
   if (!response.ok) {
     const cause = Array.isArray((rawResponse as any).cause) ? (rawResponse as any).cause.map((item: any) => item.description || item.code).join('; ') : (rawResponse as any).message || '';

@@ -32,6 +32,8 @@ export async function POST(request: Request) {
   catch (error) {
     const code = error instanceof Error ? error.message : '';
     if (code.startsWith('MP_ERROR: ')) return NextResponse.json({ error: code.slice(9) }, { status: 502 });
+    if (code === 'MP_TIMEOUT') return NextResponse.json({ error: 'O Mercado Pago demorou demais para responder. Tente novamente.' }, { status: 504 });
+    if (code === 'MP_UNREACHABLE') return NextResponse.json({ error: 'Não foi possível conectar ao Mercado Pago. Verifique a rede do servidor.' }, { status: 502 });
     const status = code === 'PAYMENT_PROVIDER_NOT_CONFIGURED' ? 503 : code === 'ORDER_NOT_PAYABLE' ? 409 : 502;
     return NextResponse.json({ error: status === 503 ? 'Pagamento ainda não configurado.' : status === 409 ? 'Este pedido não pode ser pago.' : 'Não foi possível gerar a cobrança.' }, { status });
   }
