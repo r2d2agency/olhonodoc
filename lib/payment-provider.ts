@@ -10,6 +10,54 @@ export async function getPaymentConfiguration() { const row = await prisma.setti
 export async function savePaymentConfiguration(input: any) { const current = await getPaymentConfiguration(); const value = { activeProvider: input.activeProvider, environment: input.environment, mercadopago: { accessToken: input.mercadopago.accessToken ? encryptSmtpPassword(input.mercadopago.accessToken) : current.mercadopago.accessToken ? encryptSmtpPassword(current.mercadopago.accessToken) : '', publicKey: input.mercadopago.publicKey || current.mercadopago.publicKey, webhookSecret: input.mercadopago.webhookSecret ? encryptSmtpPassword(input.mercadopago.webhookSecret) : current.mercadopago.webhookSecret ? encryptSmtpPassword(current.mercadopago.webhookSecret) : '' }, asaas: { apiKey: input.asaas.apiKey ? encryptSmtpPassword(input.asaas.apiKey) : current.asaas.apiKey ? encryptSmtpPassword(current.asaas.apiKey) : '', webhookToken: input.asaas.webhookToken ? encryptSmtpPassword(input.asaas.webhookToken) : current.asaas.webhookToken ? encryptSmtpPassword(current.asaas.webhookToken) : '' }, lastTestedAt: current.lastTestedAt }; await prisma.setting.upsert({ where: { key: KEY }, create: { key: KEY, value }, update: { value } }); }
 export async function getPublicPaymentConfiguration() { const config = await getPaymentConfiguration(); return { activeProvider: config.activeProvider, environment: config.environment, mercadopago: { configured: Boolean(config.mercadopago.accessToken), publicKey: config.mercadopago.publicKey, webhookConfigured: Boolean(config.mercadopago.webhookSecret) }, asaas: { configured: Boolean(config.asaas.apiKey), webhookConfigured: Boolean(config.asaas.webhookToken) }, lastTestedAt: config.lastTestedAt }; }
 
+export async function getMercadoPagoPublicKey() {
+  const config = await getPaymentConfiguration();
+  if (config.activeProvider !== 'mercadopago') throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
+  if (!config.mercadopago.publicKey) throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
+  return config.mercadopago.publicKey;
+}
+
+export type CardPaymentInput = {
+  cardToken: string;
+  paymentMethodId: string;
+  installments: number;
+  payerEmail: string;
+  payerIdentification: { type: string; number: string };
+};
+
+export async function createCardPayment(orderId: string, input: CardPaymentInput) {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { product: true, customer: true } });
+  if (!order) throw new Error('ORDER_NOT_FOUND');
+  if (order.status !== 'PENDING' || order.isBonus) throw new Error('ORDER_NOT_PAYABLE');
+  const config = await getPaymentConfiguration();
+  if (config.activeProvider !== 'mercadopago') throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
+  if (!config.mercadopago.accessToken) throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
+  const idempotencyKey = `order:${order.id}`;
+  const amount = order.totalCents ?? order.amountCents;
+  const response = await fetch('https://api.mercadopago.com/v1/payments', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({
+      transaction_amount: amount / 100,
+      token: input.cardToken,
+      description: `${order.product.name} - ${order.plate}`,
+      installments: input.installments,
+      payment_method_id: input.paymentMethodId,
+      external_reference: order.id,
+      notification_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/webhooks/mercadopago`,
+      payer: { email: input.payerEmail, identification: input.payerIdentification },
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  const rawResponse = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error('PAYMENT_PROVIDER_ERROR');
+  const externalId = String((rawResponse as any).id || '');
+  if (!externalId) throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE');
+  const status: NormalizedPaymentStatus = (rawResponse as any).status === 'approved' ? 'APPROVED' : (rawResponse as any).status === 'rejected' ? 'REJECTED' : (rawResponse as any).status === 'cancelled' ? 'CANCELLED' : 'PENDING';
+  const payment = await prisma.payment.upsert({ where: { idempotencyKey }, create: { orderId, provider: 'mercadopago', externalId, status, amountCents: amount, idempotencyKey, rawResponse }, update: { externalId, status, rawResponse } });
+  return { payment, status };
+}
+
 export async function createPaymentCheckout(orderId: string, baseUrl: string) {
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { product: true, customer: true } });
   if (!order) throw new Error('ORDER_NOT_FOUND');

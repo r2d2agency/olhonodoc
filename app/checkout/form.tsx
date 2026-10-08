@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CarFront, Check, CircleHelp, Clock3, CreditCard, LoaderCircle, LockKeyhole, MapPin, ShieldCheck, User } from 'lucide-react';
 import type { CatalogProduct } from '@/lib/catalog';
 import { captureAttribution, trackEvent } from '@/lib/tracking';
+import MercadoPagoCardForm from './mercadopago-card-form';
 
 type Address = { postalCode: string; street: string; number: string; complement: string; neighborhood: string; city: string; state: string };
 const emptyAddress: Address = { postalCode: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' };
@@ -22,6 +23,10 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
   const [aggregate, setAggregate] = useState<Aggregate | null>(null);
   const [aggregateLoading, setAggregateLoading] = useState(false);
   const [aggregateError, setAggregateError] = useState('');
+  const [paymentProvider, setPaymentProvider] = useState<'mercadopago' | 'asaas' | null>(null);
+  const [publicKey, setPublicKey] = useState('');
+  const [checkoutUrl, setCheckoutUrl] = useState('');
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   useEffect(() => {
     fetch('/api/account/profile').then(r => r.json()).then(body => { if (body.data) { setCpf(body.data.cpf || ''); setPhone(body.data.phone || ''); const a = body.data; setAddress({ postalCode: a.postalCode || '', street: a.street || '', number: a.number || '', complement: a.complement || '', neighborhood: a.neighborhood || '', city: a.city || '', state: a.state || '' }); } }).catch(() => undefined);
@@ -63,17 +68,24 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
 
   async function pay() {
     if (!order) return;
-    setLoading(true); setError('');
+    setPaymentLoading(true); setError('');
     try {
       const response = await fetch('/api/checkout/payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: order.orderId }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error);
-      window.location.assign(body.data.checkoutUrl);
+      if (body.data.provider === 'mercadopago') {
+        setPaymentProvider('mercadopago');
+        setPublicKey(body.data.publicKey);
+      } else {
+        setPaymentProvider('asaas');
+        setCheckoutUrl(body.data.checkoutUrl);
+        window.location.assign(body.data.checkoutUrl);
+      }
     } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível criar o pagamento.'); }
-    finally { setLoading(false); }
+    finally { setPaymentLoading(false); }
   }
 
-  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="done">2</span><span className="active">3</span></span><span className="eyebrow">PEDIDO PREPARADO</span><h1>Seu pedido está pronto para pagamento.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> criado com sucesso. Continue para o ambiente seguro do provedor de pagamento.</p><div className="checkout-order-summary"><div><small>Produto</small><strong>{product.name}</strong></div><div><small>Placa</small><strong>{plate}</strong></div><div><small>Valor</small><strong>{product.price}</strong></div></div>{error && <p className="form-error">{error}</p>}<button className="button" onClick={pay} disabled={loading}>{loading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {loading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button><Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
+  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="done">2</span><span className="active">3</span></span><span className="eyebrow">PEDIDO PREPARADO</span><h1>Seu pedido está pronto para pagamento.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> criado com sucesso. Continue para o ambiente seguro do provedor de pagamento.</p><div className="checkout-order-summary"><div><small>Produto</small><strong>{product.name}</strong></div><div><small>Placa</small><strong>{plate}</strong></div><div><small>Valor</small><strong>{product.price}</strong></div></div>{error && <p className="form-error">{error}</p>}{!paymentProvider && <button className="button" onClick={pay} disabled={paymentLoading}>{paymentLoading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {paymentLoading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button>}{paymentProvider === 'mercadopago' && <MercadoPagoCardForm orderId={order.orderId} publicKey={publicKey} amountCents={order.amountCents || 0} payerEmail="" payerCpf={cpf} onSuccess={() => { window.location.assign('/minha-conta'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}<Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
 
   return <main className="checkout-page"><div className="checkout-shell">
     <section className="checkout-card">
@@ -114,6 +126,10 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
             <div><small>WhatsApp</small><strong>{phone}</strong></div>
           </div>
           <button type="button" className="checkout-edit-btn" onClick={() => setStep(1)}><ArrowLeft size={14}/> Editar</button>
+        </div>
+        <div className="checkout-section">
+          <h3><CreditCard size={16}/> Pagamento</h3>
+          <p className="checkout-hint">O pagamento será processado de forma transparente, sem redirecionamento externo.</p>
         </div>
         <div className="checkout-section">
           <h3><MapPin size={16}/> Endereço</h3>
