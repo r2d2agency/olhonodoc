@@ -88,7 +88,7 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
         notification_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/webhooks/mercadopago`,
         payer: { email: input.payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
       }),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(8000),
     });
   } catch (fetchError) {
     const name = fetchError instanceof Error ? fetchError.name : '';
