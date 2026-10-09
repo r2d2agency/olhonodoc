@@ -18,53 +18,85 @@ export async function getMercadoPagoPublicKey() {
   return config.mercadopago.publicKey;
 }
 
+function extractProviderCause(rawResponse: any) {
+  if (Array.isArray(rawResponse?.cause)) return (rawResponse.cause as any[]).map(item => item?.description || item?.code).filter(Boolean).join('; ');
+  if (typeof rawResponse?.cause === 'string' && rawResponse.cause) return rawResponse.cause;
+  return rawResponse?.message || '';
+}
+
+function extractQrCode(rawResponse: any) {
+  const transactionData = rawResponse?.point_of_interaction?.transaction_data;
+  return {
+    qrCode: transactionData?.qr_code || '',
+    qrCodeBase64: transactionData?.qr_code_base64 || '',
+    ticketUrl: transactionData?.ticket_url || rawResponse?.transaction_details?.external_resource_url || '',
+  };
+}
+
 export type CardPaymentInput = {
   cardToken: string;
   paymentMethodId: string;
   installments: number;
   payerEmail: string;
   payerIdentification: { type: string; number: string };
+  notificationUrl?: string;
 };
 
 export async function createCardPayment(orderId: string, input: CardPaymentInput) {
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { product: true, customer: true } });
-  if (!order) throw new Error('ORDER_NOT_FOUND');
-  if (order.status !== 'PENDING' || order.isBonus) throw new Error('ORDER_NOT_PAYABLE');
+  if (!order) { void logger.error('payment.card.order_not_found', { orderId }); throw new Error('ORDER_NOT_FOUND'); }
+  if (order.status !== 'PENDING' || order.isBonus) { void logger.error('payment.card.order_not_payable', { orderId, status: order.status, isBonus: order.isBonus }); throw new Error('ORDER_NOT_PAYABLE'); }
   const config = await getPaymentConfiguration();
-  if (config.activeProvider !== 'mercadopago') throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
-  if (!config.mercadopago.accessToken) throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
+  if (config.activeProvider !== 'mercadopago' || !config.mercadopago.accessToken) { void logger.error('payment.card.provider_not_configured', { orderId, activeProvider: config.activeProvider, hasAccessToken: Boolean(config.mercadopago.accessToken) }); throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED'); }
   const idempotencyKey = `order:${order.id}`;
   const amount = order.totalCents ?? order.amountCents;
-  const response = await fetch('https://api.mercadopago.com/v1/orders', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey },
-    body: JSON.stringify({
-      type: 'online',
-      processing_mode: 'automatic',
-      total_amount: (amount / 100).toFixed(2),
-      external_reference: order.id,
-      transactions: {
-        payments: [{
-          amount: (amount / 100).toFixed(2),
-          payment_method: {
-            id: input.paymentMethodId,
-            type: 'credit_card',
-            token: input.cardToken,
-            installments: input.installments,
-          },
-        }],
-      },
-      payer: { email: input.payerEmail, identification: input.payerIdentification },
-    }),
-    signal: AbortSignal.timeout(15000),
-  });
+  if (!Number.isFinite(amount) || amount <= 0) { void logger.error('payment.card.invalid_amount', { orderId, amount }); throw new Error('ORDER_INVALID_AMOUNT'); }
+  const absoluteAmount = (amount / 100).toFixed(2);
+  let response: Response;
+  try {
+    response = await fetch('https://api.mercadopago.com/v1/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({
+        type: 'online',
+        processing_mode: 'automatic',
+        total_amount: absoluteAmount,
+        external_reference: order.id,
+        transactions: {
+          payments: [{
+            amount: absoluteAmount,
+            payment_method: {
+              id: input.paymentMethodId,
+              type: 'credit_card',
+              token: input.cardToken,
+              installments: input.installments,
+            },
+          }],
+        },
+        payer: { email: input.payerEmail, identification: input.payerIdentification },
+        // A Orders API não aceita notification_url no topo do payload; o campo correto é config.online.callback_url.
+        ...(input.notificationUrl ? { config: { online: { callback_url: input.notificationUrl } } } : {}),
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (fetchError) {
+    const name = fetchError instanceof Error ? fetchError.name : '';
+    const message = fetchError instanceof Error ? fetchError.message : '';
+    void logger.error('payment.card.network_error', { name, message: message.slice(0, 200), method: input.paymentMethodId, orderId });
+    throw new Error(name === 'TimeoutError' || /timeout|abort/i.test(message) ? 'MP_TIMEOUT' : 'MP_UNREACHABLE');
+  }
   const rawResponse = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error('PAYMENT_PROVIDER_ERROR');
+  if (!response.ok) {
+    const cause = extractProviderCause(rawResponse);
+    void logger.error('payment.card.provider_rejected', { httpStatus: response.status, method: input.paymentMethodId, orderId, cause: cause || 'sem detalhe' });
+    throw new Error(cause ? `MP_ERROR: ${cause}` : 'PAYMENT_PROVIDER_ERROR');
+  }
   const externalId = String((rawResponse as any).id || '');
-  if (!externalId) throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE');
+  if (!externalId) { void logger.error('payment.card.missing_external_id', { orderId, httpStatus: response.status }); throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE'); }
   const paymentStatus = (rawResponse as any).transactions?.payments?.[0];
   const status: NormalizedPaymentStatus = paymentStatus?.status === 'processed' || paymentStatus?.status === 'accredited' ? 'APPROVED' : paymentStatus?.status === 'rejected' ? 'REJECTED' : paymentStatus?.status === 'cancelled' ? 'CANCELLED' : 'PENDING';
   const payment = await prisma.payment.upsert({ where: { idempotencyKey }, create: { orderId, provider: 'mercadopago', externalId, status, amountCents: amount, idempotencyKey, rawResponse }, update: { externalId, status, rawResponse } });
+  void logger.info('payment.card.created', { orderId, method: input.paymentMethodId, installments: input.installments, amountCents: amount, providerPaymentId: externalId, status, sendWebhook: Boolean(input.notificationUrl) });
   return { payment, status };
 }
 
@@ -74,17 +106,19 @@ export type OfflinePaymentInput = {
   payerFirstName: string;
   payerLastName: string;
   payerIdentification: { type: string; number: string };
+  notificationUrl?: string;
 };
 
 export async function createOfflinePayment(orderId: string, input: OfflinePaymentInput) {
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { product: true, customer: true } });
-  if (!order) throw new Error('ORDER_NOT_FOUND');
-  if (order.status !== 'PENDING' || order.isBonus) throw new Error('ORDER_NOT_PAYABLE');
+  if (!order) { void logger.error('payment.offline.order_not_found', { orderId }); throw new Error('ORDER_NOT_FOUND'); }
+  if (order.status !== 'PENDING' || order.isBonus) { void logger.error('payment.offline.order_not_payable', { orderId, status: order.status, isBonus: order.isBonus }); throw new Error('ORDER_NOT_PAYABLE'); }
   const config = await getPaymentConfiguration();
-  if (config.activeProvider !== 'mercadopago') throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
-  if (!config.mercadopago.accessToken) throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
+  if (config.activeProvider !== 'mercadopago' || !config.mercadopago.accessToken) { void logger.error('payment.offline.provider_not_configured', { orderId, activeProvider: config.activeProvider, hasAccessToken: Boolean(config.mercadopago.accessToken) }); throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED'); }
   const idempotencyKey = `order:${order.id}`;
   const amount = order.totalCents ?? order.amountCents;
+  if (!Number.isFinite(amount) || amount <= 0) { void logger.error('payment.offline.invalid_amount', { orderId, amount }); throw new Error('ORDER_INVALID_AMOUNT'); }
+  const absoluteAmount = (amount / 100).toFixed(2);
   const isPix = input.paymentMethodId === 'pix';
   let response: Response;
   try {
@@ -94,11 +128,11 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
       body: JSON.stringify({
         type: 'online',
         processing_mode: 'automatic',
-        total_amount: (amount / 100).toFixed(2),
+        total_amount: absoluteAmount,
         external_reference: order.id,
         transactions: {
           payments: [{
-            amount: (amount / 100).toFixed(2),
+            amount: absoluteAmount,
             payment_method: {
               id: input.paymentMethodId,
               type: isPix ? 'bank_transfer' : 'ticket',
@@ -106,60 +140,82 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
           }],
         },
         payer: { email: input.payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
+        // A Orders API não aceita notification_url no topo do payload; o campo correto é config.online.callback_url.
+        ...(input.notificationUrl ? { config: { online: { callback_url: input.notificationUrl } } } : {}),
       }),
       signal: AbortSignal.timeout(8000),
     });
   } catch (fetchError) {
     const name = fetchError instanceof Error ? fetchError.name : '';
     const message = fetchError instanceof Error ? fetchError.message : '';
-    console.error('[offline-payment] falha de rede ao chamar Mercado Pago', { name, message: message.slice(0, 120), method: input.paymentMethodId, orderId });
-    void logger.error('payment.offline.network_error', { name, message: message.slice(0, 120), method: input.paymentMethodId, orderId });
-    throw new Error(name === 'TimeoutError' || /timeout|abort/i.test(message) ? 'MP_TIMEOUT' : 'MP_UNREACHABLE');
+    if (name === 'TimeoutError' || /timeout|abort/i.test(message)) {
+      void logger.error('payment.offline.timeout', { orderId, method: input.paymentMethodId });
+      throw new Error('MP_TIMEOUT');
+    }
+    void logger.error('payment.offline.network_error', { name, message: message.slice(0, 200), method: input.paymentMethodId, orderId });
+    throw new Error('MP_UNREACHABLE');
   }
   const rawResponse = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const cause = Array.isArray((rawResponse as any).cause) ? (rawResponse as any).cause.map((item: any) => item.description || item.code).join('; ') : (rawResponse as any).message || '';
-    console.error('[offline-payment] Mercado Pago rejeitou a cobrança', { httpStatus: response.status, method: input.paymentMethodId, orderId, cause: cause || 'sem detalhe' });
+    const cause = extractProviderCause(rawResponse);
     void logger.error('payment.offline.provider_rejected', { httpStatus: response.status, method: input.paymentMethodId, orderId, cause: cause || 'sem detalhe' });
     throw new Error(cause ? `MP_ERROR: ${cause}` : 'PAYMENT_PROVIDER_ERROR');
   }
   const externalId = String((rawResponse as any).id || '');
-  if (!externalId) throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE');
+  if (!externalId) { void logger.error('payment.offline.missing_external_id', { orderId, method: input.paymentMethodId, httpStatus: response.status }); throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE'); }
   const paymentStatus = (rawResponse as any).transactions?.payments?.[0];
   const status: NormalizedPaymentStatus = paymentStatus?.status === 'processed' || paymentStatus?.status === 'accredited' ? 'APPROVED' : paymentStatus?.status === 'rejected' ? 'REJECTED' : paymentStatus?.status === 'cancelled' ? 'CANCELLED' : 'PENDING';
   const payment = await prisma.payment.upsert({ where: { idempotencyKey }, create: { orderId, provider: 'mercadopago', externalId, status, amountCents: amount, idempotencyKey, rawResponse }, update: { externalId, status, rawResponse } });
-  const transactionData = (rawResponse as any).point_of_interaction?.transaction_data;
-  void logger.info('payment.offline.created', { orderId, method: input.paymentMethodId, providerPaymentId: externalId, status });
-  return { payment, status, qrCode: transactionData?.qr_code || '', qrCodeBase64: transactionData?.qr_code_base64 || '', ticketUrl: transactionData?.ticket_url || (rawResponse as any).transaction_details?.external_resource_url || '' };
+  void logger.info('payment.offline.created', { orderId, method: input.paymentMethodId, providerPaymentId: externalId, status, amountCents: amount, sendWebhook: Boolean(input.notificationUrl) });
+  return { payment, status, ...extractQrCode(rawResponse) };
 }
 
 export async function createPaymentCheckout(orderId: string, baseUrl: string) {
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { product: true, customer: true } });
-  if (!order) throw new Error('ORDER_NOT_FOUND');
-  if (order.status !== 'PENDING' || order.isBonus) throw new Error('ORDER_NOT_PAYABLE');
+  if (!order) { void logger.error('payment.checkout.order_not_found', { orderId }); throw new Error('ORDER_NOT_FOUND'); }
+  if (order.status !== 'PENDING' || order.isBonus) { void logger.error('payment.checkout.order_not_payable', { orderId, status: order.status, isBonus: order.isBonus }); throw new Error('ORDER_NOT_PAYABLE'); }
   const config = await getPaymentConfiguration();
-  if (config.activeProvider === 'none') throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
+  if (config.activeProvider === 'none') { void logger.error('payment.checkout.provider_not_configured', { orderId }); throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED'); }
   const idempotencyKey = `order:${order.id}`;
   const existing = await prisma.payment.findUnique({ where: { idempotencyKey } });
-  if (existing?.checkoutUrl) return existing;
+  if (existing?.checkoutUrl) { void logger.info('payment.checkout.reused', { orderId, paymentId: existing.id }); return existing; }
   const amount = order.totalCents ?? order.amountCents;
+  if (!Number.isFinite(amount) || amount <= 0) { void logger.error('payment.checkout.invalid_amount', { orderId, amount }); throw new Error('ORDER_INVALID_AMOUNT'); }
   let externalId = '';
   let checkoutUrl = '';
   let rawResponse: object = {};
   if (config.activeProvider === 'mercadopago') {
-    if (!config.mercadopago.accessToken) throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
-    const response = await fetch('https://api.mercadopago.com/checkout/preferences', { method: 'POST', headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey }, body: JSON.stringify({ external_reference: order.id, items: [{ id: order.product.slug, title: order.product.name, quantity: 1, currency_id: 'BRL', unit_price: amount / 100 }], payer: order.customer?.email ? { email: order.customer.email } : undefined, back_urls: { success: `${baseUrl}/minha-conta`, pending: `${baseUrl}/minha-conta`, failure: `${baseUrl}/checkout` }, auto_return: 'approved', notification_url: `${baseUrl}/api/webhooks/mercadopago` }), signal: AbortSignal.timeout(15000) });
+    if (!config.mercadopago.accessToken) { void logger.error('payment.checkout.provider_not_configured', { orderId, activeProvider: config.activeProvider }); throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED'); }
+    let response: Response;
+    try {
+      response = await fetch('https://api.mercadopago.com/checkout/preferences', { method: 'POST', headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey }, body: JSON.stringify({ external_reference: order.id, items: [{ id: order.product.slug, title: order.product.name, quantity: 1, currency_id: 'BRL', unit_price: amount / 100 }], payer: order.customer?.email ? { email: order.customer.email } : undefined, back_urls: { success: `${baseUrl}/minha-conta`, pending: `${baseUrl}/minha-conta`, failure: `${baseUrl}/checkout` }, auto_return: 'approved', notification_url: `${baseUrl}/api/webhooks/mercadopago` }), signal: AbortSignal.timeout(15000) });
+    } catch (fetchError) {
+      const name = fetchError instanceof Error ? fetchError.name : '';
+      const message = fetchError instanceof Error ? fetchError.message : '';
+      void logger.error('payment.checkout.network_error', { orderId, provider: 'mercadopago', name, message: message.slice(0, 200) });
+      throw new Error(name === 'TimeoutError' || /timeout|abort/i.test(message) ? 'MP_TIMEOUT' : 'MP_UNREACHABLE');
+    }
     rawResponse = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error('PAYMENT_PROVIDER_ERROR');
+    if (!response.ok) { const cause = extractProviderCause(rawResponse); void logger.error('payment.checkout.provider_rejected', { orderId, provider: 'mercadopago', httpStatus: response.status, cause: cause || 'sem detalhe' }); throw new Error(cause ? `MP_ERROR: ${cause}` : 'PAYMENT_PROVIDER_ERROR'); }
     externalId = String((rawResponse as any).id || ''); checkoutUrl = String((rawResponse as any).init_point || (rawResponse as any).sandbox_init_point || '');
   } else {
-    if (!config.asaas.apiKey) throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED');
+    if (!config.asaas.apiKey) { void logger.error('payment.checkout.provider_not_configured', { orderId, activeProvider: config.activeProvider }); throw new Error('PAYMENT_PROVIDER_NOT_CONFIGURED'); }
     const host = config.environment === 'sandbox' ? 'https://sandbox.asaas.com' : 'https://api.asaas.com';
-    const response = await fetch(`${host}/v3/paymentLinks`, { method: 'POST', headers: { access_token: config.asaas.apiKey, 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ name: `${order.product.name} - ${order.plate}`, description: `Pedido ${order.id}`, value: amount / 100, billingType: 'UNDEFINED', chargeType: 'DETACHED', dueDateLimitDays: 3, externalReference: order.id, callback: { successUrl: `${baseUrl}/minha-conta` } }), signal: AbortSignal.timeout(15000) });
+    let response: Response;
+    try {
+      response = await fetch(`${host}/v3/paymentLinks`, { method: 'POST', headers: { access_token: config.asaas.apiKey, 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ name: `${order.product.name} - ${order.plate}`, description: `Pedido ${order.id}`, value: amount / 100, billingType: 'UNDEFINED', chargeType: 'DETACHED', dueDateLimitDays: 3, externalReference: order.id, callback: { successUrl: `${baseUrl}/minha-conta` } }), signal: AbortSignal.timeout(15000) });
+    } catch (fetchError) {
+      const name = fetchError instanceof Error ? fetchError.name : '';
+      const message = fetchError instanceof Error ? fetchError.message : '';
+      void logger.error('payment.checkout.network_error', { orderId, provider: 'asaas', name, message: message.slice(0, 200) });
+      throw new Error('MP_UNREACHABLE');
+    }
     rawResponse = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error('PAYMENT_PROVIDER_ERROR');
+    if (!response.ok) { const cause = extractProviderCause(rawResponse); void logger.error('payment.checkout.provider_rejected', { orderId, provider: 'asaas', httpStatus: response.status, cause: cause || 'sem detalhe' }); throw new Error(cause ? `MP_ERROR: ${cause}` : 'PAYMENT_PROVIDER_ERROR'); }
     externalId = String((rawResponse as any).id || ''); checkoutUrl = String((rawResponse as any).url || '');
   }
-  if (!externalId || !checkoutUrl) throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE');
-  return prisma.payment.upsert({ where: { idempotencyKey }, create: { orderId, provider: config.activeProvider, externalId, status: 'PENDING', amountCents: amount, idempotencyKey, checkoutUrl, rawResponse }, update: { externalId, checkoutUrl, rawResponse } });
+  if (!externalId || !checkoutUrl) { void logger.error('payment.checkout.missing_checkout_url', { orderId, hasExternalId: Boolean(externalId), hasCheckoutUrl: Boolean(checkoutUrl) }); throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE'); }
+  const payment = await prisma.payment.upsert({ where: { idempotencyKey }, create: { orderId, provider: config.activeProvider, externalId, status: 'PENDING', amountCents: amount, idempotencyKey, checkoutUrl, rawResponse }, update: { externalId, checkoutUrl, rawResponse } });
+  void logger.info('payment.checkout.created', { orderId, provider: config.activeProvider, amountCents: amount, paymentId: payment.id });
+  return payment;
 }

@@ -42,15 +42,35 @@ export async function processPaymentEvent(provider: string, externalEventId: str
   return { processed: true };
 }
 
+function normalizeOrderStatus(paymentStatus: any): NormalizedPaymentStatus {
+  if (paymentStatus?.status === 'processed' || paymentStatus?.status === 'accredited') return 'APPROVED';
+  if (paymentStatus?.status === 'rejected') return 'REJECTED';
+  if (paymentStatus?.status === 'cancelled') return 'CANCELLED';
+  if (paymentStatus?.status === 'refunded') return 'REFUNDED';
+  if (paymentStatus?.status === 'charged_back') return 'CHARGEBACK';
+  return 'PENDING';
+}
+
 export async function providerPaymentStatus(provider: string, externalId: string) {
   const config = await getPaymentConfiguration();
   if (provider === 'mercadopago') {
-    const response = await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(externalId)}`, { headers: { Authorization: `Bearer ${config.mercadopago.accessToken}` }, signal: AbortSignal.timeout(10000) });
-    if (!response.ok) throw new Error('PROVIDER_STATUS_ERROR');
-    const data = await response.json();
-    const paymentStatus = data.transactions?.payments?.[0];
-    const status: NormalizedPaymentStatus = paymentStatus?.status === 'processed' || paymentStatus?.status === 'accredited' ? 'APPROVED' : paymentStatus?.status === 'rejected' ? 'REJECTED' : paymentStatus?.status === 'cancelled' ? 'CANCELLED' : paymentStatus?.status === 'refunded' ? 'REFUNDED' : 'PENDING';
-    return { status, data };
+    if (!config.mercadopago.accessToken) throw new Error('PROVIDER_STATUS_ERROR');
+    const headers = { Authorization: `Bearer ${config.mercadopago.accessToken}` };
+    let response = await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(externalId)}`, { headers, signal: AbortSignal.timeout(10000) });
+    if (response.ok) {
+      const data = await response.json();
+      const paymentStatus = data.transactions?.payments?.[0];
+      return { status: normalizeOrderStatus(paymentStatus), data };
+    }
+    // O webhook pode notificar com o id do payment em vez do id da order; o endpoint de orders responde 404 nesse caso.
+    const fallback = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(externalId)}`, { headers, signal: AbortSignal.timeout(10000) });
+    if (!fallback.ok) {
+      void logger.error('webhook.mercadopago.status_lookup_failed', { externalId, ordersStatus: response.status, paymentsStatus: fallback.status });
+      throw new Error('PROVIDER_STATUS_ERROR');
+    }
+    const paymentData = await fallback.json();
+    void logger.info('webhook.mercadopago.status_from_payment', { externalId, providerStatus: paymentData.status });
+    return { status: normalizeOrderStatus(paymentData), data: paymentData };
   }
   const host = config.environment === 'sandbox' ? 'https://sandbox.asaas.com' : 'https://api.asaas.com';
   const response = await fetch(`${host}/v3/payments/${encodeURIComponent(externalId)}`, { headers: { access_token: config.asaas.apiKey }, signal: AbortSignal.timeout(10000) });

@@ -26,6 +26,16 @@ export default function MercadoPagoCardForm({ orderId, publicKey, amountCents, p
     return value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 ');
   }
 
+  function detectBrand(digits: string) {
+    const card = digits.replace(/\D/g, '');
+    if (/^4/.test(card)) return 'visa';
+    if (/^5[1-5]/.test(card) || /^2(2[2-9]|[3-6]|7[01]|720)/.test(card)) return 'master';
+    if (/^3[47]/.test(card)) return 'amex';
+    if (/^4011(78|79)|^431274|^438935|^451416|^457393|^4576(31|32)|^504175|^627780|^636297|^636368|^655(0|1)00/.test(card)) return 'elo';
+    if (/^606282|^3841(0|4|5)/.test(card)) return 'hipercard';
+    return 'visa';
+  }
+
   function formatExpiry(value: string) {
     const digits = value.replace(/\D/g, '').slice(0, 4);
     if (digits.length <= 2) return digits;
@@ -35,6 +45,11 @@ export default function MercadoPagoCardForm({ orderId, publicKey, amountCents, p
   async function submit(event: FormEvent) {
     event.preventDefault();
     setLoading(true); setError('');
+    if (!amountCents || amountCents <= 0) {
+      const message = 'Valor do pedido inválido. Atualize a página e tente novamente.';
+      setError(message); onError(message); setLoading(false);
+      return;
+    }
     try {
       const cardTokenResponse = await fetch(`https://api.mercadopago.com/v1/card_tokens?public_key=${encodeURIComponent(publicKey)}`, {
         method: 'POST',
@@ -55,7 +70,7 @@ export default function MercadoPagoCardForm({ orderId, publicKey, amountCents, p
         body: JSON.stringify({
           orderId,
           cardToken: cardTokenBody.id,
-          paymentMethodId: 'visa',
+          paymentMethodId: detectBrand(cardNumber),
           installments,
           payerIdentification: { type: 'CPF', number: payerCpf.replace(/\D/g, '') },
         }),
