@@ -385,6 +385,15 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
   if (!offlineDetails.qrCode && !offlineDetails.qrCodeBase64 && !offlineDetails.ticketUrl) {
     offlineDetails = await fetchOfflinePaymentDetails(config.environment, config.mercadopago.accessToken, externalId, orderExternalId);
   }
+  if (!offlineDetails.qrCode && !offlineDetails.qrCodeBase64 && !offlineDetails.ticketUrl) {
+    // A Orders API respondeu 200 mas não há QR/link nem no detalhe do pagamento.
+    // No Pix isso quase sempre é conta recebedora sem chave Pix cadastrada: o
+    // Mercado Pago nunca vai renderizar o QR, então repetir a tentativa só cria
+    // outro pedido pendente. Falhar aqui é melhor do que devolver 200 vazio.
+    void logger.error('payment.offline.details_empty', { orderId, method: input.paymentMethodId, providerOrderId: orderExternalId, hint: isPix ? 'cadastre uma chave Pix na conta recebedora do Mercado Pago' : 'verifique o método no painel do Mercado Pago' });
+    if (isPix) throw new Error('MP_PIX_KEY_MISSING');
+    throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE');
+  }
   return { payment, status, ...offlineDetails };
 }
 
@@ -438,12 +447,22 @@ async function createOfflinePaymentViaPaymentsApi(
   const { raw, text } = await readProviderBody(response);
   if (!response.ok) {
     void logger.error('payment.offline.fallback_rejected', { httpStatus: response.status, method: input.paymentMethodId, orderId, body: text.slice(0, 400) });
+    // Pix sem chave cadastrada na conta recebedora (cause 13253): nenhuma
+    // repetição vai gerar QR, então o erro precisa dizer isso em vez de 402.
+    if (isPix && /13253|without key enabled for QR/i.test(text)) {
+      void logger.error('payment.offline.pix_key_missing', { orderId });
+      throw new Error('MP_PIX_KEY_MISSING');
+    }
     return null;
   }
   const externalId = String(raw?.id || '');
   if (!externalId) { void logger.error('payment.offline.fallback_missing_id', { orderId, method: input.paymentMethodId }); return null; }
   const status = normalizeProviderStatus(raw);
   const details = extractQrCode(raw);
+  if (isPix && !details.qrCode && !details.qrCodeBase64) {
+    void logger.error('payment.offline.fallback_pix_empty', { orderId, providerPaymentId: externalId });
+    throw new Error('MP_PIX_KEY_MISSING');
+  }
   const payment = await prisma.payment.upsert({
     where: { idempotencyKey },
     create: { orderId, provider: 'mercadopago', externalId, providerOrderId: null, method: input.paymentMethodId, status, amountCents: Math.round(Number(absoluteAmount) * 100), idempotencyKey, rawResponse: raw },

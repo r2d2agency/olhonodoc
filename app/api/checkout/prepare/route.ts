@@ -70,7 +70,10 @@ const POST = logRequest('checkout.prepare', async (request: Request) => {
     const released = await releaseStaleRedemptions().catch(() => 0);
     if (released) void logger.info('checkout.prepare.stale_redemptions_released', { count: released });
 
-    const existing = await prisma.order.findFirst({ where: { customerId: customer.id, plate, productId: product.id, status: 'PENDING', createdAt: { gt: new Date(Date.now() - 30 * 60 * 1000) } }, orderBy: { createdAt: 'desc' } });
+    // O pedido pendente é sempre reaproveitado (sem janela de tempo): cada nova
+    // tentativa de pagamento do mesmo cliente/placa/produto retoma o pedido em
+    // aberto em vez de empilhar outro PENDING em "Minhas consultas".
+    const existing = await prisma.order.findFirst({ where: { customerId: customer.id, plate, productId: product.id, status: 'PENDING' }, orderBy: { createdAt: 'desc' } });
     const order = await prisma.$transaction(async (tx) => {
       // O pedido pendente é reaproveitado; se o cupom mudou, os valores são
       // recalculados e o resgate anterior é estornado.

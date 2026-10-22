@@ -41,10 +41,10 @@ export default function PaymentMethodSelector({ orderId, publicKey, amountCents,
       try { body = raw ? JSON.parse(raw) : {}; } catch { throw new Error(`HTTP ${response.status} — resposta não-JSON do servidor: ${raw.slice(0, 200) || '(corpo vazio)'}.`); }
       if (!response.ok) throw new Error(body.error || `HTTP ${response.status} — não foi possível gerar a cobrança.`);
       if (method === 'pix') {
-        if (!body.data?.qrCode && !body.data?.qrCodeBase64) throw new Error('O Mercado Pago não devolveu o QR Code do Pix. Tente novamente em instantes.');
+        if (!body.data?.qrCode && !body.data?.qrCodeBase64) throw new Error(body.error || 'O Mercado Pago não devolveu o QR Code do Pix. Tente novamente em instantes.');
         setPixData({ qrCode: body.data.qrCode, qrCodeBase64: body.data.qrCodeBase64 });
       } else {
-        if (!body.data?.ticketUrl) throw new Error('O Mercado Pago não devolveu o link do boleto. Tente novamente em instantes.');
+        if (!body.data?.ticketUrl) throw new Error(body.error || 'O Mercado Pago não devolveu o link do boleto. Tente novamente em instantes.');
         setBoletoData({ ticketUrl: body.data.ticketUrl });
       }
     } catch (e) { const message = e instanceof Error ? e.message : 'Não foi possível gerar a cobrança.'; setError(message); onError(message); }
