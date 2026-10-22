@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser, normalizeDigits } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createOfflinePayment, getPaymentConfiguration } from '@/lib/payment-provider';
+import { sendPaymentChargeEmail } from '@/lib/email';
 import { logger, logRequest } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ const POST = logRequest('checkout.offline-payment', async (request: Request) => 
     const config = await getPaymentConfiguration();
     const enabled = method === 'pix' ? config.mercadopago.methods.pix : config.mercadopago.methods.boleto;
     if (!enabled) return NextResponse.json({ error: 'Este método de pagamento não está disponível.' }, { status: 400 });
-    const order = await prisma.order.findFirst({ where: { id: body.orderId, customer: { userId: user.id } }, select: { id: true } });
+    const order = await prisma.order.findFirst({ where: { id: body.orderId, customer: { userId: user.id } }, select: { id: true, plate: true, totalCents: true, amountCents: true, product: { select: { name: true } } } });
     if (!order) return NextResponse.json({ error: 'Pedido não encontrado.' }, { status: 404 });
     const payerIdentification = body.payerIdentification;
     if (!payerIdentification || typeof payerIdentification.type !== 'string' || typeof payerIdentification.number !== 'string') return NextResponse.json({ error: 'Identificação do pagador obrigatória.' }, { status: 400 });
@@ -34,7 +35,27 @@ const POST = logRequest('checkout.offline-payment', async (request: Request) => 
       notificationUrl: `${new URL(request.url).origin}/api/webhooks/mercadopago`,
     });
     void logger.info('payment.offline.success', { orderId: order.id, method, status: result.status });
-    return NextResponse.json({ data: { paymentId: result.payment.id, status: result.status, qrCode: result.qrCode, qrCodeBase64: result.qrCodeBase64, ticketUrl: result.ticketUrl } });
+    // A cobrança vai por e-mail para o mesmo endereço enviado ao provedor, para
+    // o cliente confirmar qual identidade está sendo cobrada. Falha no e-mail
+    // não invalida a cobrança: o QR Code continua disponível na tela.
+    if (user.email) {
+      try {
+        await sendPaymentChargeEmail(user.email, {
+          orderId: order.id,
+          plate: order.plate,
+          productName: order.product?.name || 'Consulta veicular',
+          amountCents: order.totalCents ?? order.amountCents ?? 0,
+          method: method === 'pix' ? 'pix' : 'boleto',
+          qrCode: result.qrCode,
+          qrCodeBase64: result.qrCodeBase64,
+          ticketUrl: result.ticketUrl,
+        });
+        void logger.info('payment.offline.email_sent', { orderId: order.id, method });
+      } catch (emailError) {
+        void logger.error('payment.offline.email_failed', { orderId: order.id, method, message: emailError instanceof Error ? emailError.message : 'erro' });
+      }
+    }
+    return NextResponse.json({ data: { paymentId: result.payment.id, status: result.status, qrCode: result.qrCode, qrCodeBase64: result.qrCodeBase64, ticketUrl: result.ticketUrl, payerEmail: user.email || '' } });
   }
   catch (error) {
     const code = error instanceof Error ? error.message : '';

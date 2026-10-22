@@ -28,9 +28,10 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
   const [checkoutUrl, setCheckoutUrl] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<{ card: boolean; pix: boolean; boleto: boolean }>({ card: true, pix: true, boleto: true });
+  const [payerEmail, setPayerEmail] = useState('');
 
   useEffect(() => {
-    fetch('/api/account/profile').then(r => r.json()).then(body => { if (body.data) { setCpf(body.data.cpf || ''); setPhone(body.data.phone || ''); const a = body.data; setAddress({ postalCode: a.postalCode || '', street: a.street || '', number: a.number || '', complement: a.complement || '', neighborhood: a.neighborhood || '', city: a.city || '', state: a.state || '' }); } }).catch(() => undefined);
+    fetch('/api/account/profile').then(r => r.json()).then(body => { if (body.data) { setCpf(body.data.cpf || ''); setPhone(body.data.phone || ''); setPayerEmail(body.data.email || ''); const a = body.data; setAddress({ postalCode: a.postalCode || '', street: a.street || '', number: a.number || '', complement: a.complement || '', neighborhood: a.neighborhood || '', city: a.city || '', state: a.state || '' }); } }).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -57,6 +58,9 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
 
   async function submit(event: FormEvent) {
     event.preventDefault(); captureAttribution(); trackEvent('add_payment_info', { item_id: product.slug, value: product.price });
+    // O e-mail identifica o pagador junto ao provedor de pagamento: sem ele a
+    // cobrança é recusada. Falhar aqui é melhor do que falhar no checkout final.
+    if (!payerEmail) { setError('Não foi possível identificar seu e-mail. Recarregue a página e entre novamente com sua conta.'); return; }
     setLoading(true); setError('');
     try {
       const response = await fetch('/api/checkout/prepare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productSlug: product.slug, plate, cpf, phone, address }) });
@@ -87,7 +91,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     finally { setPaymentLoading(false); }
   }
 
-  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="done">2</span><span className="active">3</span></span><span className="eyebrow">PEDIDO PREPARADO</span><h1>Seu pedido está pronto para pagamento.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> criado com sucesso. Continue para o ambiente seguro do provedor de pagamento.</p><div className="checkout-order-summary"><div><small>Produto</small><strong>{product.name}</strong></div><div><small>Placa</small><strong>{plate}</strong></div><div><small>Valor</small><strong>{product.price}</strong></div></div>{error && <p className="form-error">{error}</p>}{!paymentProvider && <button className="button" onClick={pay} disabled={paymentLoading}>{paymentLoading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {paymentLoading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={order.amountCents || 0} payerEmail="" payerCpf={cpf} methods={paymentMethods} onSuccess={() => { window.location.assign('/minha-conta'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}<Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
+  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="done">2</span><span className="active">3</span></span><span className="eyebrow">PEDIDO PREPARADO</span><h1>Seu pedido está pronto para pagamento.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> criado com sucesso. Continue para o ambiente seguro do provedor de pagamento.</p><div className="checkout-order-summary"><div><small>Produto</small><strong>{product.name}</strong></div><div><small>Placa</small><strong>{plate}</strong></div><div><small>Valor</small><strong>{product.price}</strong></div></div>{error && <p className="form-error">{error}</p>}{!paymentProvider && <button className="button" onClick={pay} disabled={paymentLoading}>{paymentLoading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {paymentLoading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={order.amountCents || 0} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} onSuccess={() => { window.location.assign('/minha-conta'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}<Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
 
   return <main className="checkout-page"><div className="checkout-shell">
     <section className="checkout-card">
@@ -124,6 +128,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
         <div className="checkout-section">
           <h3><User size={16}/> Dados pessoais</h3>
           <div className="checkout-review-grid">
+            <div><small>E-mail</small><strong>{payerEmail}</strong></div>
             <div><small>CPF/CNPJ</small><strong>{cpf}</strong></div>
             <div><small>WhatsApp</small><strong>{phone}</strong></div>
           </div>

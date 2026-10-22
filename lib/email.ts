@@ -26,3 +26,56 @@ export async function sendBonusAccess(email: string, name: string, accessUrl: st
 export async function sendSmtpTest(email: string) {
   await sendEmail(email, 'Teste de configuração de e-mail | Olho no Doc', 'A configuração de e-mail foi validada com sucesso.', '<div style="font-family:Arial,sans-serif"><h2>Olho no Doc</h2><p>A configuração de e-mail foi validada com sucesso.</p></div>');
 }
+
+type PaymentChargeEmail = {
+  orderId: string;
+  plate: string;
+  productName: string;
+  amountCents: number;
+  method: 'pix' | 'boleto' | 'card';
+  qrCode?: string;
+  qrCodeBase64?: string;
+  ticketUrl?: string;
+};
+
+/**
+ * Envia a cobrança ao cliente logo depois de gerada.
+ *
+ * O e-mail é o mesmo endereço que vai para o provedor de pagamento, então ele
+ * confirma ao cliente qual identidade está sendo usada na transação — evita a
+ * dúvida de "qual e-mail está sendo cobrado" e dá o QR Code / o boleto fora do
+ * navegador, caso ele feche a aba.
+ */
+export async function sendPaymentChargeEmail(email: string, charge: PaymentChargeEmail) {
+  const valor = (charge.amountCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const pedido = charge.orderId.slice(-8).toUpperCase();
+  const metodo = charge.method === 'pix' ? 'Pix' : charge.method === 'boleto' ? 'Boleto' : 'Cartão de crédito';
+
+  let instrucao = '';
+  let acao = '';
+  if (charge.method === 'pix') {
+    instrucao = 'Abra o app do seu banco, escolha pagar com Pix e escaneie o QR Code abaixo. O pedido é liberado assim que o pagamento é confirmado.';
+    acao = `<p><a href="${charge.qrCode || '#'}" style="display:inline-block;padding:12px 20px;background:#18a976;color:#fff;border-radius:8px;text-decoration:none">Abrir QR Code do Pix</a></p>`
+      + (charge.qrCodeBase64 ? `<p><img src="data:image/png;base64,${charge.qrCodeBase64}" alt="QR Code Pix" width="260" style="display:block;margin:18px 0"/></p>` : '');
+  } else if (charge.method === 'boleto') {
+    instrucao = 'Pague o boleto pelo link abaixo. O pedido é liberado assim que o pagamento é compensado.';
+    acao = `<p><a href="${charge.ticketUrl || '#'}" style="display:inline-block;padding:12px 20px;background:#18a976;color:#fff;border-radius:8px;text-decoration:none">Abrir boleto</a></p>`;
+  } else {
+    instrucao = 'Registramos o pagamento com o cartão informado no checkout. O pedido é liberado assim que a aprovação é confirmada.';
+  }
+
+  const text = `Olá! Geramos sua cobrança de ${valor} (${metodo}) para a consulta ${charge.productName} — placa ${charge.plate}, pedido ${pedido}.\n\n${instrucao}\n\nEste e-mail foi enviado para ${email}, o mesmo endereço usado na cobrança.`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px">
+    <h2 style="color:#183b55;margin:0 0 6px">Sua cobrança está pronta</h2>
+    <p style="color:#5a6d7a;margin:0 0 20px">Pedido <strong>${pedido}</strong> · ${charge.productName} · placa ${charge.plate}</p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+      <tr><td style="padding:10px 0;color:#5a6d7a">Valor</td><td style="padding:10px 0;text-align:right"><strong style="font-size:18px">${valor}</strong></td></tr>
+      <tr><td style="padding:10px 0;color:#5a6d7a">Forma de pagamento</td><td style="padding:10px 0;text-align:right">${metodo}</td></tr>
+      <tr><td style="padding:10px 0;color:#5a6d7a">E-mail da cobrança</td><td style="padding:10px 0;text-align:right">${email}</td></tr>
+    </table>
+    <p style="color:#334956;line-height:1.6">${instrucao}</p>
+    ${acao}
+    <p style="color:#82929c;font-size:12px;margin-top:24px;border-top:1px solid #e6ecef;padding-top:14px">Se você não reconhece esta cobrança, entre em contato com a gente.</p>
+  </div>`;
+  await sendEmail(email, `Sua cobrança de ${valor} está pronta | Olho no Doc`, text, html);
+}
