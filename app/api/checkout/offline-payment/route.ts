@@ -40,11 +40,11 @@ const POST = logRequest('checkout.offline-payment', async (request: Request) => 
     const code = error instanceof Error ? error.message : '';
     const stack = error instanceof Error ? (error.stack || '').slice(0, 300) : '';
     void logger.error('payment.offline.route_failed', { code, stack });
-    if (code.startsWith('MP_ERROR: ')) return NextResponse.json({ error: code.slice(9) }, { status: 502 });
+    if (code.startsWith('MP_ERROR: ')) return NextResponse.json({ error: `O Mercado Pago recusou a cobrança: ${code.slice(9)}` }, { status: 502 });
     if (code === 'MP_TIMEOUT') return NextResponse.json({ error: 'O Mercado Pago demorou demais para responder. Tente novamente.' }, { status: 504 });
     if (code === 'MP_UNREACHABLE') return NextResponse.json({ error: 'Não foi possível conectar ao Mercado Pago. Verifique a rede do servidor.' }, { status: 502 });
-    const status = code === 'PAYMENT_PROVIDER_NOT_CONFIGURED' ? 503 : code === 'ORDER_NOT_PAYABLE' ? 409 : code === 'ORDER_INVALID_AMOUNT' ? 409 : 502;
-    return NextResponse.json({ error: status === 503 ? 'Pagamento ainda não configurado.' : status === 409 ? 'Este pedido não pode ser pago.' : 'Não foi possível gerar a cobrança.' }, { status });
+    const status = code === 'PAYMENT_PROVIDER_NOT_CONFIGURED' ? 503 : code === 'ORDER_NOT_PAYABLE' ? 409 : code === 'ORDER_INVALID_AMOUNT' ? 409 : code === 'PAYER_EMAIL_REQUIRED' ? 400 : 502;
+    return NextResponse.json({ error: status === 503 ? 'Pagamento ainda não configurado.' : status === 409 ? 'Este pedido não pode ser pago.' : status === 400 ? 'Não foi possível identificar o pagador. Entre novamente com sua conta.' : 'Não foi possível gerar a cobrança.' }, { status });
   }
 });
 

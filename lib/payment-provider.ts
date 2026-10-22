@@ -152,7 +152,25 @@ export async function isPaymentMethodEnabled(method: PaymentMethodId) {
 function extractProviderCause(rawResponse: any) {
   if (Array.isArray(rawResponse?.cause)) return (rawResponse.cause as any[]).map(item => item?.description || item?.code).filter(Boolean).join('; ');
   if (typeof rawResponse?.cause === 'string' && rawResponse.cause) return rawResponse.cause;
+  if (typeof rawResponse?.error === 'string' && rawResponse.error) return rawResponse.error;
   return rawResponse?.message || '';
+}
+
+/**
+ * Lê o corpo da resposta do provedor preservando o texto bruto.
+ *
+ * O `response.json()` engolia o corpo quando a resposta não era JSON (proxy,
+ * WAF, página de erro), e o motivo da recusa se perdia — o log dizia apenas
+ * "sem detalhe". Guardar o texto permite mostrar a resposta real do Mercado Pago.
+ */
+async function readProviderBody(response: Response) {
+  const text = await response.text().catch(() => '');
+  if (!text) return { raw: {} as any, text };
+  try {
+    return { raw: JSON.parse(text), text };
+  } catch {
+    return { raw: { message: text.slice(0, 300) }, text };
+  }
 }
 
 /**
@@ -227,6 +245,9 @@ export async function createCardPayment(orderId: string, input: CardPaymentInput
   const amount = order.totalCents ?? order.amountCents;
   if (!Number.isFinite(amount) || amount <= 0) { void logger.error('payment.card.invalid_amount', { orderId, amount }); throw new Error('ORDER_INVALID_AMOUNT'); }
   const absoluteAmount = (amount / 100).toFixed(2);
+  // O Mercado Pago exige o e-mail do pagador; sem ele a cobrança é recusada.
+  const payerEmail = (input.payerEmail || order.customer?.email || '').trim();
+  if (!payerEmail) { void logger.error('payment.card.missing_payer_email', { orderId }); throw new Error('PAYER_EMAIL_REQUIRED'); }
   let response: Response;
   try {
     response = await fetch(`${mpHost(config.environment)}/v1/orders`, {
@@ -248,7 +269,7 @@ export async function createCardPayment(orderId: string, input: CardPaymentInput
             },
           }],
         },
-        payer: { email: input.payerEmail, identification: input.payerIdentification },
+        payer: { email: payerEmail, identification: input.payerIdentification },
         // A Orders API não aceita notification_url no topo do payload; o campo correto é config.online.callback_url.
         ...(input.notificationUrl ? { config: { online: { callback_url: input.notificationUrl } } } : {}),
       }),
@@ -260,10 +281,10 @@ export async function createCardPayment(orderId: string, input: CardPaymentInput
     void logger.error('payment.card.network_error', { name, message: message.slice(0, 200), method: input.paymentMethodId, orderId });
     throw new Error(name === 'TimeoutError' || /timeout|abort/i.test(message) ? 'MP_TIMEOUT' : 'MP_UNREACHABLE');
   }
-  const rawResponse = await response.json().catch(() => ({}));
+  const { raw: rawResponse, text: rawText } = await readProviderBody(response);
   if (!response.ok) {
     const cause = extractProviderCause(rawResponse);
-    void logger.error('payment.card.provider_rejected', { httpStatus: response.status, method: input.paymentMethodId, orderId, cause: cause || 'sem detalhe' });
+    void logger.error('payment.card.provider_rejected', { httpStatus: response.status, method: input.paymentMethodId, orderId, cause: cause || 'sem detalhe', body: rawText.slice(0, 400) });
     throw new Error(cause ? `MP_ERROR: ${cause}` : 'PAYMENT_PROVIDER_ERROR');
   }
   const orderExternalId = String((rawResponse as any).id || '');
@@ -299,6 +320,9 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
   const amount = order.totalCents ?? order.amountCents;
   if (!Number.isFinite(amount) || amount <= 0) { void logger.error('payment.offline.invalid_amount', { orderId, amount }); throw new Error('ORDER_INVALID_AMOUNT'); }
   const absoluteAmount = (amount / 100).toFixed(2);
+  // O Mercado Pago exige o e-mail do pagador; sem ele a cobrança é recusada.
+  const payerEmail = (input.payerEmail || order.customer?.email || '').trim();
+  if (!payerEmail) { void logger.error('payment.offline.missing_payer_email', { orderId }); throw new Error('PAYER_EMAIL_REQUIRED'); }
   const isPix = input.paymentMethodId === 'pix';
   let response: Response;
   try {
@@ -319,7 +343,7 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
             },
           }],
         },
-        payer: { email: input.payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
+        payer: { email: payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
         // A Orders API não aceita notification_url no topo do payload; o campo correto é config.online.callback_url.
         ...(input.notificationUrl ? { config: { online: { callback_url: input.notificationUrl } } } : {}),
       }),
@@ -335,10 +359,17 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
     void logger.error('payment.offline.network_error', { name, message: message.slice(0, 200), method: input.paymentMethodId, orderId });
     throw new Error('MP_UNREACHABLE');
   }
-  const rawResponse = await response.json().catch(() => ({}));
+  const { raw: rawResponse, text: rawText } = await readProviderBody(response);
   if (!response.ok) {
     const cause = extractProviderCause(rawResponse);
-    void logger.error('payment.offline.provider_rejected', { httpStatus: response.status, method: input.paymentMethodId, orderId, cause: cause || 'sem detalhe' });
+    void logger.error('payment.offline.provider_rejected', { httpStatus: response.status, method: input.paymentMethodId, orderId, cause: cause || 'sem detalhe', body: rawText.slice(0, 400) });
+    // A Orders API recusa com 402 em algumas contas/regiões na criação de Pix e
+    // boleto. A API clássica de pagamentos é estável para esses dois métodos,
+    // então tentamos por ela antes de desistir.
+    if (response.status === 402) {
+      const fallback = await createOfflinePaymentViaPaymentsApi(config, order, input, absoluteAmount, orderId, payerEmail);
+      if (fallback) return fallback;
+    }
     throw new Error(cause ? `MP_ERROR: ${cause}` : 'PAYMENT_PROVIDER_ERROR');
   }
   const orderExternalId = String((rawResponse as any).id || '');
@@ -355,6 +386,71 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
     offlineDetails = await fetchOfflinePaymentDetails(config.environment, config.mercadopago.accessToken, externalId, orderExternalId);
   }
   return { payment, status, ...offlineDetails };
+}
+
+/**
+ * Plano B para Pix e boleto: a API clássica de pagamentos (`/v1/payments`).
+ *
+ * A Orders API recusa a criação da order com HTTP 402 em algumas contas. A API
+ * clássica é a rota estável para esses dois métodos e devolve o QR Code do Pix
+ * e o link do boleto direto na resposta. Se também falhar, o erro original da
+ * Orders API é que vale — é ele que descreve o motivo da recusa.
+ */
+async function createOfflinePaymentViaPaymentsApi(
+  config: { environment: PaymentEnvironment; mercadopago: { accessToken: string } },
+  order: { id: string },
+  input: OfflinePaymentInput,
+  absoluteAmount: string,
+  orderId: string,
+  payerEmail: string,
+) {
+  const idempotencyKey = `order:${order.id}:${input.paymentMethodId}:payments-api`;
+  const isPix = input.paymentMethodId === 'pix';
+  const body = isPix
+    ? {
+      payment_method_id: 'pix',
+      transaction_amount: Number(absoluteAmount),
+      description: `Pedido ${order.id.slice(-8).toUpperCase()}`,
+      external_reference: order.id,
+      payer: { email: payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
+      ...(input.notificationUrl ? { notification_url: input.notificationUrl } : {}),
+    }
+    : {
+      payment_method_id: 'bolbradesco',
+      transaction_amount: Number(absoluteAmount),
+      description: `Pedido ${order.id.slice(-8).toUpperCase()}`,
+      external_reference: order.id,
+      payer: { email: payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
+      ...(input.notificationUrl ? { notification_url: input.notificationUrl } : {}),
+    };
+  let response: Response;
+  try {
+    response = await fetch(`${mpHost(config.environment)}/v1/payments`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (fetchError) {
+    void logger.warn('payment.offline.fallback_network_error', { orderId, method: input.paymentMethodId, message: fetchError instanceof Error ? fetchError.message : 'erro' });
+    return null;
+  }
+  const { raw, text } = await readProviderBody(response);
+  if (!response.ok) {
+    void logger.error('payment.offline.fallback_rejected', { httpStatus: response.status, method: input.paymentMethodId, orderId, body: text.slice(0, 400) });
+    return null;
+  }
+  const externalId = String(raw?.id || '');
+  if (!externalId) { void logger.error('payment.offline.fallback_missing_id', { orderId, method: input.paymentMethodId }); return null; }
+  const status = normalizeProviderStatus(raw);
+  const details = extractQrCode(raw);
+  const payment = await prisma.payment.upsert({
+    where: { idempotencyKey },
+    create: { orderId, provider: 'mercadopago', externalId, providerOrderId: null, method: input.paymentMethodId, status, amountCents: Math.round(Number(absoluteAmount) * 100), idempotencyKey, rawResponse: raw },
+    update: { externalId, method: input.paymentMethodId, status, rawResponse: raw },
+  });
+  void logger.info('payment.offline.fallback_created', { orderId, method: input.paymentMethodId, providerPaymentId: externalId, status, hasQrCode: Boolean(details.qrCode || details.qrCodeBase64), hasTicket: Boolean(details.ticketUrl) });
+  return { payment, status, ...details };
 }
 
 /** Busca o QR Code do Pix / o link do boleto no recurso de pagamento do Mercado Pago. */

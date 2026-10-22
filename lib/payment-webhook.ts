@@ -18,10 +18,22 @@ export async function validMercadoPagoSignature(request: Request, dataId: string
   const ts = xSignature.match(/ts=([^,]+)/)?.[1];
   const v1 = xSignature.match(/v1=([^,]+)/)?.[1];
   if (!ts || !v1) { void logger.error('webhook.mercadopago.malformed_signature', { dataId, hasTs: Boolean(ts), hasV1: Boolean(v1) }); return false; }
-  const expected = createHmac('sha256', secret).update(`id:${dataId};request-id:${xRequestId};ts:${ts};`).digest('hex');
-  const valid = safeEqual(expected, v1);
-  if (!valid) void logger.error('webhook.mercadopago.invalid_signature', { dataId, ts });
-  return valid;
+  // Tolerância de tempo: evita reuso de uma assinatura antiga (replay).
+  const timestampMs = Number(ts) * 1000;
+  if (!Number.isFinite(timestampMs) || Math.abs(Date.now() - timestampMs) > 5 * 60 * 1000) {
+    void logger.error('webhook.mercadopago.stale_signature', { dataId, ts });
+    return false;
+  }
+  // O manifest do Mercado Pago usa o id do recurso em minúsculas, mesmo quando o
+  // payload traz o id em maiúsculas (é o caso das orders, que começam com "ORD").
+  // Validamos as duas grafias para não depender desse detalhe do provedor.
+  const candidates = Array.from(new Set([dataId.toLowerCase(), dataId]));
+  for (const id of candidates) {
+    const expected = createHmac('sha256', secret).update(`id:${id};request-id:${xRequestId};ts:${ts};`).digest('hex');
+    if (safeEqual(expected, v1)) return true;
+  }
+  void logger.error('webhook.mercadopago.invalid_signature', { dataId, ts, hasRequestId: Boolean(xRequestId), triedIds: candidates.join(',') });
+  return false;
 }
 
 /**

@@ -24,7 +24,14 @@ async function safeReaddir() { try { return await readdir(LOG_DIR); } catch { re
 async function fileSize(file: string) { try { return (await stat(file)).size; } catch { return 0; } }
 
 export async function log(level: LogLevel, event: string, data?: Record<string, unknown>) {
-  const entry = { ts: timestamp(), level, event, ...(data || {}) };
+  // As chaves reservadas não podem ser sobrescritas pelo payload: um `ts` vindo
+  // do chamador (o header x-signature do webhook, por exemplo) tornava a linha
+  // do log ilegível no painel.
+  const payload: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data || {})) {
+    payload[key === 'ts' ? 'dataTs' : key === 'level' ? 'dataLevel' : key === 'event' ? 'dataEvent' : key] = value;
+  }
+  const entry = { ts: timestamp(), level, event, ...payload };
   const line = JSON.stringify(entry) + '\n';
   // Sempre no stdout: em produção o painel de logs lê o arquivo, mas o console
   // é o que fica disponível quando o container morre ou o proxy devolve 502.

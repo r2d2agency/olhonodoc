@@ -59,16 +59,17 @@ const POST = logRequest('checkout.card-payment', async (request: Request) => {
     const code = error instanceof Error ? error.message : '';
     const stack = error instanceof Error ? (error.stack || '').slice(0, 300) : '';
     void logger.error('payment.card.route_failed', { code, stack });
-    if (code.startsWith('MP_ERROR: ')) return NextResponse.json({ error: code.slice(9) }, { status: 502 });
+    if (code.startsWith('MP_ERROR: ')) return NextResponse.json({ error: `O Mercado Pago recusou o pagamento: ${code.slice(9)}` }, { status: 502 });
     if (code === 'MP_TIMEOUT') return NextResponse.json({ error: 'O Mercado Pago demorou demais para responder. Tente novamente.' }, { status: 504 });
     if (code === 'MP_UNREACHABLE') return NextResponse.json({ error: 'Não foi possível conectar ao Mercado Pago. Verifique a rede do servidor.' }, { status: 502 });
     const status = code === 'PAYMENT_PROVIDER_NOT_CONFIGURED' ? 503
       : code === 'PAYMENT_METHOD_DISABLED' ? 400
       : code === 'ORDER_NOT_PAYABLE' ? 409
       : code === 'ORDER_INVALID_AMOUNT' ? 409
+      : code === 'PAYER_EMAIL_REQUIRED' ? 400
       : 502;
     const message = status === 503 ? 'Pagamento ainda não configurado.'
-      : status === 400 ? 'Este método de pagamento não está disponível.'
+      : status === 400 ? (code === 'PAYER_EMAIL_REQUIRED' ? 'Não foi possível identificar o pagador. Entre novamente com sua conta.' : 'Este método de pagamento não está disponível.')
       : status === 409 ? 'Este pedido não pode ser pago.'
       : 'Não foi possível processar o pagamento.';
     return NextResponse.json({ error: message }, { status });
