@@ -34,7 +34,7 @@ export default function PaymentMethodSelector({ orderId, publicKey, amountCents,
       const response = await fetch('/api/checkout/offline-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, method, payerIdentification: { type: 'CPF', number: payerCpf.replace(/\D/g, '') } }),
+        body: JSON.stringify({ orderId, method, payerEmail, payerIdentification: { type: 'CPF', number: payerCpf.replace(/\D/g, '') } }),
       });
       const raw = await response.text();
       let body: any = {};

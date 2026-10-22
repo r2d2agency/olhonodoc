@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { createPaymentCheckout, getMercadoPagoPublicKey, getPaymentConfiguration } from '@/lib/payment-provider';
 import { logger } from '@/lib/logger';
+import { sendPaymentChargeEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +20,25 @@ export async function POST(request: Request) {
     }
     const payment = await createPaymentCheckout(order.id, new URL(request.url).origin);
     void logger.info('payment.checkout.success', { orderId: order.id, paymentId: payment.id, provider: payment.provider });
-    return NextResponse.json({ data: { provider: 'asaas', paymentId: payment.id, checkoutUrl: payment.checkoutUrl } });
+    // O link de pagamento vai por e-mail para o mesmo endereço da conta, para
+    // o cliente não ficar dependente do navegador aberto.
+    if (user.email) {
+      try {
+        const full = await (await import('@/lib/prisma')).prisma.order.findUnique({ where: { id: order.id }, select: { plate: true, totalCents: true, amountCents: true, product: { select: { name: true } } } });
+        await sendPaymentChargeEmail(user.email, {
+          orderId: order.id,
+          plate: full?.plate || '',
+          productName: full?.product?.name || 'Consulta veicular',
+          amountCents: full?.totalCents ?? full?.amountCents ?? 0,
+          method: 'link',
+          ticketUrl: payment.checkoutUrl || undefined,
+        });
+        void logger.info('payment.checkout.email_sent', { orderId: order.id });
+      } catch (emailError) {
+        void logger.error('payment.checkout.email_failed', { orderId: order.id, message: emailError instanceof Error ? emailError.message : 'erro' });
+      }
+    }
+    return NextResponse.json({ data: { provider: 'asaas', paymentId: payment.id, checkoutUrl: payment.checkoutUrl, payerEmail: user.email || '' } });
   }
   catch (error) {
     const code = error instanceof Error ? error.message : '';

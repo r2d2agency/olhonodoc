@@ -103,13 +103,18 @@ export default function MercadoPagoCardForm({ orderId, publicKey, amountCents, p
           cardToken: cardTokenBody.id,
           paymentMethodId: detectBrand(cardNumber),
           installments,
+          // O e-mail identifica o pagador junto ao provedor e permite enviar a
+          // cobrança para o cliente depois da aprovação.
+          payerEmail,
           payerIdentification: { type: 'CPF', number: payerCpf.replace(/\D/g, '') },
         }),
       });
       const paymentBody = await paymentResponse.json();
       if (!paymentResponse.ok) throw new Error(paymentBody.error || 'Não foi possível processar o pagamento.');
-      if (paymentBody.data.status === 'APPROVED') { onSuccess(); return; }
-      if (paymentBody.data.status === 'PENDING') { onSuccess(); return; }
+      const status = paymentBody.data?.status;
+      // Aprovado, autorizado ou ainda em análise: a transação existe e o
+      // webhook confirma o saldo. O que não pode passar é uma recusa.
+      if (['APPROVED', 'AUTHORIZED', 'IN_PROCESS', 'PENDING'].includes(status)) { onSuccess(); return; }
       throw new Error('Pagamento não autorizado. Verifique os dados do cartão.');
     } catch (e) { const message = e instanceof Error ? e.message : 'Não foi possível processar o pagamento.'; setError(message); onError(message); }
     finally { setLoading(false); }

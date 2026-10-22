@@ -24,11 +24,15 @@ const POST = logRequest('checkout.offline-payment', async (request: Request) => 
     if (!order) return NextResponse.json({ error: 'Pedido não encontrado.' }, { status: 404 });
     const payerIdentification = body.payerIdentification;
     if (!payerIdentification || typeof payerIdentification.type !== 'string' || typeof payerIdentification.number !== 'string') return NextResponse.json({ error: 'Identificação do pagador obrigatória.' }, { status: 400 });
+    // O e-mail identifica o pagador junto ao provedor: sem ele a cobrança é
+    // recusada. A tela manda o e-mail do perfil; a conta é a reserva.
+    const payerEmail = (typeof body.payerEmail === 'string' && body.payerEmail.trim() ? body.payerEmail.trim() : (user.email || '').trim());
+    if (!payerEmail) return NextResponse.json({ error: 'Não foi possível identificar seu e-mail. Recarregue a página e entre novamente com sua conta.' }, { status: 400 });
     const nameParts = (user.name || 'Cliente').trim().split(/\s+/);
     void logger.info('payment.offline.calling_provider', { orderId: order.id, method });
     const result = await createOfflinePayment(order.id, {
       paymentMethodId: method,
-      payerEmail: user.email || '',
+      payerEmail,
       payerFirstName: nameParts[0] || 'Cliente',
       payerLastName: nameParts.slice(1).join(' ') || 'Olhonodoc',
       payerIdentification: { type: payerIdentification.type, number: normalizeDigits(payerIdentification.number) },
@@ -38,9 +42,9 @@ const POST = logRequest('checkout.offline-payment', async (request: Request) => 
     // A cobrança vai por e-mail para o mesmo endereço enviado ao provedor, para
     // o cliente confirmar qual identidade está sendo cobrada. Falha no e-mail
     // não invalida a cobrança: o QR Code continua disponível na tela.
-    if (user.email) {
+    if (payerEmail) {
       try {
-        await sendPaymentChargeEmail(user.email, {
+        await sendPaymentChargeEmail(payerEmail, {
           orderId: order.id,
           plate: order.plate,
           productName: order.product?.name || 'Consulta veicular',
@@ -55,7 +59,7 @@ const POST = logRequest('checkout.offline-payment', async (request: Request) => 
         void logger.error('payment.offline.email_failed', { orderId: order.id, method, message: emailError instanceof Error ? emailError.message : 'erro' });
       }
     }
-    return NextResponse.json({ data: { paymentId: result.payment.id, status: result.status, qrCode: result.qrCode, qrCodeBase64: result.qrCodeBase64, ticketUrl: result.ticketUrl, payerEmail: user.email || '' } });
+    return NextResponse.json({ data: { paymentId: result.payment.id, status: result.status, qrCode: result.qrCode, qrCodeBase64: result.qrCodeBase64, ticketUrl: result.ticketUrl, payerEmail } });
   }
   catch (error) {
     const code = error instanceof Error ? error.message : '';

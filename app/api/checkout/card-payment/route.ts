@@ -3,6 +3,7 @@ import { getCurrentUser, normalizeDigits } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createCardPayment, getPaymentConfiguration, getMercadoPagoInstallments } from '@/lib/payment-provider';
 import { logger, logRequest } from '@/lib/logger';
+import { sendPaymentChargeEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +17,14 @@ const POST = logRequest('checkout.card-payment', async (request: Request) => {
     if (typeof body?.cardToken !== 'string' || !body.cardToken) return NextResponse.json({ error: 'cardToken obrigatório.' }, { status: 400 });
     if (typeof body?.paymentMethodId !== 'string' || !body.paymentMethodId) return NextResponse.json({ error: 'paymentMethodId obrigatório.' }, { status: 400 });
     if (typeof body?.installments !== 'number' || !Number.isInteger(body.installments) || body.installments < 1) return NextResponse.json({ error: 'Parcelas inválidas.' }, { status: 400 });
-    const order = await prisma.order.findFirst({ where: { id: body.orderId, customer: { userId: user.id } }, select: { id: true } });
+    const order = await prisma.order.findFirst({ where: { id: body.orderId, customer: { userId: user.id } }, select: { id: true, plate: true, totalCents: true, amountCents: true, product: { select: { name: true } } } });
     if (!order) return NextResponse.json({ error: 'Pedido não encontrado.' }, { status: 404 });
     const payerIdentification = body.payerIdentification;
     if (!payerIdentification || typeof payerIdentification.type !== 'string' || typeof payerIdentification.number !== 'string') return NextResponse.json({ error: 'Identificação do pagador obrigatória.' }, { status: 400 });
+    // O e-mail identifica o pagador junto ao provedor: sem ele a cobrança é
+    // recusada. A tela manda o e-mail do perfil; a conta é a reserva.
+    const payerEmail = (typeof body.payerEmail === 'string' && body.payerEmail.trim() ? body.payerEmail.trim() : (user.email || '').trim());
+    if (!payerEmail) return NextResponse.json({ error: 'Não foi possível identificar seu e-mail. Recarregue a página e entre novamente com sua conta.' }, { status: 400 });
 
     // O método precisa estar habilitado no painel; o toggle do admin vale no servidor.
     const config = await getPaymentConfiguration();
@@ -48,12 +53,29 @@ const POST = logRequest('checkout.card-payment', async (request: Request) => {
       cardToken: body.cardToken,
       paymentMethodId: body.paymentMethodId,
       installments: body.installments,
-      payerEmail: user.email || '',
+      payerEmail,
       payerIdentification: { type: payerIdentification.type, number: normalizeDigits(payerIdentification.number) },
       notificationUrl: `${new URL(request.url).origin}/api/webhooks/mercadopago`,
     });
     void logger.info('payment.card.success', { orderId: order.id, paymentId: result.payment.id, status: result.status });
-    return NextResponse.json({ data: { paymentId: result.payment.id, status: result.status } });
+    // A cobrança aprovada vai por e-mail para o mesmo endereço enviado ao
+    // provedor. Falha no e-mail não invalida o pagamento: o cliente continua
+    // vendo a confirmação na tela.
+    if (['APPROVED', 'AUTHORIZED', 'IN_PROCESS'].includes(result.status)) {
+      try {
+        await sendPaymentChargeEmail(payerEmail, {
+          orderId: order.id,
+          plate: order.plate,
+          productName: order.product?.name || 'Consulta veicular',
+          amountCents: order.totalCents ?? order.amountCents ?? 0,
+          method: 'card',
+        });
+        void logger.info('payment.card.email_sent', { orderId: order.id, status: result.status });
+      } catch (emailError) {
+        void logger.error('payment.card.email_failed', { orderId: order.id, message: emailError instanceof Error ? emailError.message : 'erro' });
+      }
+    }
+    return NextResponse.json({ data: { paymentId: result.payment.id, status: result.status, payerEmail } });
   }
   catch (error) {
     const code = error instanceof Error ? error.message : '';

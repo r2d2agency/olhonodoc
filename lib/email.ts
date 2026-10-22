@@ -32,7 +32,7 @@ type PaymentChargeEmail = {
   plate: string;
   productName: string;
   amountCents: number;
-  method: 'pix' | 'boleto' | 'card';
+  method: 'pix' | 'boleto' | 'card' | 'link';
   qrCode?: string;
   qrCodeBase64?: string;
   ticketUrl?: string;
@@ -49,7 +49,7 @@ type PaymentChargeEmail = {
 export async function sendPaymentChargeEmail(email: string, charge: PaymentChargeEmail) {
   const valor = (charge.amountCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const pedido = charge.orderId.slice(-8).toUpperCase();
-  const metodo = charge.method === 'pix' ? 'Pix' : charge.method === 'boleto' ? 'Boleto' : 'Cartão de crédito';
+  const metodo = charge.method === 'pix' ? 'Pix' : charge.method === 'boleto' ? 'Boleto' : charge.method === 'link' ? 'Link de pagamento' : 'Cartão de crédito';
 
   let instrucao = '';
   let acao = '';
@@ -60,6 +60,9 @@ export async function sendPaymentChargeEmail(email: string, charge: PaymentCharg
   } else if (charge.method === 'boleto') {
     instrucao = 'Pague o boleto pelo link abaixo. O pedido é liberado assim que o pagamento é compensado.';
     acao = `<p><a href="${charge.ticketUrl || '#'}" style="display:inline-block;padding:12px 20px;background:#18a976;color:#fff;border-radius:8px;text-decoration:none">Abrir boleto</a></p>`;
+  } else if (charge.method === 'link') {
+    instrucao = 'Finalize o pagamento pelo link abaixo. O pedido é liberado assim que o pagamento é confirmado.';
+    acao = `<p><a href="${charge.ticketUrl || '#'}" style="display:inline-block;padding:12px 20px;background:#18a976;color:#fff;border-radius:8px;text-decoration:none">Abrir página de pagamento</a></p>`;
   } else {
     instrucao = 'Registramos o pagamento com o cartão informado no checkout. O pedido é liberado assim que a aprovação é confirmada.';
   }
