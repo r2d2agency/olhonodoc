@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, CarFront, Check, CircleHelp, Clock3, CreditCard, LoaderCircle, LockKeyhole, MapPin, ShieldCheck, Tag, User } from 'lucide-react';
+import { CarFront, CircleHelp, Clock3, CreditCard, LoaderCircle, LockKeyhole, MapPin, ShieldCheck, Tag, User } from 'lucide-react';
 import type { CatalogProduct } from '@/lib/catalog';
 import { captureAttribution, trackEvent } from '@/lib/tracking';
 import PaymentMethodSelector from './payment-method-selector';
@@ -12,7 +12,6 @@ const emptyAddress: Address = { postalCode: '', street: '', number: '', compleme
 type Aggregate = Record<string, unknown>;
 
 export default function CheckoutForm({ product, plate }: { product: CatalogProduct; plate: string }) {
-  const [step, setStep] = useState<1 | 2>(1);
   const [address, setAddress] = useState<Address>(emptyAddress);
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
@@ -115,16 +114,16 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     finally { setPaymentLoading(false); }
   }
 
-  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="done">2</span><span className="active">3</span></span><span className="eyebrow">PEDIDO PREPARADO</span><h1>Seu pedido está pronto para pagamento.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> criado com sucesso. Continue para o ambiente seguro do provedor de pagamento.</p><div className="checkout-order-summary"><div><small>Produto</small><strong>{product.name}</strong></div><div><small>Placa</small><strong>{plate}</strong></div>{order.couponCode && <div><small>Cupom</small><strong>{order.couponCode}</strong></div>}{order.discountCents > 0 && <div><small>Desconto</small><strong>-{brl(order.discountCents)}</strong></div>}<div><small>Valor</small><strong>{brl(order.totalCents)}</strong></div></div>{error && <p className="form-error">{error}</p>}{!paymentProvider && <button className="button" onClick={pay} disabled={paymentLoading}>{paymentLoading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {paymentLoading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={orderAmountCents} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} onSuccess={() => { window.location.assign('/minha-conta'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}<Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
+  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="active">2</span></span><span className="eyebrow">PAGAMENTO</span><h1>Escolha como pagar.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> · {product.name} · placa <strong>{plate}</strong> · {brl(order.totalCents)}{order.couponCode ? ` (cupom ${order.couponCode})` : ''}.</p>{error && <p className="form-error">{error}</p>}{!paymentProvider && <button className="button" onClick={pay} disabled={paymentLoading}>{paymentLoading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {paymentLoading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={orderAmountCents} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} onSuccess={() => { window.location.assign('/minha-conta'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}<Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
 
   return <main className="checkout-page"><div className="checkout-shell">
     <section className="checkout-card">
-      <span className="checkout-step-indicator"><span className={step >= 1 ? 'active' : ''}>1</span><span className={step >= 2 ? 'active' : ''}>2</span><span>3</span></span>
-      <span className="eyebrow">ETAPA {step} · {step === 1 ? 'SEUS DADOS' : 'REVISÃO'}</span>
-      <h1>{step === 1 ? 'Finalize os dados da sua compra.' : 'Revise seu pedido.'}</h1>
-      <p>{step === 1 ? `Você escolheu ${product.name} para a placa ${plate}. Precisamos de alguns dados para preparar o pedido.` : 'Confira as informações antes de seguir para o pagamento.'}</p>
+      <span className="checkout-step-indicator"><span className="active">1</span><span>2</span></span>
+      <span className="eyebrow">SEUS DADOS</span>
+      <h1>Preencha seus dados para pagar.</h1>
+      <p>{`Você escolheu ${product.name} para a placa ${plate}. Preencha e confirme para ir ao pagamento.`}</p>
 
-      {step === 1 && <form onSubmit={e => { e.preventDefault(); setStep(2); }}>
+      <form onSubmit={submit}>
         <div className="checkout-section">
           <h3><User size={16}/> Dados pessoais</h3>
           <div className="checkout-grid">
@@ -144,22 +143,8 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
             <label>UF<input required value={address.state} onChange={e => setAddress({ ...address, state: e.target.value.toUpperCase() })} placeholder="UF" maxLength={2}/></label>
           </div>
         </div>
-        {error && <p className="form-error">{error}</p>}
-        <button className="button" type="submit">Revisar pedido <ArrowRight size={17}/></button>
-      </form>}
-
-      {step === 2 && <form onSubmit={submit}>
         <div className="checkout-section">
-          <h3><User size={16}/> Dados pessoais</h3>
-          <div className="checkout-review-grid">
-            <div><small>E-mail</small><strong>{payerEmail}</strong></div>
-            <div><small>CPF/CNPJ</small><strong>{cpf}</strong></div>
-            <div><small>WhatsApp</small><strong>{phone}</strong></div>
-          </div>
-          <button type="button" className="checkout-edit-btn" onClick={() => setStep(1)}><ArrowLeft size={14}/> Editar</button>
-        </div>
-        <div className="checkout-section">
-          <h3><Tag size={16}/> Cupom de desconto</h3>
+          <h3><Tag size={16}/> Cupom de desconto <small className="checkout-hint">(opcional)</small></h3>
           {coupon ? <div className="checkout-coupon-applied">
             <div><strong>{coupon.code}</strong><small>Desconto de {brl(coupon.discountCents)} aplicado</small></div>
             <button type="button" className="checkout-edit-btn" onClick={removeCoupon}>Remover</button>
@@ -171,21 +156,11 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
         </div>
         <div className="checkout-section">
           <h3><CreditCard size={16}/> Pagamento</h3>
-          <p className="checkout-hint">O pagamento será processado de forma transparente, sem redirecionamento externo.</p>
-        </div>
-        <div className="checkout-section">
-          <h3><MapPin size={16}/> Endereço</h3>
-          <div className="checkout-review-grid">
-            <div><small>CEP</small><strong>{address.postalCode}</strong></div>
-            <div><small>Endereço</small><strong>{address.street}, {address.number}{address.complement ? ` — ${address.complement}` : ''}</strong></div>
-            <div><small>Bairro</small><strong>{address.neighborhood}</strong></div>
-            <div><small>Cidade/UF</small><strong>{address.city}/{address.state}</strong></div>
-          </div>
-          <button type="button" className="checkout-edit-btn" onClick={() => setStep(1)}><ArrowLeft size={14}/> Editar</button>
+          <p className="checkout-hint">Na próxima tela você escolhe cartão, Pix ou boleto. O pagamento é processado de forma transparente, sem redirecionamento externo.</p>
         </div>
         {error && <p className="form-error">{error}</p>}
         <button className="button" disabled={loading}>{loading ? <LoaderCircle className="spin" size={17}/> : <LockKeyhole size={17}/>} {loading ? 'Preparando…' : 'Confirmar e ir para pagamento'}</button>
-      </form>}
+      </form>
     </section>
 
     <aside className="checkout-summary">
