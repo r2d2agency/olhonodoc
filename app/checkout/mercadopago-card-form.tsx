@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { CreditCard, LoaderCircle, LockKeyhole } from 'lucide-react';
 
 type Props = {
@@ -13,14 +13,45 @@ type Props = {
   onError: (message: string) => void;
 };
 
+type InstallmentOption = {
+  quantity: number;
+  label: string;
+  amount: number;
+  total: number;
+  rate: number;
+  interestFree: boolean;
+  recommended: boolean;
+};
+
 export default function MercadoPagoCardForm({ orderId, publicKey, amountCents, payerEmail, payerCpf, onSuccess, onError }: Props) {
   const [cardNumber, setCardNumber] = useState('');
   const [cardName, setCardName] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
   const [installments, setInstallments] = useState(1);
+  const [plans, setPlans] = useState<InstallmentOption[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const brand = detectBrand(cardNumber);
+
+  // Os planos de parcelamento (com juros) vêm do Mercado Pago e podem mudar por valor e bandeira.
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingPlans(true);
+    fetch(`/api/checkout/installments?orderId=${encodeURIComponent(orderId)}&paymentMethodId=${encodeURIComponent(brand)}`)
+      .then(response => response.json())
+      .then(body => {
+        if (cancelled) return;
+        const options: InstallmentOption[] = Array.isArray(body?.installments) ? body.installments : [];
+        setPlans(options);
+        setInstallments(current => (options.some(option => option.quantity === current) ? current : options[0]?.quantity || 1));
+      })
+      .catch(() => { if (!cancelled) setPlans([]); })
+      .finally(() => { if (!cancelled) setLoadingPlans(false); });
+    return () => { cancelled = true; };
+  }, [orderId, brand]);
 
   function formatCardNumber(value: string) {
     return value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 ');
@@ -84,6 +115,8 @@ export default function MercadoPagoCardForm({ orderId, publicKey, amountCents, p
     finally { setLoading(false); }
   }
 
+  const selected = plans.find(option => option.quantity === installments);
+
   return (
     <form onSubmit={submit} className="checkout-card-form">
       <div className="checkout-card-form-header">
@@ -105,10 +138,21 @@ export default function MercadoPagoCardForm({ orderId, publicKey, amountCents, p
         </label>
       </div>
       <label>Parcelas
-        <select value={installments} onChange={e => setInstallments(Number(e.target.value))}>
-          {Array.from({ length: 12 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}x de {(amountCents / 100 / n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>)}
+        <select value={installments} onChange={e => setInstallments(Number(e.target.value))} disabled={loadingPlans}>
+          {loadingPlans && <option value={installments}>Carregando opções…</option>}
+          {!loadingPlans && !plans.length && <option value={1}>{`1x de ${(amountCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} sem juros`}</option>}
+          {!loadingPlans && plans.map(option => (
+            <option key={option.quantity} value={option.quantity}>
+              {option.interestFree ? `${option.quantity}x de ${option.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} sem juros` : `${option.quantity}x de ${option.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} com juros`}
+            </option>
+          ))}
         </select>
       </label>
+      {selected && !selected.interestFree && (
+        <p className="checkout-installment-note">
+          {`Total com juros: ${selected.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. Taxa aplicada pelo Mercado Pago.`}
+        </p>
+      )}
       {error && <p className="form-error">{error}</p>}
       <button className="button" type="submit" disabled={loading}>
         {loading ? <LoaderCircle className="spin" size={17} /> : <LockKeyhole size={17} />}

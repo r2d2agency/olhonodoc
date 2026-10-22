@@ -269,11 +269,17 @@ model Payment {
   orderId        String
   provider       String
   externalId     String?
+  providerOrderId String?
+  method         String?
+  installments   Int?
   status         PaymentStatus @default(PENDING)
   amountCents    Int
   idempotencyKey String        @unique
   checkoutUrl    String?
   rawResponse    Json?
+  attempts       Int           @default(0)
+  lastSyncedAt   DateTime?
+  refundedAt     DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -281,6 +287,7 @@ model Payment {
 
   @@index([orderId])
   @@index([provider, externalId])
+  @@index([provider, providerOrderId])
   @@index([status])
 }
 
@@ -289,14 +296,17 @@ model PaymentEvent {
   paymentId      String?
   provider       String
   externalEventId String
+  eventType      String?
   status         PaymentEventStatus @default(RECEIVED)
   payload        Json?
+  error          String?
   createdAt      DateTime          @default(now())
   processedAt    DateTime?
   payment        Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
   @@unique([provider, externalEventId])
   @@index([paymentId])
+  @@index([createdAt])
 }
 
 model VehicleQuery {

@@ -39,14 +39,33 @@ export function validateCompanyInput(product: CompanyProduct, input: CompanyInpu
   if (product === 'conferi-crlv' && input.uf && !['SP', 'MA', 'MT', 'MG', 'PA', 'PR', 'TO'].includes(input.uf.toUpperCase())) throw new Error('UF não suportada para CRLV.');
 }
 
-export async function requestCompany(product: CompanyProduct, environment: CompanyEnvironment, credentials: { usuario: string; senha: string }, input: CompanyInput): Promise<CompanyResponse> {
-  const result = await requestCompanyDetailed(product, environment, credentials, input);
+export async function requestCompany(product: CompanyProduct, environment: CompanyEnvironment, credentials: { usuario: string; senha: string }, input: CompanyInput, endpointOverride?: string | null): Promise<CompanyResponse> {
+  const result = await requestCompanyDetailed(product, environment, credentials, input, endpointOverride);
   return result.data;
 }
 
-export async function requestCompanyDetailed(product: CompanyProduct, environment: CompanyEnvironment, credentials: { usuario: string; senha: string }, input: CompanyInput): Promise<CompanyRequestResult> {
+/**
+ * `endpointOverride` permite que o admin aponte um produto para uma URL de
+ * endpoint própria (campo `providerEndpointKey`). Só são aceitas URLs https
+ * do host oficial da Company, evitando SSRF via configuração.
+ */
+export function resolveEndpoint(product: CompanyProduct, environment: CompanyEnvironment, endpointOverride?: string | null): string {
+  const fallback = endpoints[environment][product];
+  if (!endpointOverride) return fallback;
+  let parsed: URL;
+  try { parsed = new URL(endpointOverride); }
+  catch { return fallback; }
+  if (parsed.protocol !== 'https:') return fallback;
+  // O host precisa ser o da Company ou um subdomínio dele — a comparação exige o
+  // ponto antes do domínio para não aceitar "companyconferi.com.br.exemplo.com".
+  const host = parsed.hostname.toLowerCase();
+  if (host !== 'companyconferi.com.br' && !host.endsWith('.companyconferi.com.br')) return fallback;
+  return parsed.toString();
+}
+
+export async function requestCompanyDetailed(product: CompanyProduct, environment: CompanyEnvironment, credentials: { usuario: string; senha: string }, input: CompanyInput, endpointOverride?: string | null): Promise<CompanyRequestResult> {
   validateCompanyInput(product, input);
-  const endpoint = endpoints[environment][product];
+  const endpoint = resolveEndpoint(product, environment, endpointOverride);
   const started = Date.now();
   let response: Response;
   try {

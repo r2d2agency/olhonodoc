@@ -18,6 +18,7 @@ type Props = {
 export default function PaymentMethodSelector({ orderId, publicKey, amountCents, payerEmail, payerCpf, methods, onSuccess, onError }: Props) {
   const [selected, setSelected] = useState<'card' | 'pix' | 'boleto' | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
   const [pixData, setPixData] = useState<{ qrCode: string; qrCodeBase64: string } | null>(null);
   const [boletoData, setBoletoData] = useState<{ ticketUrl: string } | null>(null);
@@ -39,10 +40,36 @@ export default function PaymentMethodSelector({ orderId, publicKey, amountCents,
       let body: any = {};
       try { body = raw ? JSON.parse(raw) : {}; } catch { throw new Error(`HTTP ${response.status} — o servidor não respondeu com JSON. Verifique o container e os logs.`); }
       if (!response.ok) throw new Error(body.error || `HTTP ${response.status} — não foi possível gerar a cobrança.`);
-      if (method === 'pix') setPixData({ qrCode: body.data.qrCode, qrCodeBase64: body.data.qrCodeBase64 });
-      else setBoletoData({ ticketUrl: body.data.ticketUrl });
+      if (method === 'pix') {
+        if (!body.data?.qrCode && !body.data?.qrCodeBase64) throw new Error('O Mercado Pago não devolveu o QR Code do Pix. Tente novamente em instantes.');
+        setPixData({ qrCode: body.data.qrCode, qrCodeBase64: body.data.qrCodeBase64 });
+      } else {
+        if (!body.data?.ticketUrl) throw new Error('O Mercado Pago não devolveu o link do boleto. Tente novamente em instantes.');
+        setBoletoData({ ticketUrl: body.data.ticketUrl });
+      }
     } catch (e) { const message = e instanceof Error ? e.message : 'Não foi possível gerar a cobrança.'; setError(message); onError(message); }
     finally { setLoading(false); }
+  }
+
+  /** "Já paguei" consulta o status real no provedor antes de liberar o cliente. */
+  async function confirmOfflinePayment() {
+    setChecking(true); setError('');
+    try {
+      const response = await fetch(`/api/checkout/payment-status?orderId=${encodeURIComponent(orderId)}`, { cache: 'no-store' });
+      const raw = await response.text();
+      let body: any = {};
+      try { body = raw ? JSON.parse(raw) : {}; } catch { throw new Error(`HTTP ${response.status} — o servidor não respondeu com JSON.`); }
+      if (!response.ok) throw new Error(body.error || 'Não foi possível consultar o status do pagamento.');
+      const status = body.data?.status;
+      if (status === 'APPROVED') { onSuccess(); return; }
+      if (['REJECTED', 'CANCELLED', 'EXPIRED', 'REFUNDED', 'CHARGEBACK'].includes(status)) {
+        throw new Error('O pagamento não foi aprovado. Confira os dados ou tente outro método de pagamento.');
+      }
+      throw new Error('Pagamento ainda não confirmado pelo banco. Aguarde alguns minutos e clique em "Já paguei" novamente.');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Não foi possível consultar o status do pagamento.';
+      setError(message); onError(message);
+    } finally { setChecking(false); }
   }
 
   if (selected === 'card') {
@@ -56,7 +83,11 @@ export default function PaymentMethodSelector({ orderId, publicKey, amountCents,
         {pixData.qrCodeBase64 && <img src={`data:image/png;base64,${pixData.qrCodeBase64}`} alt="QR Code Pix" className="checkout-pix-qr" />}
         {pixData.qrCode && <textarea readOnly value={pixData.qrCode} className="checkout-pix-code" rows={4} />}
         <p className="checkout-hint">Escaneie o QR Code com o app do seu banco para pagar. A confirmação é automática.</p>
-        <button className="button" onClick={onSuccess}><LockKeyhole size={17} /> Já paguei</button>
+        {error && <p className="form-error">{error}</p>}
+        <button className="button" onClick={confirmOfflinePayment} disabled={checking}>
+          {checking ? <LoaderCircle className="spin" size={17} /> : <LockKeyhole size={17} />}
+          {checking ? 'Verificando…' : 'Já paguei'}
+        </button>
       </div>
     );
   }
@@ -66,8 +97,12 @@ export default function PaymentMethodSelector({ orderId, publicKey, amountCents,
       <div className="checkout-offline-result">
         <div className="checkout-offline-header"><Receipt size={20} /><span>Boleto gerado</span></div>
         <p className="checkout-hint">Clique abaixo para abrir o boleto. A confirmação pode levar até 2 dias úteis.</p>
+        {error && <p className="form-error">{error}</p>}
         <a className="button" href={boletoData.ticketUrl} target="_blank" rel="noopener noreferrer"><LockKeyhole size={17} /> Abrir boleto</a>
-        <button className="button secondary" onClick={onSuccess}>Já paguei</button>
+        <button className="button secondary" onClick={confirmOfflinePayment} disabled={checking}>
+          {checking ? <LoaderCircle className="spin" size={17} /> : <LockKeyhole size={17} />}
+          {checking ? 'Verificando…' : 'Já paguei'}
+        </button>
       </div>
     );
   }

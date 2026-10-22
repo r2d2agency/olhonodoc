@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser, normalizeDigits } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { createCardPayment } from '@/lib/payment-provider';
+import { createCardPayment, getPaymentConfiguration, getMercadoPagoInstallments } from '@/lib/payment-provider';
 import { logger } from '@/lib/logger';
 
 export async function POST(request: Request) {
@@ -13,11 +13,34 @@ export async function POST(request: Request) {
     if (typeof body?.orderId !== 'string' || !body.orderId) return NextResponse.json({ error: 'orderId obrigatório.' }, { status: 400 });
     if (typeof body?.cardToken !== 'string' || !body.cardToken) return NextResponse.json({ error: 'cardToken obrigatório.' }, { status: 400 });
     if (typeof body?.paymentMethodId !== 'string' || !body.paymentMethodId) return NextResponse.json({ error: 'paymentMethodId obrigatório.' }, { status: 400 });
-    if (typeof body?.installments !== 'number' || body.installments < 1) return NextResponse.json({ error: 'Parcelas inválidas.' }, { status: 400 });
+    if (typeof body?.installments !== 'number' || !Number.isInteger(body.installments) || body.installments < 1) return NextResponse.json({ error: 'Parcelas inválidas.' }, { status: 400 });
     const order = await prisma.order.findFirst({ where: { id: body.orderId, customer: { userId: user.id } }, select: { id: true } });
     if (!order) return NextResponse.json({ error: 'Pedido não encontrado.' }, { status: 404 });
     const payerIdentification = body.payerIdentification;
     if (!payerIdentification || typeof payerIdentification.type !== 'string' || typeof payerIdentification.number !== 'string') return NextResponse.json({ error: 'Identificação do pagador obrigatória.' }, { status: 400 });
+
+    // O método precisa estar habilitado no painel; o toggle do admin vale no servidor.
+    const config = await getPaymentConfiguration();
+    if (!config.mercadopago.methods.card) {
+      void logger.warn('payment.card.method_disabled', { orderId: order.id });
+      return NextResponse.json({ error: 'Este método de pagamento não está disponível.' }, { status: 400 });
+    }
+
+    // Revalida o plano de parcelamento escolhido contra a oferta real do provedor.
+    const amountCents = await prisma.order.findUnique({ where: { id: order.id }, select: { totalCents: true, amountCents: true } }).then(row => row?.totalCents ?? row?.amountCents ?? 0);
+    try {
+      const plans = await getMercadoPagoInstallments(amountCents, body.paymentMethodId);
+      const chosen = plans.find(plan => plan.quantity === body.installments);
+      if (!chosen) {
+        void logger.warn('payment.card.installment_not_offered', { orderId: order.id, installments: body.installments });
+        return NextResponse.json({ error: 'Esta quantidade de parcelas não está disponível. Escolha outra opção.' }, { status: 400 });
+      }
+    } catch (error) {
+      // Se o provedor não conseguir listar os planos, segue com a quantidade pedida:
+      // o Mercado Pago ainda valida a parcelagem no momento da cobrança.
+      void logger.warn('payment.card.installment_check_unavailable', { orderId: order.id, message: error instanceof Error ? error.message : 'erro' });
+    }
+
     void logger.info('payment.card.validated', { orderId: order.id, method: body.paymentMethodId, installments: body.installments });
     const result = await createCardPayment(order.id, {
       cardToken: body.cardToken,
@@ -37,7 +60,15 @@ export async function POST(request: Request) {
     if (code.startsWith('MP_ERROR: ')) return NextResponse.json({ error: code.slice(9) }, { status: 502 });
     if (code === 'MP_TIMEOUT') return NextResponse.json({ error: 'O Mercado Pago demorou demais para responder. Tente novamente.' }, { status: 504 });
     if (code === 'MP_UNREACHABLE') return NextResponse.json({ error: 'Não foi possível conectar ao Mercado Pago. Verifique a rede do servidor.' }, { status: 502 });
-    const status = code === 'PAYMENT_PROVIDER_NOT_CONFIGURED' ? 503 : code === 'ORDER_NOT_PAYABLE' ? 409 : code === 'ORDER_INVALID_AMOUNT' ? 409 : 502;
-    return NextResponse.json({ error: status === 503 ? 'Pagamento ainda não configurado.' : status === 409 ? 'Este pedido não pode ser pago.' : 'Não foi possível processar o pagamento.' }, { status });
+    const status = code === 'PAYMENT_PROVIDER_NOT_CONFIGURED' ? 503
+      : code === 'PAYMENT_METHOD_DISABLED' ? 400
+      : code === 'ORDER_NOT_PAYABLE' ? 409
+      : code === 'ORDER_INVALID_AMOUNT' ? 409
+      : 502;
+    const message = status === 503 ? 'Pagamento ainda não configurado.'
+      : status === 400 ? 'Este método de pagamento não está disponível.'
+      : status === 409 ? 'Este pedido não pode ser pago.'
+      : 'Não foi possível processar o pagamento.';
+    return NextResponse.json({ error: message }, { status });
   }
 }
