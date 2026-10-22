@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { validMercadoPagoSignature, processPaymentEvent, providerPaymentStatus } from '@/lib/payment-webhook';
-import { logger } from '@/lib/logger';
+import { logger, logRequest } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,7 @@ function rateLimited(ip: string) {
   return entry.count > MAX_REQUESTS_PER_WINDOW;
 }
 
-export async function POST(request: Request) {
+const POST = logRequest('webhook.mercadopago', async (request: Request) => {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   if (rateLimited(ip)) {
     void logger.warn('webhook.mercadopago.rate_limited', { ip });
@@ -45,4 +45,6 @@ export async function POST(request: Request) {
     void logger.error('webhook.mercadopago.failed', { dataId, eventType, eventId, message: error instanceof Error ? error.message : 'erro' });
     return NextResponse.json({ error: 'Não foi possível processar o evento.' }, { status: 502 });
   }
-}
+});
+
+export { POST };

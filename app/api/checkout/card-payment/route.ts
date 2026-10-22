@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser, normalizeDigits } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createCardPayment, getPaymentConfiguration, getMercadoPagoInstallments } from '@/lib/payment-provider';
-import { logger } from '@/lib/logger';
+import { logger, logRequest } from '@/lib/logger';
 
-export async function POST(request: Request) {
+export const dynamic = 'force-dynamic';
+
+const POST = logRequest('checkout.card-payment', async (request: Request) => {
   void logger.info('payment.card.received', { hasAuth: Boolean(request.headers.get('cookie')) });
   try {
     const user = await getCurrentUser();
@@ -71,4 +73,6 @@ export async function POST(request: Request) {
       : 'Não foi possível processar o pagamento.';
     return NextResponse.json({ error: message }, { status });
   }
-}
+});
+
+export { POST };

@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser, normalizeDigits } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createOfflinePayment, getPaymentConfiguration } from '@/lib/payment-provider';
-import { logger } from '@/lib/logger';
+import { logger, logRequest } from '@/lib/logger';
 
-export async function POST(request: Request) {
+export const dynamic = 'force-dynamic';
+
+const POST = logRequest('checkout.offline-payment', async (request: Request) => {
   void logger.info('payment.offline.received', { hasAuth: Boolean(request.headers.get('cookie')) });
   try {
     const user = await getCurrentUser();
@@ -44,4 +46,6 @@ export async function POST(request: Request) {
     const status = code === 'PAYMENT_PROVIDER_NOT_CONFIGURED' ? 503 : code === 'ORDER_NOT_PAYABLE' ? 409 : code === 'ORDER_INVALID_AMOUNT' ? 409 : 502;
     return NextResponse.json({ error: status === 503 ? 'Pagamento ainda não configurado.' : status === 409 ? 'Este pedido não pode ser pago.' : 'Não foi possível gerar a cobrança.' }, { status });
   }
-}
+});
+
+export { POST };

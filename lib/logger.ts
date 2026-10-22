@@ -26,7 +26,10 @@ async function fileSize(file: string) { try { return (await stat(file)).size; } 
 export async function log(level: LogLevel, event: string, data?: Record<string, unknown>) {
   const entry = { ts: timestamp(), level, event, ...(data || {}) };
   const line = JSON.stringify(entry) + '\n';
+  // Sempre no stdout: em produção o painel de logs lê o arquivo, mas o console
+  // é o que fica disponível quando o container morre ou o proxy devolve 502.
   if (process.env.NODE_ENV !== 'production') console.log(`[${level}] ${event}`, data ? JSON.stringify(data) : '');
+  else console.log(line.trim());
   try {
     await mkdir(LOG_DIR, { recursive: true });
     const file = await currentFile();
@@ -41,6 +44,38 @@ export const logger = {
   warn: (event: string, data?: Record<string, unknown>) => log('warn', event, data),
   error: (event: string, data?: Record<string, unknown>) => log('error', event, data),
 };
+
+/**
+ * Envolve um route handler para que toda requisição — com sucesso ou erro — deixe
+ * rastro no painel de logs do admin, e para que a resposta seja sempre JSON
+ * (um erro não tratado quebraria o cliente, que espera JSON).
+ */
+export function logRequest<T>(area: string, handler: (request: Request) => Promise<Response>): (request: Request) => Promise<Response> {
+  return async (request: Request) => {
+    const started = Date.now();
+    const path = new URL(request.url).pathname;
+    await log('info', 'http.request', { area, method: request.method, path });
+    try {
+      const response = await handler(request);
+      await log(response.ok ? 'info' : 'warn', 'http.response', {
+        area,
+        method: request.method,
+        path,
+        status: response.status,
+        durationMs: Date.now() - started,
+      });
+      return response;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'erro';
+      const stack = error instanceof Error ? (error.stack || '').slice(0, 500) : '';
+      await log('error', 'http.unhandled_error', { area, method: request.method, path, durationMs: Date.now() - started, message, stack });
+      return new Response(JSON.stringify({ error: 'Erro interno no servidor. Tente novamente em instantes.' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      });
+    }
+  };
+}
 
 export async function readLogs(limit = 200) {
   try {

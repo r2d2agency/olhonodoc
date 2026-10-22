@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { buildInstallmentOptions, getMercadoPagoInstallments, getPaymentConfiguration } from '@/lib/payment-provider';
-import { logger } from '@/lib/logger';
+import { logger, logRequest } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * Retorna a taxa de juros de cada plano para que o checkout só rotule "sem juros"
  * quando a taxa vier efetivamente zerada do provedor.
  */
-export async function GET(request: Request) {
+const GET = logRequest('checkout.installments', async (request: Request) => {
   try {
     const user = await getCurrentUser();
     if (!user || user.role !== 'CUSTOMER') return NextResponse.json({ error: 'Faça login para continuar.' }, { status: 401 });
@@ -41,4 +41,6 @@ export async function GET(request: Request) {
     void logger.error('checkout.installments.failed', { message: error instanceof Error ? error.message : 'erro' });
     return NextResponse.json({ error: 'Não foi possível carregar as parcelas.' }, { status: 500 });
   }
-}
+});
+
+export { GET };

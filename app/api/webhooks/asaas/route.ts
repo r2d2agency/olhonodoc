@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { getPaymentConfiguration } from '@/lib/payment-provider';
 import { providerPaymentStatus, processPaymentEvent } from '@/lib/payment-webhook';
-import { logger } from '@/lib/logger';
+import { logger, logRequest } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +26,7 @@ function safeEqual(left: string, right: string) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export async function POST(request: Request) {
+const POST = logRequest('webhook.asaas', async (request: Request) => {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   if (rateLimited(ip)) return NextResponse.json({ error: 'Muitas requisições.' }, { status: 429 });
   const config = await getPaymentConfiguration();
@@ -59,4 +59,6 @@ export async function POST(request: Request) {
     void logger.error('webhook.asaas.failed', { externalId, eventId, message: error instanceof Error ? error.message : 'erro' });
     return NextResponse.json({ error: 'Não foi possível processar o evento.' }, { status: 502 });
   }
-}
+});
+
+export { POST };

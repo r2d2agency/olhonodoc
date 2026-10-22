@@ -5,16 +5,24 @@ import { RefreshCw } from 'lucide-react';
 
 type LogEntry = { ts: string; level: string; event: string; [key: string]: unknown };
 
+const LEVELS = [
+  { value: 'ALL', label: 'Todos' },
+  { value: 'error', label: 'Erros' },
+  { value: 'warn', label: 'Avisos' },
+  { value: 'info', label: 'Info' },
+];
+
 export default function AdminLogsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
+  const [level, setLevel] = useState('ALL');
 
   async function load() {
     setLoading(true); setError('');
     try {
-      const response = await fetch('/api/admin/logs?limit=300');
+      const response = await fetch('/api/admin/logs?limit=500');
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Não foi possível carregar os logs.');
       setLogs(body.data || []);
@@ -24,7 +32,9 @@ export default function AdminLogsPage() {
 
   useEffect(() => { void load(); }, []);
 
-  const filtered = filter ? logs.filter(entry => JSON.stringify(entry).toLowerCase().includes(filter.toLowerCase())) : logs;
+  const byLevel = level === 'ALL' ? logs : logs.filter(entry => entry.level === level);
+  const filtered = filter ? byLevel.filter(entry => JSON.stringify(entry).toLowerCase().includes(filter.toLowerCase())) : byLevel;
+  const errorCount = logs.filter(entry => entry.level === 'error').length;
 
   return (
     <main className="admin-cms">
@@ -32,23 +42,36 @@ export default function AdminLogsPage() {
         <div>
           <span className="admin-cms-kicker">SISTEMA / DIAGNÓSTICO</span>
           <h1>Logs do sistema</h1>
-          <p>Eventos e erros registrados pela aplicação, com contexto para diagnóstico.</p>
+          <p>Tudo que a aplicação registrou: requisições, acertos e erros, com contexto para diagnóstico.</p>
         </div>
         <button className="admin-cms-primary" onClick={() => void load()} disabled={loading}>
           <RefreshCw size={15} className={loading ? 'spin' : ''} /> Atualizar
         </button>
       </header>
 
-      <div className="admin-order-table-search">
-        <input
-          className="admin-input"
-          placeholder="Filtrar logs (ex.: offline-payment, error)"
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-        />
-      </div>
-
       {error && <div className="admin-cms-message error">{error}</div>}
+
+      <section className="admin-order-summary">
+        <span>Eventos: <strong>{logs.length}</strong></span>
+        <span>Erros: <strong>{errorCount}</strong></span>
+        <span>Exibindo: <strong>{filtered.length}</strong></span>
+      </section>
+
+      <section className="admin-cms-card admin-payment-filters">
+        <label>Nível
+          <select value={level} onChange={e => setLevel(e.target.value)}>
+            {LEVELS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
+        </label>
+        <label>Buscar
+          <input
+            className="admin-input"
+            placeholder="ex.: offline-payment, webhook, MP_ERROR"
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+          />
+        </label>
+      </section>
 
       <div className="admin-order-table">
         <table>

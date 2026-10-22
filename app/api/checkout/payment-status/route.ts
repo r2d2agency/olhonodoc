@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { processPaymentEvent, providerPaymentStatus } from '@/lib/payment-webhook';
-import { logger } from '@/lib/logger';
+import { logger, logRequest } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * Consulta o status real de um pagamento no provedor. Serve ao botão "Já paguei",
  * que até agora apenas redirecionava o cliente sem confirmar nada.
  */
-export async function GET(request: Request) {
+const GET = logRequest('checkout.payment-status', async (request: Request) => {
   try {
     const user = await getCurrentUser();
     if (!user || user.role !== 'CUSTOMER') return NextResponse.json({ error: 'Faça login para continuar.' }, { status: 401 });
@@ -41,4 +41,6 @@ export async function GET(request: Request) {
     void logger.error('checkout.payment_status.failed', { message: error instanceof Error ? error.message : 'erro' });
     return NextResponse.json({ error: 'Não foi possível consultar o status do pagamento.' }, { status: 502 });
   }
-}
+});
+
+export { GET };
