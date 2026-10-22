@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { OrderStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin, requireSuperadmin } from '@/lib/auth';
+import { syncRedemptionCount } from '@/lib/coupons';
 
 export async function GET(request: Request) {
   const user = await requireAdmin();
@@ -26,7 +27,7 @@ export async function PATCH(request: Request) {
       const updated = await tx.order.update({ where: { id: body.id }, data: { status: body.status } });
       if (body.status === 'CANCELLED' && existing.redemption && !existing.redemption.reversedAt) {
         await tx.couponRedemption.update({ where: { id: existing.redemption.id }, data: { reversedAt: new Date() } });
-        await tx.coupon.update({ where: { id: existing.redemption.couponId }, data: { redemptionCount: { decrement: 1 } } });
+        await syncRedemptionCount(tx, existing.redemption.couponId);
       }
       return updated;
     });

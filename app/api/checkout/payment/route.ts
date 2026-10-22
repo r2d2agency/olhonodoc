@@ -24,12 +24,15 @@ export async function POST(request: Request) {
     // o cliente não ficar dependente do navegador aberto.
     if (user.email) {
       try {
-        const full = await (await import('@/lib/prisma')).prisma.order.findUnique({ where: { id: order.id }, select: { plate: true, totalCents: true, amountCents: true, product: { select: { name: true } } } });
+        const full = await (await import('@/lib/prisma')).prisma.order.findUnique({ where: { id: order.id }, select: { plate: true, totalCents: true, amountCents: true, subtotalCents: true, discountCents: true, coupon: { select: { code: true } }, product: { select: { name: true } } } });
         await sendPaymentChargeEmail(user.email, {
           orderId: order.id,
           plate: full?.plate || '',
           productName: full?.product?.name || 'Consulta veicular',
           amountCents: full?.totalCents ?? full?.amountCents ?? 0,
+          subtotalCents: full?.subtotalCents ?? undefined,
+          discountCents: full?.discountCents || undefined,
+          couponCode: full?.coupon?.code,
           method: 'link',
           ticketUrl: payment.checkoutUrl || undefined,
         });

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, CarFront, Check, CircleHelp, Clock3, CreditCard, LoaderCircle, LockKeyhole, MapPin, ShieldCheck, User } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CarFront, Check, CircleHelp, Clock3, CreditCard, LoaderCircle, LockKeyhole, MapPin, ShieldCheck, Tag, User } from 'lucide-react';
 import type { CatalogProduct } from '@/lib/catalog';
 import { captureAttribution, trackEvent } from '@/lib/tracking';
 import PaymentMethodSelector from './payment-method-selector';
@@ -17,7 +17,8 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
-  const [order, setOrder] = useState<{ orderId: string; amountCents: number | null } | null>(null);
+  const [order, setOrder] = useState<{ orderId: string; amountCents: number | null; subtotalCents: number; discountCents: number; totalCents: number; couponCode: string | null } | null>(null);
+  const orderAmountCents = order ? (order.totalCents ?? order.amountCents ?? 0) : 0;
   const [loading, setLoading] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [aggregate, setAggregate] = useState<Aggregate | null>(null);
@@ -29,6 +30,29 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<{ card: boolean; pix: boolean; boleto: boolean }>({ card: true, pix: true, boleto: true });
   const [payerEmail, setPayerEmail] = useState('');
+  const [couponCode, setCouponCode] = useState('');
+  const [coupon, setCoupon] = useState<{ code: string; discountCents: number; subtotalCents: number; totalCents: number } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
+
+  const brl = (cents: number) => (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  async function applyCoupon() {
+    const code = couponCode.trim();
+    if (!code) { setCouponError('Informe o código do cupom.'); return; }
+    setCouponLoading(true); setCouponError('');
+    try {
+      const response = await fetch('/api/checkout/coupon', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, productSlug: product.slug }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Não foi possível aplicar o cupom.');
+      setCoupon(body.data); setCouponCode(body.data.code);
+    } catch (e) { setCoupon(null); setCouponError(e instanceof Error ? e.message : 'Não foi possível aplicar o cupom.'); }
+    finally { setCouponLoading(false); }
+  }
+
+  function removeCoupon() {
+    setCoupon(null); setCouponCode(''); setCouponError('');
+  }
 
   useEffect(() => {
     fetch('/api/account/profile').then(r => r.json()).then(body => { if (body.data) { setCpf(body.data.cpf || ''); setPhone(body.data.phone || ''); setPayerEmail(body.data.email || ''); const a = body.data; setAddress({ postalCode: a.postalCode || '', street: a.street || '', number: a.number || '', complement: a.complement || '', neighborhood: a.neighborhood || '', city: a.city || '', state: a.state || '' }); } }).catch(() => undefined);
@@ -63,7 +87,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     if (!payerEmail) { setError('Não foi possível identificar seu e-mail. Recarregue a página e entre novamente com sua conta.'); return; }
     setLoading(true); setError('');
     try {
-      const response = await fetch('/api/checkout/prepare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productSlug: product.slug, plate, cpf, phone, address }) });
+      const response = await fetch('/api/checkout/prepare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productSlug: product.slug, plate, cpf, phone, address, couponCode: coupon ? coupon.code : '' }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error);
       setOrder(body.data);
@@ -91,7 +115,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     finally { setPaymentLoading(false); }
   }
 
-  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="done">2</span><span className="active">3</span></span><span className="eyebrow">PEDIDO PREPARADO</span><h1>Seu pedido está pronto para pagamento.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> criado com sucesso. Continue para o ambiente seguro do provedor de pagamento.</p><div className="checkout-order-summary"><div><small>Produto</small><strong>{product.name}</strong></div><div><small>Placa</small><strong>{plate}</strong></div><div><small>Valor</small><strong>{product.price}</strong></div></div>{error && <p className="form-error">{error}</p>}{!paymentProvider && <button className="button" onClick={pay} disabled={paymentLoading}>{paymentLoading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {paymentLoading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={order.amountCents || 0} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} onSuccess={() => { window.location.assign('/minha-conta'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}<Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
+  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="done">2</span><span className="active">3</span></span><span className="eyebrow">PEDIDO PREPARADO</span><h1>Seu pedido está pronto para pagamento.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> criado com sucesso. Continue para o ambiente seguro do provedor de pagamento.</p><div className="checkout-order-summary"><div><small>Produto</small><strong>{product.name}</strong></div><div><small>Placa</small><strong>{plate}</strong></div>{order.couponCode && <div><small>Cupom</small><strong>{order.couponCode}</strong></div>}{order.discountCents > 0 && <div><small>Desconto</small><strong>-{brl(order.discountCents)}</strong></div>}<div><small>Valor</small><strong>{brl(order.totalCents)}</strong></div></div>{error && <p className="form-error">{error}</p>}{!paymentProvider && <button className="button" onClick={pay} disabled={paymentLoading}>{paymentLoading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {paymentLoading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={orderAmountCents} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} onSuccess={() => { window.location.assign('/minha-conta'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}<Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
 
   return <main className="checkout-page"><div className="checkout-shell">
     <section className="checkout-card">
@@ -135,6 +159,17 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
           <button type="button" className="checkout-edit-btn" onClick={() => setStep(1)}><ArrowLeft size={14}/> Editar</button>
         </div>
         <div className="checkout-section">
+          <h3><Tag size={16}/> Cupom de desconto</h3>
+          {coupon ? <div className="checkout-coupon-applied">
+            <div><strong>{coupon.code}</strong><small>Desconto de {brl(coupon.discountCents)} aplicado</small></div>
+            <button type="button" className="checkout-edit-btn" onClick={removeCoupon}>Remover</button>
+          </div> : <div className="checkout-coupon-form">
+            <input value={couponCode} onChange={e => setCouponCode(e.target.value)} placeholder="Código do cupom" aria-label="Código do cupom" maxLength={32}/>
+            <button type="button" className="button secondary" onClick={applyCoupon} disabled={couponLoading}>{couponLoading ? <LoaderCircle className="spin" size={15}/> : null} {couponLoading ? 'Validando…' : 'Aplicar'}</button>
+          </div>}
+          {couponError && <p className="form-error">{couponError}</p>}
+        </div>
+        <div className="checkout-section">
           <h3><CreditCard size={16}/> Pagamento</h3>
           <p className="checkout-hint">O pagamento será processado de forma transparente, sem redirecionamento externo.</p>
         </div>
@@ -165,7 +200,9 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
       {aggregate && <div className="checkout-aggregate-grid">
         {[['Marca', 'marca'], ['Modelo', 'modelo'], ['Ano', 'anoModelo'], ['Cor', 'cor'], ['Combustível', 'combustivel'], ['Situação', 'situacao'], ['UF', 'Uf'], ['Município', 'municipio']].map(([label, key]) => <div key={key}><small>{label}</small><strong>{String(aggregate[key] || 'Não informado')}</strong></div>)}
       </div>}
-      <div className="checkout-price-row"><span>Total</span><strong className="checkout-price">{product.price}</strong></div>
+      <div className="checkout-price-row"><span>Subtotal</span><strong className="checkout-price">{brl(coupon ? coupon.subtotalCents : product.priceCents)}</strong></div>
+      {coupon && coupon.discountCents > 0 && <div className="checkout-price-row checkout-price-discount"><span>Desconto ({coupon.code})</span><strong>-{brl(coupon.discountCents)}</strong></div>}
+      <div className="checkout-price-row"><span>Total</span><strong className="checkout-price">{coupon ? brl(coupon.totalCents) : brl(product.priceCents)}</strong></div>
       <div className="checkout-secure"><ShieldCheck size={14}/> Pagamento processado pelo provedor configurado</div>
     </aside>
   </div></main>;

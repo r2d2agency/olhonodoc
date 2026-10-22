@@ -36,6 +36,11 @@ type PaymentChargeEmail = {
   qrCode?: string;
   qrCodeBase64?: string;
   ticketUrl?: string;
+  /** Valor antes do desconto, quando houver cupom. */
+  subtotalCents?: number;
+  /** Desconto já abatido, em centavos. */
+  discountCents?: number;
+  couponCode?: string;
 };
 
 /**
@@ -50,6 +55,9 @@ export async function sendPaymentChargeEmail(email: string, charge: PaymentCharg
   const valor = (charge.amountCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const pedido = charge.orderId.slice(-8).toUpperCase();
   const metodo = charge.method === 'pix' ? 'Pix' : charge.method === 'boleto' ? 'Boleto' : charge.method === 'link' ? 'Link de pagamento' : 'Cartão de crédito';
+  const descontoTexto = charge.discountCents
+    ? ` Cupom ${charge.couponCode || 'aplicado'}: -${(charge.discountCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} de desconto.`
+    : '';
 
   let instrucao = '';
   let acao = '';
@@ -67,11 +75,13 @@ export async function sendPaymentChargeEmail(email: string, charge: PaymentCharg
     instrucao = 'Registramos o pagamento com o cartão informado no checkout. O pedido é liberado assim que a aprovação é confirmada.';
   }
 
-  const text = `Olá! Geramos sua cobrança de ${valor} (${metodo}) para a consulta ${charge.productName} — placa ${charge.plate}, pedido ${pedido}.\n\n${instrucao}\n\nEste e-mail foi enviado para ${email}, o mesmo endereço usado na cobrança.`;
+  const text = `Olá! Geramos sua cobrança de ${valor} (${metodo}) para a consulta ${charge.productName} — placa ${charge.plate}, pedido ${pedido}.${descontoTexto}\n\n${instrucao}\n\nEste e-mail foi enviado para ${email}, o mesmo endereço usado na cobrança.`;
   const html = `<div style="font-family:Arial,sans-serif;max-width:560px">
     <h2 style="color:#183b55;margin:0 0 6px">Sua cobrança está pronta</h2>
     <p style="color:#5a6d7a;margin:0 0 20px">Pedido <strong>${pedido}</strong> · ${charge.productName} · placa ${charge.plate}</p>
     <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+      ${charge.subtotalCents != null && charge.discountCents ? `<tr><td style="padding:10px 0;color:#5a6d7a">Subtotal</td><td style="padding:10px 0;text-align:right">${(charge.subtotalCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td></tr>` : ''}
+      ${charge.discountCents ? `<tr><td style="padding:10px 0;color:#5a6d7a">Desconto${charge.couponCode ? ` (${charge.couponCode})` : ''}</td><td style="padding:10px 0;text-align:right">-${(charge.discountCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td></tr>` : ''}
       <tr><td style="padding:10px 0;color:#5a6d7a">Valor</td><td style="padding:10px 0;text-align:right"><strong style="font-size:18px">${valor}</strong></td></tr>
       <tr><td style="padding:10px 0;color:#5a6d7a">Forma de pagamento</td><td style="padding:10px 0;text-align:right">${metodo}</td></tr>
       <tr><td style="padding:10px 0;color:#5a6d7a">E-mail da cobrança</td><td style="padding:10px 0;text-align:right">${email}</td></tr>

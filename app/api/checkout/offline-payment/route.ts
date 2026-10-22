@@ -20,7 +20,7 @@ const POST = logRequest('checkout.offline-payment', async (request: Request) => 
     const config = await getPaymentConfiguration();
     const enabled = method === 'pix' ? config.mercadopago.methods.pix : config.mercadopago.methods.boleto;
     if (!enabled) return NextResponse.json({ error: 'Este método de pagamento não está disponível.' }, { status: 400 });
-    const order = await prisma.order.findFirst({ where: { id: body.orderId, customer: { userId: user.id } }, select: { id: true, plate: true, totalCents: true, amountCents: true, product: { select: { name: true } } } });
+    const order = await prisma.order.findFirst({ where: { id: body.orderId, customer: { userId: user.id } }, select: { id: true, plate: true, totalCents: true, amountCents: true, subtotalCents: true, discountCents: true, coupon: { select: { code: true } }, product: { select: { name: true } } } });
     if (!order) return NextResponse.json({ error: 'Pedido não encontrado.' }, { status: 404 });
     const payerIdentification = body.payerIdentification;
     if (!payerIdentification || typeof payerIdentification.type !== 'string' || typeof payerIdentification.number !== 'string') return NextResponse.json({ error: 'Identificação do pagador obrigatória.' }, { status: 400 });
@@ -49,6 +49,9 @@ const POST = logRequest('checkout.offline-payment', async (request: Request) => 
           plate: order.plate,
           productName: order.product?.name || 'Consulta veicular',
           amountCents: order.totalCents ?? order.amountCents ?? 0,
+          subtotalCents: order.subtotalCents ?? undefined,
+          discountCents: order.discountCents || undefined,
+          couponCode: order.coupon?.code,
           method: method === 'pix' ? 'pix' : 'boleto',
           qrCode: result.qrCode,
           qrCodeBase64: result.qrCodeBase64,

@@ -17,7 +17,7 @@ const POST = logRequest('checkout.card-payment', async (request: Request) => {
     if (typeof body?.cardToken !== 'string' || !body.cardToken) return NextResponse.json({ error: 'cardToken obrigatório.' }, { status: 400 });
     if (typeof body?.paymentMethodId !== 'string' || !body.paymentMethodId) return NextResponse.json({ error: 'paymentMethodId obrigatório.' }, { status: 400 });
     if (typeof body?.installments !== 'number' || !Number.isInteger(body.installments) || body.installments < 1) return NextResponse.json({ error: 'Parcelas inválidas.' }, { status: 400 });
-    const order = await prisma.order.findFirst({ where: { id: body.orderId, customer: { userId: user.id } }, select: { id: true, plate: true, totalCents: true, amountCents: true, product: { select: { name: true } } } });
+    const order = await prisma.order.findFirst({ where: { id: body.orderId, customer: { userId: user.id } }, select: { id: true, plate: true, totalCents: true, amountCents: true, subtotalCents: true, discountCents: true, coupon: { select: { code: true } }, product: { select: { name: true } } } });
     if (!order) return NextResponse.json({ error: 'Pedido não encontrado.' }, { status: 404 });
     const payerIdentification = body.payerIdentification;
     if (!payerIdentification || typeof payerIdentification.type !== 'string' || typeof payerIdentification.number !== 'string') return NextResponse.json({ error: 'Identificação do pagador obrigatória.' }, { status: 400 });
@@ -68,6 +68,9 @@ const POST = logRequest('checkout.card-payment', async (request: Request) => {
           plate: order.plate,
           productName: order.product?.name || 'Consulta veicular',
           amountCents: order.totalCents ?? order.amountCents ?? 0,
+          subtotalCents: order.subtotalCents ?? undefined,
+          discountCents: order.discountCents || undefined,
+          couponCode: order.coupon?.code,
           method: 'card',
         });
         void logger.info('payment.card.email_sent', { orderId: order.id, status: result.status });

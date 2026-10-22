@@ -57,13 +57,13 @@ export const logger = {
  * rastro no painel de logs do admin, e para que a resposta seja sempre JSON
  * (um erro não tratado quebraria o cliente, que espera JSON).
  */
-export function logRequest<T>(area: string, handler: (request: Request) => Promise<Response>): (request: Request) => Promise<Response> {
-  return async (request: Request) => {
+export function logRequest<T extends unknown[]>(area: string, handler: (request: Request, ...args: T) => Promise<Response>): (request: Request, ...args: T) => Promise<Response> {
+  return async (request: Request, ...args: T) => {
     const started = Date.now();
     const path = new URL(request.url).pathname;
     await log('info', 'http.request', { area, method: request.method, path });
     try {
-      const response = await handler(request);
+      const response = await handler(request, ...args);
       await log(response.ok ? 'info' : 'warn', 'http.response', {
         area,
         method: request.method,
