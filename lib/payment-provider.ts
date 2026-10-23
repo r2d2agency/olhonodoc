@@ -175,12 +175,22 @@ async function readProviderBody(response: Response) {
 
 /**
  * O Mercado Pago devolve os dados do Pix e do boleto em `point_of_interaction.transaction_data`.
- * Também aceita as variantes `transaction_details` e `payment_method` para cobrir payloads de
- * Checkout Pro, onde a estrutura vem no formato antigo.
+ * Na Orders API (`/v1/orders`) esse bloco fica dentro de `transactions.payments[]`, cada
+ * pagamento com o seu próprio `payment_method`. No Checkout Pro e na API clássica de
+ * pagamentos (`/v1/payments`) a estrutura vem na raiz, então as duas formas são aceitas.
  */
 function extractQrCode(rawResponse: any) {
+  const payments: any[] = Array.isArray(rawResponse?.transactions?.payments) ? rawResponse.transactions.payments : [];
   const candidates = [
+    ...payments.flatMap((payment: any) => [
+      payment?.payment_method?.point_of_interaction?.transaction_data,
+      payment?.payment_method?.transaction_data,
+      payment?.point_of_interaction?.transaction_data,
+      payment?.transaction_details,
+      payment,
+    ]),
     rawResponse?.point_of_interaction?.transaction_data,
+    rawResponse?.payment_method?.point_of_interaction?.transaction_data,
     rawResponse?.payment_method?.transaction_data,
     rawResponse?.transaction_details,
     rawResponse?.transaction_details?.external_resource_url ? { ticket_url: rawResponse.transaction_details.external_resource_url } : null,
@@ -386,11 +396,10 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
     offlineDetails = await fetchOfflinePaymentDetails(config.environment, config.mercadopago.accessToken, externalId, orderExternalId);
   }
   if (!offlineDetails.qrCode && !offlineDetails.qrCodeBase64 && !offlineDetails.ticketUrl) {
-    // A Orders API respondeu 200 mas não há QR/link nem no detalhe do pagamento.
-    // No Pix isso quase sempre é conta recebedora sem chave Pix cadastrada: o
-    // Mercado Pago nunca vai renderizar o QR, então repetir a tentativa só cria
-    // outro pedido pendente. Falhar aqui é melhor do que devolver 200 vazio.
-    void logger.error('payment.offline.details_empty', { orderId, method: input.paymentMethodId, providerOrderId: orderExternalId, hint: isPix ? 'cadastre uma chave Pix na conta recebedora do Mercado Pago' : 'verifique o método no painel do Mercado Pago' });
+    // A Orders API respondeu 200 mas não há QR/link nem no detalhe do pagamento,
+    // mesmo depois de repetir a busca. Sem esse dado não há como o cliente pagar,
+    // então falhar aqui é melhor do que devolver 200 vazio.
+    void logger.error('payment.offline.details_empty', { orderId, method: input.paymentMethodId, providerOrderId: orderExternalId, hint: isPix ? 'o Mercado Pago aceitou a cobrança mas não devolveu o QR Code do Pix; verifique a chave Pix e o método no painel do Mercado Pago' : 'verifique o método no painel do Mercado Pago' });
     if (isPix) throw new Error('MP_PIX_KEY_MISSING');
     throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE');
   }
@@ -472,28 +481,49 @@ async function createOfflinePaymentViaPaymentsApi(
   return { payment, status, ...details };
 }
 
-/** Busca o QR Code do Pix / o link do boleto no recurso de pagamento do Mercado Pago. */
+const OFFLINE_DETAILS_ATTEMPTS = 4;
+const OFFLINE_DETAILS_DELAY_MS = 1200;
+// Orçamento total da busca: com o QR assíncrono o Pix costuma aparecer em 2-3s,
+// mas a rota não pode ficar pendurada esperando por isso.
+const OFFLINE_DETAILS_BUDGET_MS = 8000;
+
+/**
+ * Busca o QR Code do Pix / o link do boleto no recurso de pagamento do Mercado Pago.
+ *
+ * O Pix é gerado de forma assíncrona: a order é aceita e o QR Code só aparece
+ * alguns segundos depois no recurso de pagamento. Por isso a busca é repetida
+ * algumas vezes antes de concluir que o dado realmente não existe.
+ */
 async function fetchOfflinePaymentDetails(environment: PaymentEnvironment, accessToken: string, paymentId: string, providerOrderId: string) {
   const headers = { Authorization: `Bearer ${accessToken}` };
-  try {
-    const paymentResponse = await fetch(`${mpHost(environment)}/v1/payments/${encodeURIComponent(paymentId)}`, { headers, signal: AbortSignal.timeout(10000) });
-    if (paymentResponse.ok) {
-      const data = await paymentResponse.json();
-      const details = extractQrCode(data);
-      if (details.qrCode || details.qrCodeBase64 || details.ticketUrl) return details;
+  const deadline = Date.now() + OFFLINE_DETAILS_BUDGET_MS;
+  const remaining = () => deadline - Date.now();
+  const timeout = () => AbortSignal.timeout(Math.max(1000, Math.min(4000, remaining())));
+  for (let attempt = 0; attempt < OFFLINE_DETAILS_ATTEMPTS; attempt++) {
+    if (attempt > 0) {
+      if (remaining() <= OFFLINE_DETAILS_DELAY_MS) break;
+      await new Promise(resolve => setTimeout(resolve, OFFLINE_DETAILS_DELAY_MS));
     }
-  } catch (error) {
-    void logger.warn('payment.offline.details_fetch_failed', { paymentId, message: error instanceof Error ? error.message : 'erro' });
-  }
-  try {
-    const orderResponse = await fetch(`${mpHost(environment)}/v1/orders/${encodeURIComponent(providerOrderId)}`, { headers, signal: AbortSignal.timeout(10000) });
-    if (orderResponse.ok) {
-      const data = await orderResponse.json();
-      const details = extractQrCode(data);
-      if (details.qrCode || details.qrCodeBase64 || details.ticketUrl) return details;
+    if (remaining() <= 0) break;
+    try {
+      const paymentResponse = await fetch(`${mpHost(environment)}/v1/payments/${encodeURIComponent(paymentId)}`, { headers, signal: timeout() });
+      if (paymentResponse.ok) {
+        const details = extractQrCode(await paymentResponse.json());
+        if (details.qrCode || details.qrCodeBase64 || details.ticketUrl) return details;
+      }
+    } catch (error) {
+      void logger.warn('payment.offline.details_fetch_failed', { paymentId, attempt, message: error instanceof Error ? error.message : 'erro' });
     }
-  } catch (error) {
-    void logger.warn('payment.offline.order_details_fetch_failed', { providerOrderId, message: error instanceof Error ? error.message : 'erro' });
+    if (remaining() <= 0) break;
+    try {
+      const orderResponse = await fetch(`${mpHost(environment)}/v1/orders/${encodeURIComponent(providerOrderId)}`, { headers, signal: timeout() });
+      if (orderResponse.ok) {
+        const details = extractQrCode(await orderResponse.json());
+        if (details.qrCode || details.qrCodeBase64 || details.ticketUrl) return details;
+      }
+    } catch (error) {
+      void logger.warn('payment.offline.order_details_fetch_failed', { providerOrderId, attempt, message: error instanceof Error ? error.message : 'erro' });
+    }
   }
   void logger.warn('payment.offline.no_qr_or_ticket', { paymentId, providerOrderId });
   return { qrCode: '', qrCodeBase64: '', ticketUrl: '' };

@@ -69,7 +69,7 @@ const POST = logRequest('checkout.offline-payment', async (request: Request) => 
     const stack = error instanceof Error ? (error.stack || '').slice(0, 300) : '';
     void logger.error('payment.offline.route_failed', { code, stack });
     if (code.startsWith('MP_ERROR: ')) return NextResponse.json({ error: `O Mercado Pago recusou a cobrança: ${code.slice(9)}` }, { status: 502 });
-    if (code === 'MP_PIX_KEY_MISSING') return NextResponse.json({ error: 'Não foi possível gerar o Pix porque a conta do Mercado Pago que recebe o pagamento não tem chave Pix cadastrada. Cadastre uma chave Pix na conta recebedora e tente novamente — repetir agora só criaria outro pedido pendente.' }, { status: 502 });
+    if (code === 'MP_PIX_KEY_MISSING') return NextResponse.json({ error: 'O Mercado Pago aceitou a cobrança, mas não devolveu o QR Code do Pix. Tente novamente em instantes; se persistir, verifique a chave Pix da conta recebedora no painel do Mercado Pago.' }, { status: 502 });
     if (code === 'MP_TIMEOUT') return NextResponse.json({ error: 'O Mercado Pago demorou demais para responder. Tente novamente.' }, { status: 504 });
     if (code === 'MP_UNREACHABLE') return NextResponse.json({ error: 'Não foi possível conectar ao Mercado Pago. Verifique a rede do servidor.' }, { status: 502 });
     const status = code === 'PAYMENT_PROVIDER_NOT_CONFIGURED' ? 503 : code === 'ORDER_NOT_PAYABLE' ? 409 : code === 'ORDER_INVALID_AMOUNT' ? 409 : code === 'PAYER_EMAIL_REQUIRED' ? 400 : 502;
