@@ -72,7 +72,11 @@ export default function QueriesTab({ queries, loading, onReload, onNewQuery }: {
         <div className="customer-query-list">
           {sorted.map((item) => {
             const pending = item.status === 'PENDING';
-            const completed = item.query?.companyStatus === 'COMPLETED';
+            // O botão de download só aparece quando o PDF existe de fato —
+            // concluída sem PDF ainda significa "processando o laudo".
+            const hasPdf = Boolean(item.query?.reportPdfGeneratedAt);
+            const completed = item.query?.companyStatus === 'COMPLETED' && hasPdf;
+            const awaitingPdf = item.query?.companyStatus === 'COMPLETED' && !hasPdf;
             return (
               <article className={`customer-query-card${pending ? ' is-pending' : ''}`} key={item.id}>
                 <div className="customer-query-card-head">
@@ -89,6 +93,12 @@ export default function QueriesTab({ queries, loading, onReload, onNewQuery }: {
                     <strong>Relatório disponível</strong>
                     <span>{item.query?.report?.agregados?.marca ? `${item.query.report.agregados.marca} ${item.query.report.agregados.modelo || ''}` : 'Resultado recebido pela plataforma.'}</span>
                     <a className="customer-query-download" href={`/api/account/queries/${item.id}/pdf`} target="_blank" rel="noreferrer"><ArrowDownToLine size={15} /> Baixar relatório</a>
+                  </div>
+                )}
+                {awaitingPdf && (
+                  <div className="customer-query-result">
+                    <strong>Gerando o laudo…</strong>
+                    <span>A consulta foi concluída e o PDF está sendo preparado. Volte em instantes e use o botão Atualizar status.</span>
                   </div>
                 )}
                 {pending && (

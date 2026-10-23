@@ -21,7 +21,12 @@ async function processWebhook(codigo: string, request: Request) {
     const savedParams = query.requestParams && typeof query.requestParams === 'object' ? query.requestParams as Record<string, string> : { placa: query.normalizedPlate };
     const response = await requestCompany(query.providerProduct as CompanyProduct, configured.environment, { usuario: configured.usuario, senha: configured.senha }, { ...savedParams, codigo_consulta: codigo }, query.order.product?.providerEndpointKey);
     const result = companyAction(response);
-    const pdf = query.providerProduct === 'conferi-auto-pericia-gold' ? await renderGoldPdf(response, query.normalizedPlate, result.status, response.solicitacao?.mensagem || '') : null;
+    // O layout do laudo é genérico (módulos por base consultada): gera o PDF
+    // para todos os produtos, não só para a Perícia Gold. Uma falha no PDF
+    // não pode bloquear a gravação do retorno da Company.
+    let pdf: Buffer | null = null;
+    try { pdf = await renderGoldPdf(response, query.normalizedPlate, result.status, response.solicitacao?.mensagem || ''); }
+    catch (error) { console.error('Company webhook: falha ao gerar PDF', error); }
     await prisma.vehicleQuery.update({ where: { id: query.id }, data: { report: response as object, companyStatus: result.status, providerAction: result.action, providerMessage: response.solicitacao?.mensagem, providerStatusText: response.solicitacao?.status, hashPesquisa: response.hashPesquisa, responseReceivedAt: new Date(), attempts: { increment: 1 }, ...(pdf ? { reportPdf: pdf, reportPdfHash: reportHash(pdf), reportPdfGeneratedAt: new Date() } : {}) } });
     if (result.status === 'COMPLETED') await completeOrder(query.orderId);
     return NextResponse.json({ ok: true, status: result.status });

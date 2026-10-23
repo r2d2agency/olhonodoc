@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { CompanyQueryStatus } from '@prisma/client';
 import { companyAction, getCompanySettings, requestCompanyDetailed, type CompanyProduct, CompanyTransportError } from '@/lib/company-conferi';
+import { renderGoldPdf, reportHash } from '@/lib/gold-report';
 import { completeOrder } from '@/lib/order-lifecycle';
 
 const supported = new Set<CompanyProduct>(['conferi-agregados', 'conferi-auto-pericia-gold', 'conferi-bin', 'conferi-estadual', 'conferi-crlv', 'conferi-gravame']);
@@ -27,7 +28,10 @@ export async function submitOrderToCompany(orderId: string) {
   try {
     const detailed = await requestCompanyDetailed(providerProduct as CompanyProduct, config.environment, { usuario: config.usuario, senha: config.senha }, requestParams, order.product.providerEndpointKey);
     const result = companyAction(detailed.data);
-    const updated = await prisma.vehicleQuery.update({ where: { id: query.id }, data: { provider: 'company-conferi', providerProduct, environment: config.environment, companyStatus: result.status as CompanyQueryStatus, providerAction: result.action, providerMessage: detailed.data.solicitacao?.mensagem, providerStatusText: detailed.data.solicitacao?.status, codigoConsulta: detailed.data.solicitacao?.codigoConsulta == null ? null : String(detailed.data.solicitacao.codigoConsulta), hashPesquisa: detailed.data.hashPesquisa, report: detailed.data as object, requestSentAt: query.requestSentAt || new Date(), responseReceivedAt: new Date(), attempts: { increment: 1 }, lastError: null } });
+    let pdf: Buffer | null = null;
+    try { pdf = await renderGoldPdf(detailed.data, normalizedPlate, result.status, detailed.data.solicitacao?.mensagem || ''); }
+    catch (error) { console.error('Company sync: falha ao gerar PDF', error); }
+    const updated = await prisma.vehicleQuery.update({ where: { id: query.id }, data: { provider: 'company-conferi', providerProduct, environment: config.environment, companyStatus: result.status as CompanyQueryStatus, providerAction: result.action, providerMessage: detailed.data.solicitacao?.mensagem, providerStatusText: detailed.data.solicitacao?.status, codigoConsulta: detailed.data.solicitacao?.codigoConsulta == null ? null : String(detailed.data.solicitacao.codigoConsulta), hashPesquisa: detailed.data.hashPesquisa, report: detailed.data as object, requestSentAt: query.requestSentAt || new Date(), responseReceivedAt: new Date(), attempts: { increment: 1 }, lastError: null, ...(pdf ? { reportPdf: pdf, reportPdfHash: reportHash(pdf), reportPdfGeneratedAt: new Date() } : {}) } });
     if (result.status === 'COMPLETED') await completeOrder(orderId);
     return updated;
   } catch (error) {
