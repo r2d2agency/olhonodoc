@@ -22,6 +22,9 @@ export default function IntegrationsPage() {
   const [mpMethods, setMpMethods] = useState({ card: true, pix: true, boleto: true });
   const [messages, setMessages] = useState<{ mp?: string; asaas?: string; general?: string; preview?: string }>({});
   const [previewPlate, setPreviewPlate] = useState('');
+  const [testMethod, setTestMethod] = useState<'pix' | 'boleto' | 'card'>('pix');
+  const [testingSale, setTestingSale] = useState(false);
+  const [saleResult, setSaleResult] = useState('');
   const [previewJson, setPreviewJson] = useState('');
   const [previewing, setPreviewing] = useState(false);
   const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
@@ -44,6 +47,15 @@ export default function IntegrationsPage() {
     finally { setTestingMp(false); }
   }
 
+  async function testSale() {
+    setTestingSale(true); setSaleResult("");
+    try {
+      const response = await fetch("/api/admin/payment-providers/test-sale", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ method: testMethod }) });
+      const body = await response.json();
+      setSaleResult(response.ok ? (body.data?.qrCode ? "Pix OK: " + (body.data.qrCode || "").slice(0,40) : body.data?.ticketUrl ? "Boleto: " + body.data.ticketUrl : "OK: " + JSON.stringify(body.data)) : (body.error || "Falha"));
+    } catch { setSaleResult("Falha de rede."); }
+    finally { setTestingSale(false); }
+  }
   async function testAsaas() {
     setTestingAsaas(true);
     setMessages(current => ({ ...current, asaas: 'Testando conexão com o Asaas…' }));
