@@ -97,3 +97,10 @@
 .admin-order-table td small{display:block;margin-top:3px;color:#8a98a2;font-size:.66rem;line-height:1.45}
 @media(max-width:760px){.admin-cms-actions{width:100%}.admin-cms-actions>*{flex:1 1 auto}.admin-payment-filters label{width:100%;flex-direction:column;align-items:flex-start}.admin-payment-filters select{width:100%;min-width:0}}
 .admin-coupon-editor{display:grid;gap:16px;margin-bottom:18px}.admin-coupon-editor-title{display:flex;align-items:center;gap:8px;margin:0;color:#183044;font-size:.92rem}.admin-field{display:grid;gap:6px;min-width:0;color:#607682;font-size:.7rem;font-weight:700}.admin-field input,.admin-field select{width:100%;min-width:0;min-height:44px;padding:0 12px;border:1px solid #d5e0e7;border-radius:7px;background:#fbfdfe;color:#183044;font-size:.85rem}.admin-field input:focus,.admin-field select:focus{border-color:#18b982;outline:0;box-shadow:0 0 0 3px rgba(24,185,130,.12)}.admin-coupon-editor .admin-cms-primary{justify-self:start}@media(max-width:850px){.admin-coupon-editor .admin-form-grid{grid-template-columns:1fr}.admin-coupon-editor .admin-cms-primary{width:100%}}
+.query-waiting-text{color:#a6632c!important;font-weight:700}
+.admin-query-detail-row td{background:#f8fafb;padding:0}
+.admin-query-detail{padding:18px 20px}
+.admin-query-detail-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-bottom:12px}
+.admin-query-detail-head strong{font-size:.8rem;color:#10202d}
+.admin-query-detail-head span{color:#82929c;font-size:.68rem;overflow-wrap:anywhere}
+.admin-query-detail pre{max-height:420px;overflow:auto;padding:14px;border:1px solid #e1e8ed;border-radius:8px;background:#fff;color:#334956;font-size:.7rem;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
