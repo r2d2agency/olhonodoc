@@ -7,8 +7,11 @@ async function sendEmail(email: string, subject: string, text: string, html: str
     if (process.env.NODE_ENV !== 'production') return;
     throw new Error('SMTP não configurado.');
   }
-  const transport = nodemailer.createTransport({ host: settings.host, port: settings.port, secure: settings.secure, auth: { user: settings.user, pass: settings.password } });
-  await transport.sendMail({ from: settings.from, to: email, subject, text, html });
+  const transport = nodemailer.createTransport({ host: settings.host, port: settings.port, secure: settings.secure, auth: { user: settings.user, pass: settings.password }, connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000 });
+  await Promise.race([
+    transport.sendMail({ from: settings.from, to: email, subject, text, html }),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('SMTP_TIMEOUT')), 20000)),
+  ]);
 }
 
 export async function sendLoginCode(email: string, code: string) {

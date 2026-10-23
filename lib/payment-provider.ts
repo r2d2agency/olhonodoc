@@ -343,7 +343,7 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
             },
           }],
         },
-        payer: { email: payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
+        payer: { email: payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification, address: { zip_code: (order.customer?.postalCode || "").replace(/\D/g,""), street_name: order.customer?.street || "", street_number: order.customer?.number || "", neighborhood: order.customer?.neighborhood || "", city: order.customer?.city || "", federal_unit: order.customer?.state || "" } },
         // A Orders API não aceita notification_url no topo do payload; o campo correto é config.online.callback_url.
         ...(input.notificationUrl ? { config: { online: { callback_url: input.notificationUrl } } } : {}),
       }),
@@ -407,7 +407,7 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
  */
 async function createOfflinePaymentViaPaymentsApi(
   config: { environment: PaymentEnvironment; mercadopago: { accessToken: string } },
-  order: { id: string },
+  order: { id: string; customer?: { postalCode?: string | null; street?: string | null; number?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null } | null },
   input: OfflinePaymentInput,
   absoluteAmount: string,
   orderId: string,
@@ -421,7 +421,7 @@ async function createOfflinePaymentViaPaymentsApi(
       transaction_amount: Number(absoluteAmount),
       description: `Pedido ${order.id.slice(-8).toUpperCase()}`,
       external_reference: order.id,
-      payer: { email: payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
+      payer: { email: payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification, address: { zip_code: (order.customer?.postalCode || "").replace(/\D/g,""), street_name: order.customer?.street || "", street_number: order.customer?.number || "", neighborhood: order.customer?.neighborhood || "", city: order.customer?.city || "", federal_unit: order.customer?.state || "" } },
       ...(input.notificationUrl ? { notification_url: input.notificationUrl } : {}),
     }
     : {
@@ -429,7 +429,7 @@ async function createOfflinePaymentViaPaymentsApi(
       transaction_amount: Number(absoluteAmount),
       description: `Pedido ${order.id.slice(-8).toUpperCase()}`,
       external_reference: order.id,
-      payer: { email: payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification },
+      payer: { email: payerEmail, first_name: input.payerFirstName, last_name: input.payerLastName, identification: input.payerIdentification, address: { zip_code: (order.customer?.postalCode || "").replace(/\D/g,""), street_name: order.customer?.street || "", street_number: order.customer?.number || "", neighborhood: order.customer?.neighborhood || "", city: order.customer?.city || "", federal_unit: order.customer?.state || "" } },
       ...(input.notificationUrl ? { notification_url: input.notificationUrl } : {}),
     };
   let response: Response;
