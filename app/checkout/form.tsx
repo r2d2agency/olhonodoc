@@ -90,15 +90,17 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
       const body = await response.json();
       if (!response.ok) throw new Error(body.error);
       setOrder(body.data);
+      // Total zerado (cupom 100%): confirma o pedido na hora, sem tela de pagamento.
+      if ((body.data.totalCents ?? body.data.amountCents ?? 0) <= 0) { await pay(body.data.orderId); return; }
     } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível preparar o checkout.'); }
     finally { setLoading(false); }
   }
 
-  async function pay() {
-    if (!order) return;
+  async function pay(pendingOrderId?: string) {
+    if (!order && !pendingOrderId) return;
     setPaymentLoading(true); setError('');
     try {
-      const response = await fetch('/api/checkout/payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: order.orderId }) });
+      const response = await fetch('/api/checkout/payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: pendingOrderId || order!.orderId }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error);
       if (body.data.provider === 'free') {
@@ -121,7 +123,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
   // Pedido com valor zerado (cupom de 100%): confirma e envia direto, sem tela de pagamento.
   useEffect(() => { if (order && (order.totalCents ?? order.amountCents ?? 0) <= 0 && !paymentProvider) { pay(); } }, [order]);
 
-  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="active">2</span></span><span className="eyebrow">PAGAMENTO</span><h1>Escolha como pagar.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> · {product.name} · placa <strong>{plate}</strong> · {brl(order.totalCents)}{order.couponCode ? ` (cupom ${order.couponCode})` : ''}.</p>{error && <p className="form-error">{error}</p>}{!paymentProvider && <button className="button" onClick={pay} disabled={paymentLoading}>{paymentLoading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {paymentLoading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={orderAmountCents} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} onSuccess={() => { window.location.assign('/minha-conta'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}<Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
+  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="active">2</span></span><span className="eyebrow">PAGAMENTO</span><h1>Escolha como pagar.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> · {product.name} · placa <strong>{plate}</strong> · {brl(order.totalCents)}{order.couponCode ? ` (cupom ${order.couponCode})` : ''}.</p>{error && <p className="form-error">{error}</p>}{!paymentProvider && <button className="button" onClick={() => pay()} disabled={paymentLoading}>{paymentLoading ? <LoaderCircle className="spin" size={17}/> : <CreditCard size={17}/>} {paymentLoading ? 'Abrindo pagamento…' : 'Ir para pagamento'}</button>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={orderAmountCents} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} onSuccess={() => { window.location.assign('/minha-conta?pedido=confirmado'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}<Link href="/minha-conta" className="button secondary">Ir para minha conta</Link></section></div></main>;
 
   return <main className="checkout-page"><div className="checkout-shell">
     <section className="checkout-card">
@@ -166,7 +168,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
           <p className="checkout-hint">Na próxima tela você escolhe cartão, Pix ou boleto. O pagamento é processado de forma transparente, sem redirecionamento externo.</p>
         </div>
         {error && <p className="form-error">{error}</p>}
-        <button className="button" disabled={loading}>{loading ? <LoaderCircle className="spin" size={17}/> : <LockKeyhole size={17}/>} {loading ? 'Preparando…' : 'Confirmar e ir para pagamento'}</button>
+        <button className="button" disabled={loading}>{loading ? <LoaderCircle className="spin" size={17}/> : <LockKeyhole size={17}/>} {loading ? 'Preparando…' : coupon && coupon.totalCents === 0 ? 'Confirmar pedido' : 'Confirmar e ir para pagamento'}</button>
       </form>
     </section>
 
