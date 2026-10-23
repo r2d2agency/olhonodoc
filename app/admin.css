@@ -104,3 +104,22 @@
 .admin-query-detail-head strong{font-size:.8rem;color:#10202d}
 .admin-query-detail-head span{color:#82929c;font-size:.68rem;overflow-wrap:anywhere}
 .admin-query-detail pre{max-height:420px;overflow:auto;padding:14px;border:1px solid #e1e8ed;border-radius:8px;background:#fff;color:#334956;font-size:.7rem;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Central de consultas — tabela enxuta + modal de detalhes (lupa) */
+.query-table td small{max-width:230px;overflow:hidden;text-overflow:ellipsis}
+.query-col-action{width:56px;text-align:center}
+.query-lupa-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid #dce7ed;border-radius:8px;background:#fff;color:#173e50;cursor:pointer;transition:background .15s,transform .15s}
+.query-lupa-btn:hover{background:#eef4f7;transform:scale(1.05)}
+.query-modal-overlay{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(16,32,45,.55)}
+.query-modal{width:min(860px,100%);max-height:88vh;overflow:auto;border-radius:14px;background:#fff;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.25)}
+.query-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
+.query-modal-head h2{margin:4px 0 0;font-size:1.2rem;color:#10202d}
+.query-modal-close{border:0;background:#eef2f4;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:.85rem;color:#334956}
+.query-modal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.query-modal-grid h3{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#71808b;margin:0 0 8px}
+.query-modal-grid p{margin:0 0 6px;font-size:.78rem;color:#334956;overflow-wrap:anywhere}
+.query-modal-error{margin-bottom:14px}
+.query-modal-error h3{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#71808b;margin:0 0 8px}
+.query-modal-error pre{max-height:320px;overflow:auto;padding:14px;border:1px solid #e1e8ed;border-radius:8px;background:#f8fafb;color:#334956;font-size:.7rem;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.query-modal-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+@media(max-width:700px){.query-modal-grid{grid-template-columns:1fr}}

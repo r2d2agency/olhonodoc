@@ -1,5 +1,6 @@
 'use client';
 import { FormEvent, useState, useEffect } from 'react';
+import { Search } from 'lucide-react';
 
 type AdminQuery = {
   id: string;
@@ -39,6 +40,13 @@ const statusLabels: Record<string, string> = {
 
 const brDateTime = (value?: string | null) => (value ? new Date(value).toLocaleString('pt-BR') : null);
 
+/** Respeita limite de tamanho: nunca joga um stack trace inteiro na tabela. */
+const truncate = (value?: string | null, max = 80) => {
+  if (!value) return '';
+  const flat = value.replace(/\s+/g, ' ').trim();
+  return flat.length > max ? `${flat.slice(0, max)}…` : flat;
+};
+
 /** Espera o webhook: enviada para a Company e sem retorno registrado. */
 function awaitingWebhook(query: AdminQuery) {
   if (query.responseReceivedAt) return false;
@@ -57,7 +65,7 @@ export default function AdminQueriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dispatching, setDispatching] = useState('');
-  const [expanded, setExpanded] = useState('');
+  const [selected, setSelected] = useState<AdminQuery | null>(null);
 
   async function load() {
     setLoading(true); setError('');
@@ -146,7 +154,7 @@ export default function AdminQueriesPage() {
 
     {error && <div className="admin-cms-message error">{error}</div>}
 
-    <div className="admin-order-table">
+    <div className="admin-order-table query-table">
       <table>
         <thead>
           <tr>
@@ -157,97 +165,123 @@ export default function AdminQueriesPage() {
             <th>Status</th>
             <th>Resposta</th>
             <th>Relatório</th>
-            <th>Ação</th>
+            <th className="query-col-action">Detalhes</th>
           </tr>
         </thead>
         <tbody>
-          {!loading && queries.map(query => {
-            const waiting = awaitingWebhook(query);
-            const hasPdf = Boolean(query.reportPdfGeneratedAt);
-            const sentAt = brDateTime(query.requestSentAt);
-            const receivedAt = brDateTime(query.responseReceivedAt);
-            const requester = query.order.customer?.name || query.order.customer?.email || 'Cliente';
-            return <QueryRow key={query.id} query={query} requester={requester} waiting={waiting} hasPdf={hasPdf} sentAt={sentAt} receivedAt={receivedAt} expanded={expanded === query.id} onToggle={() => setExpanded(current => current === query.id ? '' : query.id)} dispatching={dispatching} onDispatch={() => dispatch(query.order.id)} />;
-          })}
+          {!loading && queries.map(query => <QueryRow key={query.id} query={query} onOpen={() => setSelected(query)} />)}
           {!loading && queries.length === 0 && <tr><td colSpan={8}>Nenhuma consulta encontrada.</td></tr>}
           {loading && <tr><td colSpan={8}>Carregando consultas…</td></tr>}
         </tbody>
       </table>
     </div>
+
+    {selected && <QueryDetailModal query={selected} dispatching={dispatching} onClose={() => setSelected(null)} onDispatch={() => dispatch(selected.order.id)} />}
   </main>;
 }
 
-type RowProps = {
-  query: AdminQuery;
-  requester: string;
-  waiting: boolean;
-  hasPdf: boolean;
-  sentAt: string | null;
-  receivedAt: string | null;
-  expanded: boolean;
-  onToggle: () => void;
-  dispatching: string;
-  onDispatch: () => void;
-};
-
-function QueryRow({ query, requester, waiting, hasPdf, sentAt, receivedAt, expanded, onToggle, dispatching, onDispatch }: RowProps) {
+function QueryRow({ query, onOpen }: { query: AdminQuery; onOpen: () => void }) {
   const statusKey = (query.companyStatus || 'pending').toLowerCase();
   const label = query.companyStatus ? (statusLabels[query.companyStatus] || query.companyStatus) : 'Não enviada';
-  const response = query.providerMessage || query.providerStatusText || query.lastError || '—';
+  const requester = query.order.customer?.name || query.order.customer?.email || 'Cliente';
+  const responseShort = truncate(query.providerMessage || query.providerStatusText || query.lastError, 80) || '—';
+  const hasPdf = Boolean(query.reportPdfGeneratedAt);
   const reportReady = query.companyStatus === 'COMPLETED';
-  const canDispatch = !query.companyStatus || query.companyStatus === 'FAILED';
 
-  return <>
-    <tr>
-      <td>
-        <strong>{requester}</strong>
-        <small>{query.order.customer?.email || '—'}</small>
-        <small>Pedido {query.order.id.slice(-8).toUpperCase()} · {query.order.status}</small>
-      </td>
-      <td><strong>{query.normalizedPlate}</strong><small>{query.order.plate}</small></td>
-      <td>
-        <small>Solicitação: {brDateTime(query.queriedAt) || '—'}</small>
-        <small>Envio p/ Company: {sentAt || 'não enviado'}</small>
-        <small>Retorno: {receivedAt || 'aguardando'}</small>
-      </td>
-      <td>
-        <strong>{query.order.product.name}</strong>
-        <small>{query.providerProduct || 'Sem vínculo com a Company'}</small>
-        <small>{query.environment || '—'} · {query.codigoConsulta ? `cód. ${query.codigoConsulta}` : 'sem código'}</small>
-      </td>
-      <td>
-        <span className={`admin-order-status ${statusKey}`}>{label}</span>
-        <small>Ação {query.providerAction ?? '—'} · {query.attempts ?? 0} tentativa(s)</small>
-        {waiting && <small className="query-waiting-text">Aguardando webhook da Company</small>}
-        {query.lastError && <small className="query-error-text">{query.lastError}</small>}
-      </td>
-      <td>
-        <small>{response}</small>
-        <small>{query.responseReceivedAt ? `Recebido em ${receivedAt}` : 'Sem resposta registrada'}</small>
-        <button className="table-action" type="button" onClick={onToggle}>{expanded ? 'Ocultar resposta' : 'Ver resposta'}</button>
-      </td>
-      <td>
-        {hasPdf
-          ? <a className="table-action" href={`/api/admin/queries/${query.id}/pdf`} target="_blank" rel="noreferrer">Baixar PDF</a>
-          : <small>{reportReady ? 'PDF não gerado' : 'Aguardando conclusão'}</small>}
-        {hasPdf && <small>Gerado em {brDateTime(query.reportPdfGeneratedAt)}</small>}
-        {query.report && <small>JSON da resposta disponível</small>}
-      </td>
-      <td>
-        {canDispatch && <button className="table-action" onClick={onDispatch} disabled={Boolean(dispatching)}>{dispatching === query.order.id ? 'Enviando…' : 'Enviar consulta'}</button>}
-        {!canDispatch && !reportReady && <small>Reprocessamento automático ativo</small>}
-      </td>
-    </tr>
-    {expanded && <tr className="admin-query-detail-row">
-      <td colSpan={8}>
-        <div className="admin-query-detail">
-          <div className="admin-query-detail-head">
-            <strong>Resposta da Company · {query.normalizedPlate}</strong>
-            <span>Código {query.codigoConsulta || '—'} · hash {query.hashPesquisa ? `${query.hashPesquisa.slice(0, 24)}…` : '—'}</span>
-          </div>
-          <pre>{query.report ? JSON.stringify(query.report, null, 2) : 'Nenhuma resposta registrada até o momento.'}</pre>
+  return <tr>
+    <td>
+      <strong>{requester}</strong>
+      <small>{query.order.customer?.email || '—'}</small>
+      <small>Pedido {query.order.id.slice(-8).toUpperCase()} · {query.order.status}</small>
+    </td>
+    <td><strong>{query.normalizedPlate}</strong><small>{query.order.plate}</small></td>
+    <td>
+      <small>Solicitação: {brDateTime(query.queriedAt) || '—'}</small>
+      <small>Envio p/ Company: {brDateTime(query.requestSentAt) || 'não enviado'}</small>
+      <small>Retorno: {brDateTime(query.responseReceivedAt) || 'aguardando'}</small>
+    </td>
+    <td>
+      <strong>{query.order.product.name}</strong>
+      <small>{query.providerProduct || 'Sem vínculo com a Company'}</small>
+      <small>{query.environment || '—'} · {query.codigoConsulta ? `cód. ${query.codigoConsulta}` : 'sem código'}</small>
+    </td>
+    <td>
+      <span className={`admin-order-status ${statusKey}`}>{label}</span>
+      <small>Ação {query.providerAction ?? '—'} · {query.attempts ?? 0} tentativa(s)</small>
+      {awaitingWebhook(query) && <small className="query-waiting-text">Aguardando webhook da Company</small>}
+      {query.lastError && <small className="query-error-text" title={query.lastError}>{truncate(query.lastError, 60)}</small>}
+    </td>
+    <td><small title={query.providerMessage || query.providerStatusText || query.lastError || ''}>{responseShort}</small></td>
+    <td>
+      {hasPdf
+        ? <a className="table-action" href={`/api/admin/queries/${query.id}/pdf`} target="_blank" rel="noreferrer">Baixar PDF</a>
+        : <small>{reportReady ? 'PDF não gerado' : 'Aguardando conclusão'}</small>}
+    </td>
+    <td className="query-col-action">
+      <button className="query-lupa-btn" type="button" onClick={onOpen} title="Ver detalhes da consulta" aria-label={`Ver detalhes da consulta ${query.normalizedPlate}`}>
+        <Search size={16} />
+      </button>
+    </td>
+  </tr>;
+}
+
+function QueryDetailModal({ query, dispatching, onClose, onDispatch }: { query: AdminQuery; dispatching: string; onClose: () => void; onDispatch: () => void }) {
+  const requester = query.order.customer?.name || query.order.customer?.email || 'Cliente';
+  const canDispatch = !query.companyStatus || query.companyStatus === 'FAILED';
+  const label = query.companyStatus ? (statusLabels[query.companyStatus] || query.companyStatus) : 'Não enviada';
+
+  return <div className="query-modal-overlay" onClick={onClose}>
+    <div className="query-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="query-modal-head">
+        <div>
+          <span className="admin-cms-kicker">DETALHES DA CONSULTA</span>
+          <h2>{query.normalizedPlate} · {query.order.product.name}</h2>
         </div>
-      </td>
-    </tr>}
-  </>;
+        <button className="query-modal-close" type="button" onClick={onClose} aria-label="Fechar">✕</button>
+      </div>
+
+      <div className="query-modal-grid">
+        <div>
+          <h3>Quem solicitou</h3>
+          <p><strong>{requester}</strong></p>
+          <p>{query.order.customer?.email || '—'}</p>
+          <p>Pedido {query.order.id.slice(-8).toUpperCase()} · {query.order.status}</p>
+          <p>Solicitação: {brDateTime(query.queriedAt) || '—'}</p>
+        </div>
+        <div>
+          <h3>Envio à Company</h3>
+          <p>Produto: {query.providerProduct || 'Sem vínculo'}</p>
+          <p>Ambiente: {query.environment || '—'}</p>
+          <p>Código: {query.codigoConsulta || '—'}</p>
+          <p>Hash: {query.hashPesquisa || '—'}</p>
+          <p>Enviado em: {brDateTime(query.requestSentAt) || 'não enviado'}</p>
+          <p>Tentativas: {query.attempts ?? 0}</p>
+        </div>
+        <div>
+          <h3>Retorno (webhook)</h3>
+          <p>Status: <strong>{label}</strong></p>
+          <p>Ação: {query.providerAction ?? '—'}</p>
+          <p>Mensagem: {query.providerMessage || '—'}</p>
+          <p>Status texto: {query.providerStatusText || '—'}</p>
+          <p>Recebido em: {brDateTime(query.responseReceivedAt) || 'aguardando'}</p>
+        </div>
+      </div>
+
+      {query.lastError && <div className="query-modal-error">
+        <h3>Erro completo</h3>
+        <pre>{query.lastError}</pre>
+      </div>}
+
+      <div className="query-modal-error">
+        <h3>Resposta da Company (JSON)</h3>
+        <pre>{query.report ? JSON.stringify(query.report, null, 2) : 'Nenhuma resposta registrada até o momento.'}</pre>
+      </div>
+
+      <div className="query-modal-actions">
+        {canDispatch && <button className="admin-cms-primary" type="button" onClick={onDispatch} disabled={Boolean(dispatching)}>{dispatching === query.order.id ? 'Enviando…' : 'Enviar consulta'}</button>}
+        {query.reportPdfGeneratedAt && <a className="admin-secondary-button" href={`/api/admin/queries/${query.id}/pdf`} target="_blank" rel="noreferrer">Baixar PDF</a>}
+        <button className="admin-secondary-button" type="button" onClick={onClose}>Fechar</button>
+      </div>
+    </div>
+  </div>;
 }
