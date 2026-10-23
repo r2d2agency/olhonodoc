@@ -23,6 +23,13 @@ export default function CustomerPortal({ name, email, products, initialPlate, so
   async function changePassword(event: React.FormEvent) { event.preventDefault(); setPasswordError(''); setPasswordMessage(''); const response = await fetch('/api/account/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(passwords) }); const body = await response.json(); if (!response.ok) setPasswordError(body.error || 'Não foi possível alterar a senha.'); else { setPasswordMessage(body.data.message); setPasswords({ currentPassword: '', newPassword: '' }); } }
   async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }
   async function reloadQueries() { setQueriesLoading(true); try { const response = await fetch('/api/account/queries'); const body = await response.json(); setQueries(body.data || []); } catch { setQueries([]); } finally { setQueriesLoading(false); } }
+  // Volta do checkout com pedido confirmado: recarrega e abre "Minhas consultas" para o cliente ver o status.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('pedido') === 'confirmado') {
+      setTab('consultas');
+      window.history.replaceState(null, '', '/minha-conta');
+    }
+  }, []);
   useEffect(() => { void reloadQueries(); }, [email]);
   const vehicleCount = new Set(queries.map((query) => query.plate)).size;
   async function loadAggregates(normalized: string) { setAggregate(null); setAggregateError(''); setAggregateLoading(true); try { const response = await fetch('/api/account/aggregates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plate: normalized }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error || 'Não foi possível consultar o veículo.'); if (body.data.status === 'AUTH_ERROR' || body.data.status === 'INVALID_INPUT' || body.data.status === 'FAILED') throw new Error(body.data.request?.mensagem || 'A Company não conseguiu concluir a consulta.'); if (body.data.status === 'PROCESSING') { setAggregateError('A Company recebeu a consulta e está processando os dados.'); return; } setAggregate(body.data.aggregates || null); } catch (error) { setAggregateError(error instanceof Error ? error.message : 'Não foi possível consultar o veículo.'); } finally { setAggregateLoading(false); } }
