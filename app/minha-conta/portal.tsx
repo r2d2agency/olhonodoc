@@ -47,7 +47,7 @@ export default function CustomerPortal({ name, email, products, initialPlate, so
   return <main className="customer-portal">
     <div className="customer-layout">
       <aside className="customer-sidebar">
-        <Link href="/" className="customer-brand"><span className="customer-brand-mark">◉</span><span>olho<span>no</span>doc</span></Link>
+        <Link href="/" className="customer-brand"><img src="/logo-olho-no-doc.png" alt="Olho no Doc" style={{height:28,width:"auto"}}/></Link>
         <div className="customer-profile"><span className="customer-avatar">{firstName.slice(0, 1).toUpperCase()}</span><div><strong>{firstName}</strong><small>Área do cliente</small></div></div>
         <nav aria-label="Menu da área do cliente" className="customer-nav">
           <button className={tab === 'inicio' ? 'active' : ''} onClick={() => setTab('inicio')}><Sparkles size={17}/> Visão geral</button>
