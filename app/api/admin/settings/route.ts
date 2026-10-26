@@ -15,7 +15,8 @@ export async function GET(request: Request) {
   if (key === 'company.conferi') {
     const row = await prisma.setting.findUnique({ where: { key } });
     const value = row?.value as Record<string, unknown> | undefined;
-    return NextResponse.json({ ...companyDefaults, ...value, password: undefined, passwordConfigured: typeof value?.passwordEncrypted === 'string', webhookToken: undefined, webhookTokenConfigured: typeof value?.webhookToken === 'string' });
+    const webhookToken = typeof value?.webhookToken === 'string' ? value.webhookToken : '';
+    return NextResponse.json({ ...companyDefaults, ...value, password: undefined, passwordEncrypted: undefined, passwordConfigured: typeof value?.passwordEncrypted === 'string', webhookToken, webhookTokenConfigured: Boolean(webhookToken) });
   }
   if (key === 'email.smtp') {
     try { return NextResponse.json(await getPublicSmtpConfiguration()); }
@@ -37,11 +38,10 @@ export async function PUT(request: Request) {
     const prior = previous?.value as Record<string, unknown> | undefined;
     const passwordEncrypted = value.senha ? encryptSmtpPassword(value.senha) : prior?.passwordEncrypted;
     if (!passwordEncrypted) return NextResponse.json({ error: 'Informe a senha da Company.' }, { status: 400 });
-    const generated = !value.webhookToken && !prior?.webhookToken;
     const generatedToken = value.webhookToken ? value.webhookToken : (prior?.webhookToken ? prior.webhookToken : crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, ''));
     const saved = { environment: value.environment, usuario: value.usuario.trim(), passwordEncrypted, webhookToken: generatedToken };
     const row = await prisma.setting.upsert({ where: { key: 'company.conferi' }, create: { key: 'company.conferi', value: saved }, update: { value: saved } });
-    return NextResponse.json({ ...companyDefaults, environment: (row.value as Record<string, unknown>).environment, usuario: (row.value as Record<string, unknown>).usuario, passwordConfigured: true, webhookTokenConfigured: Boolean((row.value as Record<string, unknown>).webhookToken), ...(generated ? { webhookToken: generatedToken } : {}) });
+    return NextResponse.json({ ...companyDefaults, environment: (row.value as Record<string, unknown>).environment, usuario: (row.value as Record<string, unknown>).usuario, passwordConfigured: true, webhookToken: generatedToken, webhookTokenConfigured: Boolean((row.value as Record<string, unknown>).webhookToken) });
   }
   if (body?.key === 'email.smtp') {
     const value = body.value;
