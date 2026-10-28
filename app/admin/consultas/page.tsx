@@ -66,6 +66,8 @@ export default function AdminQueriesPage() {
   const [error, setError] = useState('');
   const [dispatching, setDispatching] = useState('');
   const [selected, setSelected] = useState<AdminQuery | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenMessage, setRegenMessage] = useState('');
 
   async function load() {
     setLoading(true); setError('');
@@ -88,6 +90,18 @@ export default function AdminQueriesPage() {
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   function search(event: FormEvent) { event.preventDefault(); void load(); }
 
+  async function regeneratePdfs() {
+    setRegenerating(true); setRegenMessage('');
+    try {
+      const response = await fetch('/api/admin/queries/regenerate-pdfs', { method: 'POST' });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Não foi possível regenerar.');
+      setRegenMessage(body.message || 'PDFs antigos limpos.');
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Falha ao regenerar.'); }
+    finally { setRegenerating(false); }
+  }
+
   async function dispatch(orderId: string) {
     setDispatching(orderId); setError('');
     try {
@@ -106,10 +120,14 @@ export default function AdminQueriesPage() {
         <h1>Central de consultas</h1>
         <p>Quem solicitou, o que foi enviado à Company, a resposta recebida pelo webhook e o relatório gerado.</p>
       </div>
-      <form className="admin-order-table-search" onSubmit={search}>
-        <input className="admin-input" placeholder="Buscar placa" value={plate} onChange={e => setPlate(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7))}/>
-        <button className="admin-cms-primary" type="submit">Filtrar</button>
-      </form>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <button className="admin-secondary-button" type="button" onClick={() => void regeneratePdfs()} disabled={regenerating}>{regenerating ? 'Regenerando…' : 'Regenerar PDFs antigos'}</button>
+        {regenMessage && <span className="admin-cms-message success">{regenMessage}</span>}
+        <form className="admin-order-table-search" onSubmit={search} style={{ margin: 0 }}>
+          <input className="admin-input" placeholder="Buscar placa" value={plate} onChange={e => setPlate(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7))}/>
+          <button className="admin-cms-primary" type="submit">Filtrar</button>
+        </form>
+      </div>
     </header>
 
     <section className="admin-panel-card admin-query-filters">
