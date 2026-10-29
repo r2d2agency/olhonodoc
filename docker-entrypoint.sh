@@ -8,7 +8,7 @@ else
 	DB_READY=0
 	for attempt in 1 2 3 4 5; do
 		echo "Aplicando schema Prisma (tentativa $attempt/5)..."
-		if npx prisma db push --skip-generate; then
+		if ./node_modules/.bin/prisma db push --skip-generate; then
 			DB_READY=1
 			break
 		fi
