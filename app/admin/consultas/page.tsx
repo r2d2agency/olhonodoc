@@ -66,7 +66,8 @@ export default function AdminQueriesPage() {
   const [error, setError] = useState('');
   const [dispatching, setDispatching] = useState('');
   const [selected, setSelected] = useState<AdminQuery | null>(null);
-  const [regenerating, setRegenerating] = useState(false);
+const [regenerating, setRegenerating] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState('');
   const [regenMessage, setRegenMessage] = useState('');
 
   async function load() {
@@ -102,6 +103,17 @@ export default function AdminQueriesPage() {
     finally { setRegenerating(false); }
   }
 
+  async function generatePdf(queryId: string) {
+    setGeneratingPdf(queryId); setError('');
+    try {
+      const response = await fetch(`/api/admin/queries/${queryId}/pdf/generate`, { method: 'POST' });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Não foi possível gerar o PDF.');
+      setRegenMessage(body.message || 'PDF gerado.');
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Falha ao gerar PDF.'); }
+    finally { setGeneratingPdf(''); }
+  }
   async function dispatch(orderId: string) {
     setDispatching(orderId); setError('');
     try {
@@ -194,7 +206,7 @@ export default function AdminQueriesPage() {
       </table>
     </div>
 
-    {selected && <QueryDetailModal query={selected} dispatching={dispatching} onClose={() => setSelected(null)} onDispatch={() => dispatch(selected.order.id)} />}
+    {selected && <QueryDetailModal query={selected} dispatching={dispatching} generatingPdf={generatingPdf} onClose={() => setSelected(null)} onDispatch={() => dispatch(selected.order.id)} onGeneratePdf={() => void generatePdf(selected.id)} />}
   </main>;
 }
 
@@ -243,7 +255,7 @@ function QueryRow({ query, onOpen }: { query: AdminQuery; onOpen: () => void }) 
   </tr>;
 }
 
-function QueryDetailModal({ query, dispatching, onClose, onDispatch }: { query: AdminQuery; dispatching: string; onClose: () => void; onDispatch: () => void }) {
+function QueryDetailModal({ query, dispatching, generatingPdf, onClose, onDispatch, onGeneratePdf }: { query: AdminQuery; dispatching: string; generatingPdf: string; onClose: () => void; onDispatch: () => void; onGeneratePdf: () => void }) {
   const requester = query.order.customer?.name || query.order.customer?.email || 'Cliente';
   const canDispatch = !query.companyStatus || query.companyStatus === 'FAILED';
   const label = query.companyStatus ? (statusLabels[query.companyStatus] || query.companyStatus) : 'Não enviada';
@@ -297,7 +309,7 @@ function QueryDetailModal({ query, dispatching, onClose, onDispatch }: { query: 
 
       <div className="query-modal-actions">
         {canDispatch && <button className="admin-cms-primary" type="button" onClick={onDispatch} disabled={Boolean(dispatching)}>{dispatching === query.order.id ? 'Enviando…' : 'Enviar consulta'}</button>}
-        {query.reportPdfGeneratedAt && <a className="admin-secondary-button" href={`/api/admin/queries/${query.id}/pdf`} target="_blank" rel="noreferrer">Baixar PDF</a>}
+        {query.companyStatus === 'COMPLETED' && query.report && <button className="admin-cms-primary" type="button" onClick={onGeneratePdf} disabled={generatingPdf === query.id}>{generatingPdf === query.id ? 'Gerando…' : 'Gerar PDF para o cliente'}</button>}
         <button className="admin-secondary-button" type="button" onClick={onClose}>Fechar</button>
       </div>
     </div>
