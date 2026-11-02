@@ -31,7 +31,8 @@ export default function Home() {
           return;
         }
         if (hint) hint.textContent = `Placa ${plate.value} digitada. Continue a consulta no site oficial; a placa não será enviada automaticamente por esta prévia.`;
-        window.location.href = '/consultas';
+        try { window.localStorage.setItem('olhonodoc_plate', plate.value); } catch {}
+        window.location.href = '/login';
       });
     }
     return () => obs.disconnect();
