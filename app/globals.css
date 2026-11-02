@@ -247,6 +247,7 @@ footer nav{display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:#435a72}
 .featuregrid,.plan-grid{grid-template-columns:1fr 1fr}
 .hero{padding:55px 0}
 .proof img{height:370px}
+}
 @media(max-width:630px){.container{width:calc(100% - 32px)}
 .headrow{min-height:76px}
 .logo{width:137px}
@@ -273,4 +274,4 @@ footer nav{display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:#435a72}
 }
 body{padding-bottom:65px}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}
-.reveal{opacity:1;transform:none}}
+.reveal{opacity:1;transform:none}}}
