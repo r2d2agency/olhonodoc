@@ -6,6 +6,21 @@ export default function Home() {
     <div className="home-shell">
       <div className="topbar">CONSULTA VEICULAR ONLINE • SUA TRANQUILIDADE É NOSSO FOCO</div>
 
+      <header className="header">
+        <div className="container headrow">
+          <Link href="/">
+            <img className="logo" src="/logo-olho-no-doc.png" alt="Olho no Doc" />
+          </Link>
+          <nav className="menu">
+            <a href="#informacoes">O que consultar</a>
+            <a href="#funciona">Como funciona</a>
+            <a href="#planos">Consultas</a>
+            <a href="#duvidas">Dúvidas</a>
+          </nav>
+          <Link className="btn" href="#consulta">Consultar placa <span>↗</span></Link>
+        </div>
+      </header>
+
       <main>
         <section className="hero" id="inicio">
           <div className="container hero-grid">
@@ -150,6 +165,10 @@ export default function Home() {
           </nav>
         </div>
       </footer>
+
+      <div className="mobileCTA">
+        <Link className="btn" href="#consulta">Consultar minha placa ↗</Link>
+      </div>
     </div>
   );
 }
