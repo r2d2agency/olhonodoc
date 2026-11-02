@@ -270,6 +270,7 @@ footer nav{display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:#435a72}
 .preview{padding:18px}
 .mobileCTA{display:block;position:fixed;bottom:0;left:0;right:0;background:#ffffffec;backdrop-filter:blur(12px);padding:10px 16px;z-index:50;border-top:1px solid var(--line)}
 .mobileCTA .btn{width:100%}
+}
 body{padding-bottom:65px}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}
-.reveal{opacity:1;transform:none}
+.reveal{opacity:1;transform:none}}
