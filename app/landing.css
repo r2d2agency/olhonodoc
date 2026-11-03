@@ -1,44 +1,43 @@
-:root{--blue:#0c3a75;--navy:#082e61;--green:#016028;--muted:#5c6d83;--light:#f4f8fc;--line:#e2e9f1;--text:#152940}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;background:#fff;color:var(--text);font-family:'DM Sans',sans-serif}
-a{text-decoration:none;color:inherit}
-button,input{font:inherit}
-.container{width:min(1190px,calc(100% - 44px));margin:auto}
-.topbar{background:var(--navy);color:white;text-align:center;font-size:12px;padding:10px}
-.header{position:sticky;top:0;background:#ffffffed;backdrop-filter:blur(18px);border-bottom:1px solid #ebf0f5;z-index:40}
-.headrow{min-height:92px;display:flex;align-items:center;justify-content:space-between;gap:18px}
-.logo{width:167px;height:auto}
-.menu{display:flex;align-items:center;gap:32px;font-size:13px;font-weight:700;color:#3e546f}
-.menu a:hover{color:var(--green)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;padding:15px 25px;border-radius:11px;background:var(--green);color:white;font-weight:800;font-size:14px;cursor:pointer;transition:.25s;white-space:nowrap}
-.btn:hover{transform:translateY(-2px);box-shadow:0 12px 25px #01602835}
-.btn-outline{background:white;color:var(--blue);border:1px solid #ccdae8}
-.hero{position:relative;overflow:hidden;background:linear-gradient(115deg,#f6faff 0%,#fff 55%,#eef5fb 100%);padding:72px 0 72px}
-.hero:after{content:'';position:absolute;right:-150px;top:-270px;width:760px;height:760px;border:130px solid #d8e7f7;border-radius:50%;opacity:.35;pointer-events:none}
-.hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:38px}
-.eyebrow{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--green);text-transform:uppercase}
-.hero h1{font:800 clamp(43px,4.8vw,69px)/1.11 'Plus Jakarta Sans',sans-serif;letter-spacing:-3px;margin:19px 0 18px;max-width:660px;color:var(--navy)}
-.hero h1 span{color:var(--green)}
-.hero-copy{font-size:17px;line-height:1.8;color:var(--muted);max-width:510px}
-.searchcard{margin-top:32px;padding:22px;background:white;box-shadow:0 18px 45px #0b3c7814;border:1px solid #e1eaf4;border-radius:18px;max-width:590px}
-.searchcard label{display:block;font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px}
-.searchrow{display:flex;gap:9px}
-.plate{display:flex;align-items:center;flex:1;min-width:0;border:1px solid #ccdae9;border-radius:10px;padding:0 14px;gap:12px;background:#fafcff}
-.plate span{font-size:12px;font-weight:800;color:var(--blue);border-right:1px solid #dae4ee;padding-right:12px}
-.plate input{min-width:0;width:100%;height:56px;outline:0;border:0;background:transparent;font-size:18px;letter-spacing:2px;font-weight:800;text-transform:uppercase;color:var(--navy)}
-.hint{font-size:11px;color:#75859a;margin:12px 0 0}
-.hero-points{display:flex;gap:22px;flex-wrap:wrap;margin-top:22px;color:#526980;font-size:12px;font-weight:600}
-.hero-points b{color:var(--green);margin-right:6px}
-.visual{position:relative;min-height:490px;display:flex;align-items:center;justify-content:center}
-.car-photo{width:100%;height:445px;border-radius:24px;object-fit:cover;box-shadow:0 36px 64px #0e305029}
-.floating{position:absolute;background:white;box-shadow:0 14px 36px #0b376026;border:1px solid #e2ebf4;border-radius:14px;padding:17px 20px;max-width:220px}
-.floating strong{font-size:13px;color:var(--navy)}
-.floating p{font-size:11px;color:#6b788c;margin:7px 0 0}
-.fl1{top:10px;left:-25px;animation:bob 5s ease-in-out infinite}
-.fl2{bottom:12px;right:-20px;animation:bob 6s ease-in-out infinite reverse}
-.dot{display:inline-block;width:9px;height:9px;border-radius:100%;background:var(--green);margin-right:7px}
-@keyframes bob{50%{transform:translateY(-10px)}
+.home-shell{--blue:#0c3a75;--navy:#082e61;--green:#016028;--muted:#5c6d83;--light:#f4f8fc;--line:#e2e9f1;--text:#152940}
+.home-shell *{box-sizing:border-box}
+.home-shell{margin:0;background:#fff;color:var(--text);font-family:'DM Sans',sans-serif}
+.home-shell a{text-decoration:none;color:inherit}
+.home-shell button, .home-shell input{font:inherit}
+.home-shell .container{width:min(1190px,calc(100% - 44px));margin:auto}
+.home-shell .topbar{background:var(--navy);color:white;text-align:center;font-size:12px;padding:10px}
+.home-shell .header{position:sticky;top:0;background:#ffffffed;backdrop-filter:blur(18px);border-bottom:1px solid #ebf0f5;z-index:40}
+.home-shell .headrow{min-height:92px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.home-shell .logo{width:167px;height:auto}
+.home-shell .menu{display:flex;align-items:center;gap:32px;font-size:13px;font-weight:700;color:#3e546f}
+.home-shell .menu a:hover{color:var(--green)}
+.home-shell .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;padding:15px 25px;border-radius:11px;background:var(--green);color:white;font-weight:800;font-size:14px;cursor:pointer;transition:.25s;white-space:nowrap}
+.home-shell .btn:hover{transform:translateY(-2px);box-shadow:0 12px 25px #01602835}
+.home-shell .btn-outline{background:white;color:var(--blue);border:1px solid #ccdae8}
+.home-shell .hero{position:relative;overflow:hidden;background:linear-gradient(115deg,#f6faff 0%,#fff 55%,#eef5fb 100%);padding:72px 0 72px}
+.home-shell .hero:after{content:'';position:absolute;right:-150px;top:-270px;width:760px;height:760px;border:130px solid #d8e7f7;border-radius:50%;opacity:.35;pointer-events:none}
+.home-shell .hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:38px}
+.home-shell .eyebrow{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--green);text-transform:uppercase}
+.home-shell .hero h1{font:800 clamp(43px,4.8vw,69px)/1.11 'Plus Jakarta Sans',sans-serif;letter-spacing:-3px;margin:19px 0 18px;max-width:660px;color:var(--navy)}
+.home-shell .hero h1 span{color:var(--green)}
+.home-shell .hero-copy{font-size:17px;line-height:1.8;color:var(--muted);max-width:510px}
+.home-shell .searchcard{margin-top:32px;padding:22px;background:white;box-shadow:0 18px 45px #0b3c7814;border:1px solid #e1eaf4;border-radius:18px;max-width:590px}
+.home-shell .searchcard label{display:block;font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px}
+.home-shell .searchrow{display:flex;gap:9px}
+.home-shell .plate{display:flex;align-items:center;flex:1;min-width:0;border:1px solid #ccdae9;border-radius:10px;padding:0 14px;gap:12px;background:#fafcff}
+.home-shell .plate span{font-size:12px;font-weight:800;color:var(--blue);border-right:1px solid #dae4ee;padding-right:12px}
+.home-shell .plate input{min-width:0;width:100%;height:56px;outline:0;border:0;background:transparent;font-size:18px;letter-spacing:2px;font-weight:800;text-transform:uppercase;color:var(--navy)}
+.home-shell .hint{font-size:11px;color:#75859a;margin:12px 0 0}
+.home-shell .hero-points{display:flex;gap:22px;flex-wrap:wrap;margin-top:22px;color:#526980;font-size:12px;font-weight:600}
+.home-shell .hero-points b{color:var(--green);margin-right:6px}
+.home-shell .visual{position:relative;min-height:490px;display:flex;align-items:center;justify-content:center}
+.home-shell .car-photo{width:100%;height:445px;border-radius:24px;object-fit:cover;box-shadow:0 36px 64px #0e305029}
+.home-shell .floating{position:absolute;background:white;box-shadow:0 14px 36px #0b376026;border:1px solid #e2ebf4;border-radius:14px;padding:17px 20px;max-width:220px}
+.home-shell .floating strong{font-size:13px;color:var(--navy)}
+.home-shell .floating p{font-size:11px;color:#6b788c;margin:7px 0 0}
+.home-shell .fl1{top:10px;left:-25px;animation:home-bob 5s ease-in-out infinite}
+.home-shell .fl2{bottom:12px;right:-20px;animation:home-bob 6s ease-in-out infinite reverse}
+.home-shell .dot{display:inline-block;width:9px;height:9px;border-radius:100%;background:var(--green);margin-right:7px}
+@keyframes home-bob{50%{transform:translateY(-10px)}
 .strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:white}
 .striprow{display:flex;align-items:center;justify-content:center;gap:55px;padding:21px 0;flex-wrap:wrap}
 .striprow span{font-weight:800;font-size:13px;color:#435870}
