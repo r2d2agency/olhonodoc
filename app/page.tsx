@@ -1,7 +1,9 @@
+import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Check, ChevronRight, CreditCard, FileSearch, Gavel, KeyRound, LockKeyhole, Phone, ScanLine, ShieldCheck, Siren, Wrench } from 'lucide-react';
+import { ArrowRight, Check, FileSearch, Gavel, LockKeyhole, ShieldCheck, Siren, Wrench } from 'lucide-react';
 import { FAQ, PlateInput, ProductCard, ReportPreview } from '@/components/site';
 import { products } from '@/data/products';
+import './home.css';
 
 const faqs = [
   { q: 'A Olho no Doc é um órgão do governo?', a: 'Não. Somos uma empresa privada, sem vínculo com Detran, Senatran ou qualquer órgão público. Trabalhamos exclusivamente com serviços de consulta de informações veiculares.' },
@@ -27,34 +29,186 @@ const steps = [
   { n: '03', title: 'Receba o relatório', text: 'O relatório fica pronto em poucos minutos, na tela e no seu e-mail.' }
 ];
 
-export default function Home() { return <main className="home-shell">
-  <section className="hero" id="consultar"><div className="hero-inner"><div className="hero-copy">
-    <h1>Descubra o passado do carro <mark>antes</mark> de fechar negócio.</h1>
-    <p className="hero-sub">Digite a placa e receba em minutos um relatório com passagem por leilão, sinistro, roubo e furto, restrições e muito mais.</p>
-    <PlateInput/>
-    <div className="hero-trust"><span><LockKeyhole size={14}/> Pagamento seguro</span><span><Check size={14}/> Relatório em minutos</span><span><ShieldCheck size={14}/> Dados protegidos (LGPD)</span></div>
-  </div><div className="hero-visual"><div className="mock">
-    <div className="mock-head"><div><b>Relatório veicular</b><br/><small>Exemplo ilustrativo</small></div><span className="mock-plate">ABC1D23</span></div>
-    <div className="mock-row">Passagem por leilão <span className="tag al">Encontrado</span></div>
-    <div className="mock-row">Registro de sinistro <span className="tag al">Encontrado</span></div>
-    <div className="mock-row">Roubo e furto <span className="tag ok">Nada consta</span></div>
-    <div className="mock-row">Restrições / gravame <span className="tag ok">Nada consta</span></div>
-    <div className="mock-row">Recall pendente <span className="tag ok">Nada consta</span></div>
-    <div className="score"><div className="score-n">2</div><small><b style={{ color: 'var(--ink)' }}>pontos de atenção</b><br/>Avalie com cuidado antes de comprar.</small></div>
-  </div></div></div></section>
-  <div className="stats"><div className="stats-box">
-    <div className="stat"><b>+00 mil</b><span>consultas realizadas</span></div>
-    <div className="stat"><b>~2 min</b><span>tempo médio de entrega</span></div>
-    <div className="stat"><b>00+</b><span>itens verificados</span></div>
-    <div className="stat"><b>4,9/5</b><span>avaliação dos clientes</span></div>
-  </div></div>
-  <section className="section checks-section" id="o-que-consultamos"><div className="section-heading centered"><span className="eyebrow">O que entra no relatório</span><h2>Tudo o que você precisa saber, em um só lugar</h2><p className="lead">Informações reunidas de bases oficiais e privadas para você negociar com segurança.</p></div><div className="checks-grid">{checks.map(({ icon: Icon, title, text }) => <div className="check" key={title}><div className="icon"><Icon size={22}/></div><h3>{title}</h3><p>{text}</p></div>)}</div></section>
-  <section className="section steps-section" id="como-funciona"><div className="section-heading centered"><span className="eyebrow">Como funciona</span><h2>Simples assim, em 3 passos</h2></div><div className="steps-grid">{steps.map(step => <div className="step" key={step.n}><h3>{step.title}</h3><p>{step.text}</p></div>)}</div></section>
-  <section className="section why-section"><div className="why-grid"><div className="why-copy"><span className="eyebrow">Por que consultar</span><h2>Um carro bonito por fora pode esconder um histórico caro</h2><p className="lead">Leilão, sinistro e restrições nem sempre aparecem numa vistoria visual. A consulta mostra o que o vendedor pode não contar.</p><ul className="why-list"><li><div><b>Negocie com argumentos.</b> Use o relatório para pedir desconto ou desistir na hora certa.</div></li><li><div><b>Evite dor de cabeça na transferência.</b> Restrições descobertas depois custam tempo e dinheiro.</div></li><li><div><b>Proteja a revenda.</b> Carro com passagem por leilão pode valer bem menos no futuro.</div></li></ul></div><div className="why-card"><h3>Quanto custa não consultar?</h3><p>Um veículo com histórico de leilão costuma ser revendido com deságio em relação à tabela.</p><div className="big">até 30%</div><p>de desvalorização estimada na revenda.*</p><Link className="button" href="/consultas">Consultar por R$ 49,90</Link><small className="fine">*Ajustar com a fonte do dado antes de publicar.</small></div></div></section>
-  <section className="section pricing-section" id="preco"><div className="section-heading centered"><span className="eyebrow">Preço</span><h2>Relatório completo, preço único</h2><p className="lead">Sem mensalidade e sem surpresa. Você paga só pela consulta que fizer.</p></div><div className="price-card"><span className="badge">Use o cupom e economize</span><h3>Consulta Veicular Completa</h3><p className="old">de R$ 59,90</p><div className="price"><small>R$</small>49,90</div><p className="price-note">por consulta · pagamento único</p><ul className="price-list"><li>Passagem por leilão</li><li>Sinistro, roubo e furto</li><li>Restrições, gravame e recall</li><li>Relatório em PDF no seu e-mail</li></ul><Link className="button" href="/consultas">Consultar minha placa</Link><div className="pay"><span>Pix</span>·<span>Cartão de crédito</span>·<span>Ambiente seguro</span></div></div></section>
-  <section className="section products-section"><div className="section-heading"><div><span className="eyebrow">Escolha seu nível de informação</span><h2>Uma consulta para cada momento.</h2></div><Link className="text-link" href="/comparar-consultas">Comparar consultas <ArrowRight size={16}/></Link></div><div className="product-grid">{products.slice(0, 3).map((product, index) => <ProductCard key={product.slug} product={product} featured={index === 0}/>)}</div></section>
-  <section className="section report-section"><div className="section-heading"><div><span className="eyebrow">Resultado claro</span><h2>Veja como o resultado chega até você.</h2></div><Link className="text-link" href="/exemplo-relatorio">Ver exemplo completo <ArrowRight size={16}/></Link></div><div className="report-layout"><ReportPreview/><div className="report-aside"><span className="aside-number">01</span><h3>Sem complicação para interpretar.</h3><p>O resultado é organizado para você encontrar os pontos mais importantes da consulta e saber onde prestar atenção.</p><Link className="button button-outline" href="/exemplo-relatorio">Explorar relatório <ArrowRight size={16}/></Link></div></div></section>
-  <section className="section testimonials-section"><div className="section-heading centered"><span className="eyebrow">Quem já consultou</span><h2>Compras mais seguras todos os dias</h2></div><div className="tests">{[0, 1, 2].map((i) => <div className="test" key={i}><p>Espaço para depoimento real de cliente, com autorização para publicação.</p><b>Nome do cliente · Cidade/UF</b></div>)}</div></section>
-  <section className="section faq-section" id="duvidas"><div className="section-heading centered"><span className="eyebrow">Dúvidas frequentes</span><h2>Perguntas que todo mundo faz</h2></div><FAQ items={faqs}/></section>
-  <section className="cta-section"><div className="cta"><h2>Vai comprar um carro? Coloque o olho no doc primeiro.</h2><p>Relatório completo em minutos, por R$ 49,90. Sua tranquilidade é nosso foco.</p><Link className="button" href="/consultas">Consultar placa agora</Link></div></section>
-</main>; }
+export default function Home() {
+  return (
+    <div className="home-shell">
+      <div className="topbar">CONSULTA VEICULAR ONLINE <span aria-hidden="true">•</span> SUA TRANQUILIDADE É NOSSO FOCO</div>
+      <header className="home-header">
+        <div className="container headrow">
+          <Link href="/" aria-label="Olho no Doc — página inicial">
+            <Image className="logo" src="/logo-olho-no-doc.png" alt="Olho no Doc" width={919} height={637} priority />
+          </Link>
+          <nav className="menu" aria-label="Navegação principal">
+            <a href="#o-que-consultamos">O que consultar</a>
+            <a href="#como-funciona">Como funciona</a>
+            <a href="#planos">Consultas</a>
+            <a href="#duvidas">Dúvidas</a>
+          </nav>
+          <Link className="button header-cta" href="#consultar">Consultar placa <ArrowRight size={16} /></Link>
+        </div>
+      </header>
+
+      <main>
+        <section className="hero" id="consultar">
+          <div className="container hero-grid">
+            <div className="hero-copy">
+              <span className="eyebrow">Vai comprar um carro usado?</span>
+              <h1>O carro parece perfeito. <span>E o histórico dele?</span></h1>
+              <p className="hero-sub">Descubra informações importantes sobre o veículo antes de fechar negócio. Consulte pela placa e compre com mais confiança.</p>
+              <div className="search-card"><PlateInput /></div>
+              <div className="hero-trust">
+                <span><LockKeyhole size={15} /> Pagamento seguro</span>
+                <span><Check size={15} /> Relatório em minutos</span>
+                <span><ShieldCheck size={15} /> Dados protegidos (LGPD)</span>
+              </div>
+            </div>
+            <div className="visual">
+              <div className="car-photo" role="img" aria-label="Carro usado em destaque" />
+              <div className="floating fl1"><strong><span className="dot" />Histórico do veículo</strong><p>Conheça registros disponíveis antes de comprar.</p></div>
+              <div className="floating fl2"><strong>Mais informação, menos dúvida</strong><p>Compare os dados antes de negociar.</p></div>
+            </div>
+          </div>
+        </section>
+
+        <div className="strip" aria-label="Informações que você pode consultar">
+          <div className="container striprow">
+            <span><Check size={15} /> Leilão</span>
+            <span><Check size={15} /> Sinistro</span>
+            <span><Check size={15} /> Roubo e furto</span>
+            <span><Check size={15} /> Restrições</span>
+            <span><Check size={15} /> Recall</span>
+          </div>
+        </div>
+
+        <section className="section soft" id="o-que-consultamos">
+          <div className="container">
+            <div className="section-heading centered">
+              <span className="eyebrow">O que entra no relatório</span>
+              <h2>Tudo o que você precisa saber, em um só lugar.</h2>
+              <p className="lead">Informações que ajudam você a avaliar o veículo com mais clareza. A disponibilidade varia conforme o plano e as bases consultadas.</p>
+            </div>
+            <div className="checks-grid">
+              {checks.map(({ icon: Icon, title, text }, index) => (
+                <article className="check" key={title}>
+                  <div className="icon"><Icon size={22} /></div>
+                  <span className="check-number">{String(index + 1).padStart(2, '0')} / CONSULTA</span>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section proof">
+          <div className="container proof-grid">
+            <div className="proof-photo" role="img" aria-label="Carro estacionado visto de lado" />
+            <div className="proof-copy">
+              <span className="eyebrow">A aparência não mostra tudo</span>
+              <h2>Gostou do carro? Conheça a história antes de se apaixonar.</h2>
+              <p className="lead">Uma pintura bonita e um bom test-drive não contam tudo sobre um veículo. A consulta ajuda a observar pontos que merecem atenção antes de assinar o contrato.</p>
+              <ul className="proof-list">
+                <li><Check size={17} /> Mais informação para negociar</li>
+                <li><Check size={17} /> Dados para avaliar o veículo</li>
+                <li><Check size={17} /> Menos surpresas depois da compra</li>
+              </ul>
+              <Link className="button" href="#consultar">Quero consultar agora <ArrowRight size={16} /></Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="report-section">
+          <div className="container report-layout">
+            <div className="report-aside">
+              <span className="eyebrow">Resultado claro</span>
+              <h2>Um relatório que ajuda você a decidir.</h2>
+              <p className="lead">As informações ficam organizadas para você identificar rapidamente o que merece atenção.</p>
+              <Link className="button button-outline" href="/exemplo-relatorio">Ver exemplo de relatório <ArrowRight size={16} /></Link>
+            </div>
+            <ReportPreview />
+          </div>
+        </section>
+
+        <section className="section steps-section" id="como-funciona">
+          <div className="container">
+            <div className="section-heading centered">
+              <span className="eyebrow">Fácil, rápido e online</span>
+              <h2>Consulte em 3 passos.</h2>
+              <p className="lead">Sem complicação. Da placa ao relatório, um processo simples.</p>
+            </div>
+            <div className="steps-grid">
+              {steps.map((step) => (
+                <article className="step" key={step.n}>
+                  <span className="step-number">{step.n}</span>
+                  <h3>{step.title}</h3>
+                  <p>{step.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section products-section" id="planos">
+          <div className="container">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">Escolha seu nível de informação</span>
+                <h2>Uma consulta para cada momento.</h2>
+                <p className="lead">Compare as opções disponíveis e escolha o relatório ideal para sua decisão.</p>
+              </div>
+              <Link className="text-link" href="/comparar-consultas">Comparar consultas <ArrowRight size={16} /></Link>
+            </div>
+            <div className="product-grid">
+              {products.slice(0, 3).map((product, index) => (
+                <ProductCard key={product.slug} product={product} featured={index === 0} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section faq-section" id="duvidas">
+          <div className="container">
+            <div className="section-heading centered">
+              <span className="eyebrow">Dúvidas frequentes</span>
+              <h2>Perguntas que todo mundo faz.</h2>
+            </div>
+            <FAQ items={faqs} />
+          </div>
+        </section>
+
+        <section className="final">
+          <div className="container">
+            <h2>Antes de comprar, coloque o Olho no Doc.</h2>
+            <p>Uma decisão importante merece mais do que boas fotos. Consulte a história do veículo e negocie com mais informação.</p>
+            <Link className="button" href="#consultar">Consultar placa agora <ArrowRight size={16} /></Link>
+          </div>
+        </section>
+      </main>
+
+      <footer className="home-footer">
+        <div className="container footerrow">
+          <div>
+            <Link href="/" aria-label="Olho no Doc — página inicial">
+              <Image className="footer-logo" src="/logo-olho-no-doc.png" alt="Olho no Doc" width={919} height={637} />
+            </Link>
+            <p>Informação para você decidir melhor antes de comprar um veículo.</p>
+          </div>
+          <nav aria-label="Links institucionais">
+            <Link href="/consultas">Consultas</Link>
+            <Link href="/exemplo-relatorio">Exemplo de relatório</Link>
+            <Link href="/politica-de-privacidade">Privacidade</Link>
+            <Link href="/termos-de-uso">Termos de uso</Link>
+          </nav>
+        </div>
+        <div className="container footer-bottom">
+          <span>© 2026 Olho no Doc.</span>
+          <span>Consulte antes de comprar.</span>
+        </div>
+      </footer>
+
+      <div className="mobile-cta">
+        <Link className="button" href="#consultar">Consultar minha placa <ArrowRight size={16} /></Link>
+      </div>
+    </div>
+  );
+}
