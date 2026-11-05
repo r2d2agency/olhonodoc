@@ -328,6 +328,18 @@
 .home-shell .plate-journey-card-blue b {
   color: #fff;
 }
+.home-shell .plate-journey-card-blue .journey-aggregate-grid > div {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.home-shell .plate-journey-card-blue .journey-aggregate-grid small {
+  color: rgba(255,255,255,.75);
+}
+.home-shell .plate-journey-card-blue .journey-aggregate-grid b {
+  color: #fff;
+}
 .home-shell .button-light {
   background: #fff;
   color: #0c3a75;
