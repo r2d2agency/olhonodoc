@@ -5,12 +5,24 @@ import { useState } from 'react';
 import { ArrowDownToLine, ArrowRight, Check, Clock3, FileText, LoaderCircle, RefreshCw, Trash2 } from 'lucide-react';
 import type { AccountQuery } from './portal';
 
+export const ANALYSIS_THRESHOLD_MS = 15 * 60 * 1000;
+
+function isInAnalysis(item: AccountQuery) {
+  if (item.query?.companyStatus === 'IN_ANALYSIS') return true;
+  if (item.query?.companyStatus !== 'PROCESSING' && item.query?.companyStatus !== 'SUBMITTED') return false;
+  const sentAt = item.query?.requestSentAt ? new Date(item.query.requestSentAt).getTime() : NaN;
+  if (Number.isNaN(sentAt)) return false;
+  return Date.now() - sentAt >= ANALYSIS_THRESHOLD_MS;
+}
+
 function statusLabel(item: AccountQuery) {
+  if (isInAnalysis(item)) return 'Em análise técnica';
   const status = item.query?.companyStatus || item.status;
   const map: Record<string, string> = {
     PENDING: 'Pagamento pendente',
     PAID: 'Pagamento confirmado',
-    PROCESSING: 'Consulta em andamento',
+    SUBMITTED: 'Processando sua consulta',
+    PROCESSING: 'Processando sua consulta',
     COMPLETED: 'Relatório pronto',
     FAILED: 'Falhou — tente de novo',
     CANCELLED: 'Cancelado',
@@ -20,7 +32,8 @@ function statusLabel(item: AccountQuery) {
 }
 
 function statusHint(item: AccountQuery) {
-  if (item.query?.providerMessage) return item.query.providerMessage;
+  if (isInAnalysis(item)) return 'Sua consulta foi encaminhada para a Mesa de Análise Técnica: nossa equipe especializada está avaliando inconsistências e casos que exigem atenção. Avisaremos por e-mail quando o relatório estiver pronto.';
+  if (item.query?.companyStatus === 'PROCESSING' || item.query?.companyStatus === 'SUBMITTED') return 'Sua consulta está sendo processada. Você será informado por e-mail quando ela for concluída. O processamento automático leva até 15 minutos.';
   if (item.query?.companyStatus === 'COMPLETED') return 'Resultado recebido pela plataforma.';
   if (item.query?.requestSentAt) return 'Consulta enviada e aguardando atualização.';
   if (item.status === 'PENDING') return 'Pedido criado, mas o pagamento ainda não foi concluído. Continue de onde parou ou exclua para recomeçar.';
@@ -29,6 +42,7 @@ function statusHint(item: AccountQuery) {
 
 export default function QueriesTab({ queries, loading, onReload, onNewQuery }: { queries: AccountQuery[]; loading: boolean; onReload: () => void; onNewQuery: () => void }) {
   const [deletingId, setDeletingId] = useState('');
+  const [refreshingId, setRefreshingId] = useState('');
   const [error, setError] = useState('');
   // Pedidos pendentes primeiro: são os que precisam de ação.
   const sorted = [...queries].sort((a, b) => {
@@ -37,6 +51,16 @@ export default function QueriesTab({ queries, loading, onReload, onNewQuery }: {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
   const pendingCount = queries.filter((q) => q.status === 'PENDING').length;
+
+  async function refreshStatus(id: string) {
+    setRefreshingId(id); setError('');
+    try {
+      const response = await fetch(`/api/account/queries/${encodeURIComponent(id)}/refresh`, { method: 'POST' });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Não foi possível atualizar o status.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível atualizar o status.'); }
+    finally { setRefreshingId(''); onReload(); }
+  }
 
   async function removeOrder(id: string) {
     if (!window.confirm('Excluir este pedido pendente? Você poderá criar outro em seguida.')) return;
@@ -77,6 +101,9 @@ export default function QueriesTab({ queries, loading, onReload, onNewQuery }: {
             const hasPdf = Boolean(item.query?.reportPdfGeneratedAt);
             const completed = item.query?.companyStatus === 'COMPLETED' && hasPdf;
             const awaitingPdf = item.query?.companyStatus === 'COMPLETED' && !hasPdf;
+            const inAnalysis = isInAnalysis(item);
+            const statusClass = inAnalysis ? 'in-analysis' : (item.query?.companyStatus || item.status).toLowerCase();
+            const refreshing = refreshingId === item.id;
             return (
               <article className={`customer-query-card${pending ? ' is-pending' : ''}`} key={item.id}>
                 <div className="customer-query-card-head">
@@ -85,7 +112,7 @@ export default function QueriesTab({ queries, loading, onReload, onNewQuery }: {
                     <h3>{item.plate}</h3>
                     <small>{new Date(item.createdAt).toLocaleDateString('pt-BR')} · {item.totalCents != null ? (item.totalCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}</small>
                   </div>
-                  <span className={`customer-query-status ${(item.query?.companyStatus || item.status).toLowerCase()}`}>{statusLabel(item)}</span>
+                  <span className={`customer-query-status ${statusClass}`}>{statusLabel(item)}</span>
                 </div>
                 <p>{statusHint(item)}</p>
                 {completed && (
@@ -121,7 +148,7 @@ export default function QueriesTab({ queries, loading, onReload, onNewQuery }: {
                 )}
                 {!pending && !completed && item.status !== 'CANCELLED' && (
                   <div className="customer-query-actions">
-                    <button className="customer-secondary-button" onClick={onReload}><RefreshCw size={15} /> Atualizar status</button>
+                    <button className="customer-secondary-button" onClick={() => refreshStatus(item.id)} disabled={refreshing}>{refreshing ? <LoaderCircle size={15} className="spin" /> : <RefreshCw size={15} />} {refreshing ? 'Atualizando…' : 'Atualizar status'}</button>
                   </div>
                 )}
               </article>

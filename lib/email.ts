@@ -30,6 +30,45 @@ export async function sendSmtpTest(email: string) {
   await sendEmail(email, 'Teste de configuração de e-mail | Olho no Doc', 'A configuração de e-mail foi validada com sucesso.', '<div style="font-family:Arial,sans-serif"><h2>Olho no Doc</h2><p>A configuração de e-mail foi validada com sucesso.</p></div>');
 }
 
+export async function sendQueryProcessing(email: string, name: string, plate: string, productName: string) {
+  const firstName = name.trim().split(/\s+/)[0] || 'Cliente';
+  const text = `Olá, ${firstName}! Recebemos seu pedido da ${productName} — placa ${plate}. Sua consulta está sendo processada e você será informado por e-mail quando ela for concluída. O processamento automático leva até 15 minutos.`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px">
+    <h2 style="color:#183b55;margin:0 0 6px">Processando sua consulta</h2>
+    <p style="color:#5a6d7a;margin:0 0 20px">${productName} · placa ${plate}</p>
+    <p style="color:#334956;line-height:1.6">Olá, ${firstName}!</p>
+    <p style="color:#334956;line-height:1.6">Sua consulta está sendo processada e <strong>você será informado por e-mail quando ela for concluída</strong>.</p>
+    <p style="color:#334956;line-height:1.6">O processamento automático leva até 15 minutos. Se passar desse tempo, é porque encontramos alguma informação que precisa ser analisada pela nossa Mesa de Análise Técnica — nesse caso avisaremos você também.</p>
+  </div>`;
+  await sendEmail(email, 'Processando sua consulta | Olho no Doc', text, html);
+}
+
+export async function sendQueryInAnalysis(email: string, name: string, plate: string, productName: string) {
+  const firstName = name.trim().split(/\s+/)[0] || 'Cliente';
+  const text = `Olá, ${firstName}! Sua consulta ${productName} — placa ${plate} foi encaminhada para a Mesa de Análise Técnica. Nossa equipe especializada está avaliando inconsistências e casos que exigem atenção (por exemplo, indícios de sinistro ou leilão). Avisaremos por e-mail assim que o relatório estiver pronto.`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px">
+    <h2 style="color:#8a6d1a;margin:0 0 6px">Sua consulta está em análise técnica</h2>
+    <p style="color:#5a6d7a;margin:0 0 20px">${productName} · placa ${plate}</p>
+    <p style="color:#334956;line-height:1.6">Olá, ${firstName}!</p>
+    <p style="color:#334956;line-height:1.6">Sua consulta foi encaminhada para a <strong>Mesa de Análise Técnica</strong>. Nossa equipe especializada está avaliando inconsistências e casos que exigem atenção (por exemplo, indícios de sinistro ou leilão).</p>
+    <p style="color:#334956;line-height:1.6">Avisaremos por e-mail assim que o relatório estiver pronto.</p>
+  </div>`;
+  await sendEmail(email, 'Sua consulta está em análise técnica | Olho no Doc', text, html);
+}
+
+export async function sendQueryCompleted(email: string, name: string, plate: string, productName: string, reportUrl: string) {
+  const firstName = name.trim().split(/\s+/)[0] || 'Cliente';
+  const text = `Olá, ${firstName}! Sua consulta ${productName} — placa ${plate} foi concluída. Veja o relatório em ${reportUrl}`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px">
+    <h2 style="color:#183b55;margin:0 0 6px">Sua consulta foi concluída</h2>
+    <p style="color:#5a6d7a;margin:0 0 20px">${productName} · placa ${plate}</p>
+    <p style="color:#334956;line-height:1.6">Olá, ${firstName}!</p>
+    <p style="color:#334956;line-height:1.6">O relatório da sua consulta está pronto.</p>
+    <p><a href="${reportUrl}" style="display:inline-block;padding:12px 20px;background:#18a976;color:#fff;border-radius:8px;text-decoration:none">Ver relatório</a></p>
+  </div>`;
+  await sendEmail(email, 'Sua consulta foi concluída | Olho no Doc', text, html);
+}
+
 type PaymentChargeEmail = {
   orderId: string;
   plate: string;

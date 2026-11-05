@@ -74,6 +74,7 @@ enum AdminAccessLevel {
 enum CompanyQueryStatus {
   SUBMITTED
   PROCESSING
+  IN_ANALYSIS
   COMPLETED
   NOT_FOUND
   AUTH_ERROR
@@ -329,6 +330,8 @@ model VehicleQuery {
   responseReceivedAt DateTime?
   attempts        Int      @default(0)
   lastError       String?
+  analysisNotifiedAt DateTime?
+  completedNotifiedAt DateTime?
   reportPdf       Bytes?
   reportPdfHash   String?
   reportPdfGeneratedAt DateTime?
