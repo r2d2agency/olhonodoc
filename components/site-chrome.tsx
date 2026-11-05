@@ -11,10 +11,10 @@ export function SiteChrome({ children }: { children: ReactNode }) {
   if (pathname === '/') return children;
 
   return (
-    <>
+    <div className={pathname === '/login' ? 'auth-site-chrome' : undefined}>
       <Header />
       <main>{children}</main>
       <SiteFooter />
-    </>
+    </div>
   );
 }
