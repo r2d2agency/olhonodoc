@@ -314,6 +314,29 @@
   color: var(--home-text);
   box-shadow: 0 12px 30px rgb(11 55 96 / 9%);
 }
+.home-shell .plate-journey-card-blue {
+  background: #0c3a75;
+  color: #fff;
+  border-color: #0c3a75;
+}
+.home-shell .plate-journey-card-blue h3,
+.home-shell .plate-journey-card-blue strong,
+.home-shell .plate-journey-card-blue p,
+.home-shell .plate-journey-card-blue small {
+  color: #fff;
+}
+.home-shell .plate-journey-card-blue b {
+  color: #fff;
+}
+.home-shell .button-light {
+  background: #fff;
+  color: #0c3a75;
+}
+.home-shell .journey-secondary-light {
+  background: transparent;
+  color: #fff;
+  border-color: #fff;
+}
 
 .home-shell .plate-journey-card h3 {
   margin: 8px 0;

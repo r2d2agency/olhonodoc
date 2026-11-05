@@ -44,6 +44,7 @@ export default function Home() {
             <a href="#planos">Consultas</a>
             <a href="#duvidas">Dúvidas</a>
           </nav>
+          <Link className="login-link header-login" href="/minha-conta">Minha conta</Link>
           <Link className="button header-cta" href="#consultar">Consultar placa <ArrowRight size={16} /></Link>
         </div>
       </header>
