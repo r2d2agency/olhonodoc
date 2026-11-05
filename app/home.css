@@ -319,10 +319,13 @@
   color: #fff;
   border-color: #0c3a75;
 }
+.home-shell .plate-journey-card-blue,
 .home-shell .plate-journey-card-blue h3,
 .home-shell .plate-journey-card-blue strong,
 .home-shell .plate-journey-card-blue p,
-.home-shell .plate-journey-card-blue small {
+.home-shell .plate-journey-card-blue small,
+.home-shell .plate-journey-card-blue b,
+.home-shell .plate-journey-card-blue a {
   color: #fff;
 }
 .home-shell .plate-journey-card-blue b {
@@ -343,6 +346,10 @@
 .home-shell .button-light {
   background: #fff;
   color: #0c3a75;
+}
+.home-shell .button-light:hover {
+  background: #016028;
+  color: #fff;
 }
 .home-shell .journey-secondary-light {
   background: transparent;
