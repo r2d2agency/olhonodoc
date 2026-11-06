@@ -43,6 +43,7 @@ function statusHint(item: AccountQuery) {
 export default function QueriesTab({ queries, loading, onReload, onNewQuery }: { queries: AccountQuery[]; loading: boolean; onReload: () => void; onNewQuery: () => void }) {
   const [deletingId, setDeletingId] = useState('');
   const [refreshingId, setRefreshingId] = useState('');
+  const [viewingId, setViewingId] = useState('');
   const [error, setError] = useState('');
   // Pedidos pendentes primeiro: são os que precisam de ação.
   const sorted = [...queries].sort((a, b) => {
@@ -119,7 +120,7 @@ export default function QueriesTab({ queries, loading, onReload, onNewQuery }: {
                   <div className="customer-query-result">
                     <strong>Relatório disponível</strong>
                     <span>{item.query?.report?.agregados?.marca ? `${item.query.report.agregados.marca} ${item.query.report.agregados.modelo || ''}` : 'Resultado recebido pela plataforma.'}</span>
-                    <a className="customer-query-download" href={`/api/account/queries/${item.id}/pdf`} target="_blank" rel="noreferrer"><ArrowDownToLine size={15} /> Baixar relatório</a>
+                    <button className="customer-query-download" onClick={() => setViewingId(item.id)}><ArrowDownToLine size={15} /> Ver relatório</button>
                   </div>
                 )}
                 {awaitingPdf && (
@@ -169,6 +170,17 @@ export default function QueriesTab({ queries, loading, onReload, onNewQuery }: {
           <article><span className="lifecycle-step-icon"><FileText size={17} /></span><small>03 · ENTREGA</small><h3>Relatório disponível</h3><p>O resultado poderá ser visualizado e baixado nesta área.</p></article>
         </div>
       </div>
+      {viewingId && (
+        <div className="customer-report-modal" onClick={() => setViewingId('')}>
+          <div className="customer-report-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="customer-report-modal-head">
+              <strong>Relatório da consulta</strong>
+              <button onClick={() => setViewingId('')}>Fechar</button>
+            </div>
+            <iframe src={`/api/account/queries/${encodeURIComponent(viewingId)}/report`} className="customer-report-modal-frame" title="Relatório" />
+          </div>
+        </div>
+      )}
     </section>
   );
 }
