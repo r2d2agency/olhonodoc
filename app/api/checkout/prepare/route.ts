@@ -25,7 +25,7 @@ function validCpfCnpj(value: string) {
   return false;
 }
 
-const POST = logRequest('checkout.prepare', async (request: Request) => {
+export const POST = logRequest('checkout.prepare', async (request: Request) => {
   try {
     const user = await getCurrentUser();
     if (!user || user.role !== 'CUSTOMER' || !user.email) return NextResponse.json({ error: 'Faça login para continuar.' }, { status: 401 });
@@ -108,4 +108,3 @@ const POST = logRequest('checkout.prepare', async (request: Request) => {
   }
 });
 
-export { POST };

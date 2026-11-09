@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * Consulta o status real de um pagamento no provedor. Serve ao botão "Já paguei",
  * que até agora apenas redirecionava o cliente sem confirmar nada.
  */
-const GET = logRequest('checkout.payment-status', async (request: Request) => {
+export const GET = logRequest('checkout.payment-status', async (request: Request) => {
   try {
     const user = await getCurrentUser();
     if (!user || user.role !== 'CUSTOMER') return NextResponse.json({ error: 'Faça login para continuar.' }, { status: 401 });
@@ -43,4 +43,3 @@ const GET = logRequest('checkout.payment-status', async (request: Request) => {
   }
 });
 
-export { GET };

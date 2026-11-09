@@ -7,7 +7,7 @@ import { sendPaymentChargeEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
-const POST = logRequest('checkout.card-payment', async (request: Request) => {
+export const POST = logRequest('checkout.card-payment', async (request: Request) => {
   void logger.info('payment.card.received', { hasAuth: Boolean(request.headers.get('cookie')) });
   try {
     const user = await getCurrentUser();
@@ -101,4 +101,3 @@ const POST = logRequest('checkout.card-payment', async (request: Request) => {
   }
 });
 
-export { POST };

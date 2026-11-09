@@ -7,7 +7,7 @@ import { logger, logRequest } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-const POST = logRequest('checkout.offline-payment', async (request: Request) => {
+export const POST = logRequest('checkout.offline-payment', async (request: Request) => {
   void logger.info('payment.offline.received', { hasAuth: Boolean(request.headers.get('cookie')) });
   try {
     const user = await getCurrentUser();
@@ -77,4 +77,3 @@ const POST = logRequest('checkout.offline-payment', async (request: Request) => 
   }
 });
 
-export { POST };

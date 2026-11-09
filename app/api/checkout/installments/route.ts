@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * Retorna a taxa de juros de cada plano para que o checkout só rotule "sem juros"
  * quando a taxa vier efetivamente zerada do provedor.
  */
-const GET = logRequest('checkout.installments', async (request: Request) => {
+export const GET = logRequest('checkout.installments', async (request: Request) => {
   try {
     const user = await getCurrentUser();
     if (!user || user.role !== 'CUSTOMER') return NextResponse.json({ error: 'Faça login para continuar.' }, { status: 401 });
@@ -43,4 +43,3 @@ const GET = logRequest('checkout.installments', async (request: Request) => {
   }
 });
 
-export { GET };

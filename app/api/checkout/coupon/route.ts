@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
  * o navegador nunca informa o valor final. O desconto devolvido aqui é só
  * uma prévia — o prepare recalcula tudo antes de criar o pedido.
  */
-const POST = logRequest('checkout.coupon', async (request: Request) => {
+export const POST = logRequest('checkout.coupon', async (request: Request) => {
   try {
     const user = await getCurrentUser();
     if (!user || user.role !== 'CUSTOMER') return NextResponse.json({ error: 'Faça login para continuar.' }, { status: 401 });
@@ -39,4 +39,3 @@ const POST = logRequest('checkout.coupon', async (request: Request) => {
   }
 });
 
-export { POST };
