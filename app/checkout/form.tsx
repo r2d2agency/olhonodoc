@@ -15,6 +15,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
   const [address, setAddress] = useState<Address>(emptyAddress);
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
+  const [chassi, setChassi] = useState('');
   const [error, setError] = useState('');
   const [order, setOrder] = useState<{ orderId: string; amountCents: number | null; subtotalCents: number; discountCents: number; totalCents: number; couponCode: string | null } | null>(null);
   const orderAmountCents = order ? (order.totalCents ?? order.amountCents ?? 0) : 0;
@@ -86,7 +87,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     if (!payerEmail) { setError('Não foi possível identificar seu e-mail. Recarregue a página e entre novamente com sua conta.'); return; }
     setLoading(true); setError('');
     try {
-      const response = await fetch('/api/checkout/prepare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productSlug: product.slug, plate, cpf, phone, address, couponCode: coupon ? coupon.code : '' }) });
+      const response = await fetch('/api/checkout/prepare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productSlug: product.slug, plate, chassi: chassi || undefined, cpf, phone, address, couponCode: coupon ? coupon.code : '' }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error);
       setOrder(body.data);
@@ -134,6 +135,13 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
       <p>{`Você escolheu ${product.name} para a placa ${plate}. Preencha e confirme para ir ao pagamento.`}</p>
 
       <form onSubmit={submit}>
+        <div className="checkout-section">
+          <h3><CarFront size={16}/> Veículo</h3>
+          <div className="checkout-grid">
+            <label>Placa<input value={plate} disabled placeholder="Placa"/></label>
+            {product.requiresChassi && <label>Chassi<input required value={chassi} onChange={e => setChassi(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17))} placeholder="Informe o chassi (17 caracteres)" minLength={7} maxLength={17}/> <small className="checkout-hint">O Gravame exige o chassi do veículo.</small></label>}
+          </div>
+        </div>
         <div className="checkout-section">
           <h3><User size={16}/> Dados pessoais</h3>
           <div className="checkout-grid">

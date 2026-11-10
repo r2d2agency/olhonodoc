@@ -14,6 +14,8 @@ export type CatalogProduct = {
   useCase: string;
   ctaText?: string;
   featured?: boolean;
+  /** Quando true, o checkout exige o chassi (ex.: Gravame). */
+  requiresChassi?: boolean;
 };
 
 const formatBRL = (cents: number) => (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -35,7 +37,7 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
       const inWindow = (!product.promotionStart || product.promotionStart.getTime() <= now) && (!product.promotionEnd || product.promotionEnd.getTime() >= now);
       const promo = inWindow && product.promotionalPriceCents != null ? product.promotionalPriceCents : null;
       const features = Array.isArray(product.features) ? (product.features as string[]) : [];
-      return { slug: product.slug, name: product.name, shortName: product.shortName, description: product.description, price: formatBRL(promo ?? product.priceCents), priceCents: promo ?? product.priceCents, oldPrice: promo != null ? formatBRL(product.priceCents) : null, accent: product.accent ?? '', features, useCase: product.useCase, ctaText: product.ctaText || 'Ver consulta', featured: product.featured === 'FEATURED' };
+      return { slug: product.slug, name: product.name, shortName: product.shortName, description: product.description, price: formatBRL(promo ?? product.priceCents), priceCents: promo ?? product.priceCents, oldPrice: promo != null ? formatBRL(product.priceCents) : null, accent: product.accent ?? '', features, useCase: product.useCase, ctaText: product.ctaText || 'Ver consulta', featured: product.featured === 'FEATURED', requiresChassi: product.providerProduct === 'conferi-gravame' || product.providerInputType === 'chassi' };
     });
   } catch { return fallbackProducts; }
 }

@@ -32,6 +32,7 @@ export const POST = logRequest('checkout.prepare', async (request: Request) => {
     const body = await request.json().catch(() => null);
     const productSlug = typeof body?.productSlug === 'string' ? body.productSlug : '';
     const plate = typeof body?.plate === 'string' ? body.plate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : '';
+    const chassi = typeof body?.chassi === 'string' ? body.chassi.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : '';
     const address = body?.address;
     const cpf = typeof body?.cpf === 'string' ? normalizeDigits(body.cpf) : '';
     const phone = typeof body?.phone === 'string' ? normalizeDigits(body.phone) : '';
@@ -42,6 +43,8 @@ export const POST = logRequest('checkout.prepare', async (request: Request) => {
     if (!address || typeof address !== 'object' || !String(address.postalCode || '').replace(/\D/g, '').match(/^\d{8}$/) || !String(address.street || '').trim() || !String(address.number || '').trim() || !String(address.neighborhood || '').trim() || !String(address.city || '').trim() || !/^[A-Z]{2}$/.test(String(address.state || '').toUpperCase())) return NextResponse.json({ error: 'Preencha o endereço completo.' }, { status: 400 });
     const product = await prisma.product.findUnique({ where: { slug: productSlug, status: 'ACTIVE' } });
     if (!product) return NextResponse.json({ error: 'Produto indisponível.' }, { status: 404 });
+    const requiresChassi = product.providerProduct === 'conferi-gravame' || product.providerInputType === 'chassi';
+    if (requiresChassi && (chassi.length < 7 || chassi.length > 17)) return NextResponse.json({ error: 'Informe o chassi do veículo (Gravame exige chassi).' }, { status: 400 });
     const customer = await prisma.customer.upsert({ where: { email: user.email }, update: { name: user.name || undefined, phone, cpf, postalCode: String(address.postalCode).replace(/\D/g, ''), street: String(address.street).trim(), number: String(address.number).trim(), complement: String(address.complement || '').trim() || null, neighborhood: String(address.neighborhood).trim(), city: String(address.city).trim(), state: String(address.state).toUpperCase() }, create: { email: user.email, name: user.name, postalCode: String(address.postalCode).replace(/\D/g, ''), street: String(address.street).trim(), number: String(address.number).trim(), complement: String(address.complement || '').trim() || null, neighborhood: String(address.neighborhood).trim(), city: String(address.city).trim(), state: String(address.state).toUpperCase() } });
 
     // O subtotal vem do preço do produto no servidor; o cupom só pode
@@ -77,8 +80,8 @@ export const POST = logRequest('checkout.prepare', async (request: Request) => {
     const order = await prisma.$transaction(async (tx) => {
       // O pedido pendente é reaproveitado; se o cupom mudou, os valores são
       // recalculados e o resgate anterior é estornado.
-      const current = existing || await tx.order.create({ data: { plate, productId: product.id, customerId: customer.id, amountCents: totalCents, subtotalCents, discountCents, totalCents, couponId, status: 'PENDING' } });
-      if (existing) await tx.order.update({ where: { id: existing.id }, data: { amountCents: totalCents, subtotalCents, discountCents, totalCents, couponId } });
+      const current = existing || await tx.order.create({ data: { plate, chassi: chassi || null, productId: product.id, customerId: customer.id, amountCents: totalCents, subtotalCents, discountCents, totalCents, couponId, status: 'PENDING' } });
+      if (existing) await tx.order.update({ where: { id: existing.id }, data: { amountCents: totalCents, subtotalCents, discountCents, totalCents, couponId, ...(chassi ? { chassi } : {}) } });
       // Há um resgate por pedido (orderId é único): ele é reaproveitado e
       // reativado quando o cliente troca o cupom.
       const redemption = await tx.couponRedemption.findUnique({ where: { orderId: current.id } });

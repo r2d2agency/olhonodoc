@@ -45,7 +45,9 @@ export async function submitOrderToCompany(orderId: string) {
   if (existing?.companyStatus === CompanyQueryStatus.COMPLETED || existing?.companyStatus === CompanyQueryStatus.PROCESSING) return existing;
   if ((existing?.attempts || 0) >= MAX_ATTEMPTS) throw new Error('RETRY_LIMIT_REACHED');
   const config = await getCompanySettings();
-  const requestParams = { placa: normalizedPlate, ...(providerProduct === 'conferi-auto-pericia-gold' || providerProduct === 'conferi-auto-veiculo' ? { produto: providerProduct } : {}) };
+  const requestParams: Record<string, string> = { placa: normalizedPlate, ...(providerProduct === 'conferi-auto-pericia-gold' || providerProduct === 'conferi-auto-veiculo' ? { produto: providerProduct } : {}) };
+  const orderChassi = typeof (order as { chassi?: unknown }).chassi === 'string' ? String((order as { chassi?: unknown }).chassi).toUpperCase() : '';
+  if (providerProduct === 'conferi-gravame' && orderChassi) requestParams.chassi = orderChassi;
   const query = existing || await prisma.vehicleQuery.create({ data: { orderId, normalizedPlate, requestParams, provider: 'company-conferi', providerProduct, environment: config.environment, companyStatus: CompanyQueryStatus.SUBMITTED, requestSentAt: new Date() } });
   try {
     const detailed = await requestCompanyDetailed(providerProduct as CompanyProduct, config.environment, { usuario: config.usuario, senha: config.senha }, requestParams, order.product.providerEndpointKey);

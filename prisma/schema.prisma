@@ -242,6 +242,7 @@ model CouponRedemption {
 model Order {
   id             String             @id @default(cuid())
   plate          String
+  chassi         String?
   productId      String
   customerId     String?
   couponId       String?
