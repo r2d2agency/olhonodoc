@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import puppeteer from 'puppeteer';
 import type { CompanyResponse } from '@/lib/company-conferi';
 import { MODEL_HTML_TEMPLATE } from '@/lib/gold-report-template';
+import { getActiveTemplateHtml } from '@/lib/admin/report-templates';
 
 const asRecord = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const text = (s: Record<string, unknown>, k: string, fb = 'Não informado') => { const v = s[k]; return v === undefined || v === null || v === '' || v === '0' ? fb : String(v); };
@@ -99,9 +100,10 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   return data;
 }
 
-export function goldReportHtml(input: CompanyResponse, plate: string, status: string, message: string) {
+export async function goldReportHtml(input: CompanyResponse, plate: string, status: string, message: string) {
   const data = buildData(input, plate, status, message);
-  return MODEL_HTML_TEMPLATE.replace('__DATA__', JSON.stringify(data));
+  const template = await getActiveTemplateHtml();
+  return template.replace('__DATA__', JSON.stringify(data));
 }
 
 export async function renderGoldPdf(response: CompanyResponse, plate: string, status: string, message: string) {
@@ -109,7 +111,7 @@ export async function renderGoldPdf(response: CompanyResponse, plate: string, st
   const browser = await puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   try {
     const page = await browser.newPage();
-    await page.setContent(goldReportHtml(response, plate, status, message), { waitUntil: 'load' });
+    await page.setContent(await goldReportHtml(response, plate, status, message), { waitUntil: 'load' });
     const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '8mm', right: '8mm', bottom: '8mm', left: '8mm' } });
     return Buffer.from(pdf);
   } finally { await browser.close(); }

@@ -12,6 +12,6 @@ export async function GET(_request: Request, { params }: { params: { orderId: st
     include: { product: true, query: true },
   });
   if (!order?.query?.report) return NextResponse.json({ error: 'Relatório ainda não disponível.' }, { status: 404 });
-  const html = goldReportHtml(order.query.report as CompanyResponse, order.plate, String(order.query.companyStatus || 'COMPLETED'), order.query.providerMessage || 'Consulta concluída');
+  const html = await goldReportHtml(order.query.report as CompanyResponse, order.plate, String(order.query.companyStatus || 'COMPLETED'), order.query.providerMessage || 'Consulta concluída');
   return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
 }
