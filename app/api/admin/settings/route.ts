@@ -5,7 +5,7 @@ import { getPublicSmtpConfiguration, saveSmtpConfiguration } from '@/lib/smtp-se
 import { sendSmtpTest } from '@/lib/email';
 import { encryptSmtpPassword } from '@/lib/smtp-settings';
 
-const allowed = new Set(['brand', 'site.settings', 'seo.defaults', 'contact']);
+const allowed = new Set(['brand', 'site.settings', 'seo.defaults', 'contact', 'turnstile']);
 const companyDefaults = { environment: 'homologation', usuario: '', passwordConfigured: false, webhookTokenConfigured: false } as const;
 
 export async function GET(request: Request) {
