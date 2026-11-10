@@ -96,7 +96,7 @@ O que ele faz: consulta `https://api.mercadopago.com/users/me` com o token confi
 Endpoint para o admin verificar se tudo está OK no servidor:
 
 ```
-GET /api/api/admin/diagnostics
+GET /api/admin/diagnostics
 ```
 
 Ele confere: banco de dados, schema do pagamento, credenciais configuradas e conexão com a API do MP.
