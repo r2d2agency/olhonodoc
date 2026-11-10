@@ -3,7 +3,7 @@ import { decryptSmtpPassword } from '@/lib/smtp-settings';
 import { prisma } from '@/lib/prisma';
 
 export type CompanyEnvironment = 'homologation' | 'production';
-export type CompanyProduct = 'conferi-agregados' | 'conferi-auto-pericia-gold' | 'conferi-bin' | 'conferi-estadual' | 'conferi-crlv' | 'conferi-gravame';
+export type CompanyProduct = 'conferi-auto-veiculo' | 'conferi-auto-pericia-gold' | 'conferi-bin' | 'conferi-estadual' | 'conferi-crlv' | 'conferi-gravame' | 'conferi-agregados';
 export type CompanyInput = { placa?: string; chassi?: string; motor?: string; cambio?: string; produto?: string; uf?: string; documento?: string; renavam?: string; codigo_consulta?: string };
 export type CompanyResponse = { solicitacao?: { acao?: number | string; mensagem?: string; dataHora?: string; codigoConsulta?: string; status?: string }; hashPesquisa?: string; [key: string]: unknown };
 export type CompanyRequestResult = { data: CompanyResponse; httpStatus: number; contentType: string; durationMs: number; endpoint: string; rawPreview: string };
@@ -12,6 +12,7 @@ export class CompanyTransportError extends Error { constructor(public readonly d
 const endpoints: Record<CompanyEnvironment, Record<CompanyProduct, string>> = {
   homologation: {
     'conferi-agregados': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-agregados?responseType=json',
+    'conferi-auto-veiculo': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-veiculo?responseType=json',
     'conferi-auto-pericia-gold': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-veiculo?responseType=json',
     'conferi-bin': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-bin?responseType=json',
     'conferi-estadual': 'https://webservice.companyconferi.com.br/api-clientes-homologacao/conferi-estadual?responseType=json',
@@ -20,6 +21,7 @@ const endpoints: Record<CompanyEnvironment, Record<CompanyProduct, string>> = {
   },
   production: {
     'conferi-agregados': 'https://webservice.companyconferi.com.br/api-clientes/conferi-agregados/json',
+    'conferi-auto-veiculo': 'https://webservice.companyconferi.com.br/api-clientes/conferi-veiculo/json',
     'conferi-auto-pericia-gold': 'https://webservice.companyconferi.com.br/api-clientes/conferi-veiculo/json',
     'conferi-bin': 'https://webservice.companyconferi.com.br/api-clientes/conferi-bin/json',
     'conferi-estadual': 'https://webservice.companyconferi.com.br/api-clientes/conferi-estadual/json',
@@ -35,6 +37,7 @@ export function validateCompanyInput(product: CompanyProduct, input: CompanyInpu
   if (!input.placa && !input.chassi && !input.motor && !input.cambio) throw new Error('Informe uma placa, chassi, motor ou câmbio.');
   if (product === 'conferi-gravame' && !input.chassi) throw new Error('Gravame exige chassi.');
   if (product === 'conferi-auto-pericia-gold') input.produto = 'conferi-auto-pericia-gold';
+  if (product === 'conferi-auto-veiculo') input.produto = 'conferi-auto-veiculo';
   if (input.uf) input.uf = input.uf.toUpperCase();
   if (product === 'conferi-crlv' && input.uf && !['SP', 'MA', 'MT', 'MG', 'PA', 'PR', 'TO'].includes(input.uf.toUpperCase())) throw new Error('UF não suportada para CRLV.');
 }

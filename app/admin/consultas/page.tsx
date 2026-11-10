@@ -147,7 +147,8 @@ const [regenerating, setRegenerating] = useState(false);
         <select value={product} onChange={e => setProduct(e.target.value)}>
           <option value="">Todos os produtos</option>
           <option value="conferi-agregados">Conferi Agregados</option>
-          <option value="conferi-auto-pericia-gold">Auto Perícia Gold</option>
+          <option value="conferi-auto-veiculo">Conferi Auto Veículo</option>
+<option value="conferi-auto-pericia-gold">Auto Perícia Gold</option>
           <option value="conferi-bin">Base BIN + RF</option>
           <option value="conferi-estadual">Base Estadual</option>
           <option value="conferi-crlv">CRLV</option>

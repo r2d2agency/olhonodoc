@@ -5,7 +5,7 @@ import { renderGoldPdf, reportHash } from '@/lib/gold-report';
 import { completeOrder } from '@/lib/order-lifecycle';
 import { sendQueryCompleted, sendQueryInAnalysis, sendQueryProcessing } from '@/lib/email';
 
-const supported = new Set<CompanyProduct>(['conferi-agregados', 'conferi-auto-pericia-gold', 'conferi-bin', 'conferi-estadual', 'conferi-crlv', 'conferi-gravame']);
+const supported = new Set<CompanyProduct>(['conferi-agregados', 'conferi-auto-veiculo', 'conferi-auto-pericia-gold', 'conferi-bin', 'conferi-estadual', 'conferi-crlv', 'conferi-gravame']);
 export const MAX_ATTEMPTS = 3;
 /** Após esse tempo em PROCESSING, a consulta vai para a Mesa de Análise Técnica. */
 export const ANALYSIS_THRESHOLD_MS = 15 * 60 * 1000;
@@ -45,7 +45,7 @@ export async function submitOrderToCompany(orderId: string) {
   if (existing?.companyStatus === CompanyQueryStatus.COMPLETED || existing?.companyStatus === CompanyQueryStatus.PROCESSING) return existing;
   if ((existing?.attempts || 0) >= MAX_ATTEMPTS) throw new Error('RETRY_LIMIT_REACHED');
   const config = await getCompanySettings();
-  const requestParams = { placa: normalizedPlate, ...(providerProduct === 'conferi-auto-pericia-gold' ? { produto: providerProduct } : {}) };
+  const requestParams = { placa: normalizedPlate, ...(providerProduct === 'conferi-auto-pericia-gold' || providerProduct === 'conferi-auto-veiculo' ? { produto: providerProduct } : {}) };
   const query = existing || await prisma.vehicleQuery.create({ data: { orderId, normalizedPlate, requestParams, provider: 'company-conferi', providerProduct, environment: config.environment, companyStatus: CompanyQueryStatus.SUBMITTED, requestSentAt: new Date() } });
   try {
     const detailed = await requestCompanyDetailed(providerProduct as CompanyProduct, config.environment, { usuario: config.usuario, senha: config.senha }, requestParams, order.product.providerEndpointKey);
