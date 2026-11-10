@@ -44,10 +44,16 @@ export async function POST(request: Request) {
   const token = typeof body?.turnstileToken === 'string' ? body.turnstileToken : '';
   if (!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(plate) && !/^[A-Z]{3}[0-9]{4}$/.test(plate)) return NextResponse.json({ error: 'Informe uma placa válida.' }, { status: 400 });
 
-  // Only enforce Turnstile if a secret is configured
-  if (process.env.TURNSTILE_SECRET_KEY) {
+  // Only enforce Turnstile if both secret env and site key are configured
+  let turnstileConfigured = Boolean(process.env.TURNSTILE_SECRET_KEY);
+  try {
+    const row = await prisma.setting.findUnique({ where: { key: 'turnstile' } });
+    const v = row?.value as { siteKey?: string } | undefined;
+    if (!v?.siteKey) turnstileConfigured = false;
+  } catch { turnstileConfigured = false; }
+  if (turnstileConfigured) {
     const ok = await verifyTurnstile(token, ip);
-    if (!ok) return NextResponse.json({ error: 'Verificação CAPTCHA falhou.' }, { status: 403 });
+    if (!ok) return NextResponse.json({ error: 'Verificação CAPTCHA falhou. Confirme o widget.' }, { status: 403 });
   }
 
   try {

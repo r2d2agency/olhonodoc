@@ -1,0 +1,16 @@
+OLHO NO DOC — MODELO DE LAUDO HÍBRIDO HTML + PDF
+
+1. Abra index.html no navegador ou no VS Code (Live Server opcional).
+2. A primeira página possui fundo azul, placa Mercosul e painel de alertas.
+3. As páginas seguintes usam fundo branco com tipografia escura.
+4. Clique em "Imprimir / Salvar PDF" e ative "Gráficos de plano de fundo" nas opções do navegador.
+5. Os botões "Exemplo com alertas" e "Exemplo sem alertas" servem para pré-visualizar a alternância de estados; não aparecem no PDF.
+6. O código de demonstração está dentro do <script> no fim de index.html. Troque dadosLaudo pelos dados retornados pelo sistema e chame render().
+7. Para trocar a logo, substitua assets/logo-olho-no-doc.png.
+
+IMPORTANTE:
+- Exemplo com dados transcritos parcialmente do PDF enviado, não é laudo oficial nem reconstrução integral dos campos.
+- Os registros históricos com modelos divergentes foram preservados como demonstração.
+- O exemplo 'sem alertas' é SIMULADO para teste visual, não representa novo resultado de consulta.
+- O status 'não informado' não deve ser tratado como 'nada consta'.
+- Para conteúdo real com muitos registros, implementar paginação automática no gerador de PDF do sistema.
