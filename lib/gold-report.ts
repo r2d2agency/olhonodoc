@@ -6,6 +6,212 @@ import { getActiveTemplateHtml } from '@/lib/admin/report-templates';
 
 const asRecord = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const text = (s: Record<string, unknown>, k: string, fb = 'Não informado') => { const v = s[k]; return v === undefined || v === null || v === '' || v === '0' ? fb : String(v); };
+const isBlank = (v: unknown) => v === undefined || v === null || String(v).trim() === '' || String(v).trim() === '0';
+const norm = (v: unknown) => String(v ?? '').trim();
+const upper = (v: unknown) => norm(v).toUpperCase();
+const hasMeaningful = (v: unknown): boolean => {
+  if (v === undefined || v === null) return false;
+  if (Array.isArray(v)) return v.some(hasMeaningful);
+  if (typeof v === 'object') {
+    const entries = Object.entries(v as Record<string, unknown>);
+    if (!entries.length) return false;
+    return entries.some(([k, val]) => k !== 'codigoConsulta' && k !== 'dataHora' && k !== 'acao' && hasMeaningful(val));
+  }
+  const s = norm(v);
+  if (!s || s === '0') return false;
+  const u = s.toUpperCase();
+  if (['NÃO INFORMADO', 'NAO INFORMADO', 'INDISPONÍVEL', 'INDISPONIVEL', 'NADA CONSTA', 'SEM INFORMAÇÃO', 'SEM INFORMACAO'].includes(u)) return false;
+  return true;
+};
+const nadaConsta = (v: unknown) => {
+  const u = upper(v);
+  return !u || u === 'NADA CONSTA' || u === 'NAO CONSTA' || u === 'NÃO CONSTA';
+};
+const isIndisponivelMsg = (v: unknown) => /indispon/i.test(norm(v));
+const isNadaConstaMsg = (v: unknown) => /nada consta|nao consta|não consta/i.test(norm(v));
+const isPositiveMsg = (v: unknown) => {
+  const s = norm(v);
+  if (!s) return false;
+  if (isNadaConstaMsg(s) || isIndisponivelMsg(s)) return false;
+  const u = s.toUpperCase();
+  if (['NÃO', 'NAO', 'N', 'NEGATIVO', 'OK'].includes(u)) return false;
+  return !/^(não|nao)\b/.test(s.toLowerCase());
+};
+
+function formatTextBlock(raw: unknown): string {
+  let s = norm(raw);
+  if (!s) return '';
+  s = s.replace(/\r\n?/g, '\n').replace(/\t+/g, ' ');
+  // ensure space after sentence punctuation when glued
+  s = s.replace(/([.!?;,])([A-Za-zÀ-ÖØ-öø-ÿ0-9])/g, '$1 $2');
+  // ensure space before common uppercase-led sentence starts when glued to lowercase/number
+  s = s.replace(/([a-zà-öø-ÿ0-9])([A-ZÀ-Ö])/g, '$1 $2');
+  s = s.replace(/[ ]{2,}/g, ' ');
+  s = s.split('\n').map(line => {
+    let l = line.trim().replace(/[ ]{2,}/g, ' ');
+    if (!l) return '';
+    // capitalize first letter of sentence/line
+    l = l.replace(/^([a-zà-öø-ÿ])/, (_, c) => c.toUpperCase());
+    // capitalize after ". " if lowercase
+    l = l.replace(/([.!?]\s+)([a-zà-öø-ÿ])/g, (_, p, c) => p + c.toUpperCase());
+    return l;
+  }).filter(Boolean).join('\n');
+  return s.trim();
+}
+
+function formatLabel(key: string): string {
+  const spaced = key
+    .replace(/[_\-]+/g, ' ')
+    .replace(/([a-zà-öø-ÿ0-9])([A-ZÀ-Ö])/g, '$1 $2')
+    .replace(/([A-ZÀ-Ö]+)([A-ZÀ-Ö][a-zà-öø-ÿ])/g, '$1 $2')
+    .trim();
+  if (!spaced) return key;
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function valueToText(v: unknown): string {
+  if (v === undefined || v === null) return '';
+  if (Array.isArray(v)) return v.map(valueToText).filter(Boolean).join('; ');
+  if (typeof v === 'object') {
+    const entries = Object.entries(v as Record<string, unknown>).filter(([_, val]) => !isBlank(val));
+    if (!entries.length) return '';
+    return entries.map(([k, val]) => `${formatLabel(k)}: ${valueToText(val)}`).join(' | ');
+  }
+  return norm(v);
+}
+
+function pairsFromObject(obj: Record<string, unknown>, opts?: { dropKeys?: Set<string>; formatKeys?: boolean }): string[][] {
+  const drop = opts?.dropKeys || new Set<string>();
+  return Object.entries(obj)
+    .filter(([k, v]) => !drop.has(k) && !isBlank(v))
+    .map(([k, v]) => [opts?.formatKeys ? formatLabel(k) : k, valueToText(v)] as string[]);
+}
+
+function registrosFromArray(arr: unknown[], opts?: { dropKeys?: string[] }): Record<string, string>[] {
+  const drop = new Set((opts?.dropKeys || []).map(k => k.toLowerCase()));
+  return arr.map(item => {
+    const rec = asRecord(item);
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(rec)) {
+      if (drop.has(k.toLowerCase())) continue;
+      if (isBlank(v)) continue;
+      const val = valueToText(v);
+      if (!val) continue;
+      out[formatLabel(k)] = val;
+    }
+    return out;
+  }).filter(r => Object.keys(r).length > 0);
+}
+
+function findDeep(obj: unknown, keys: string[], depth = 0): unknown {
+  if (depth > 4 || obj === undefined || obj === null) return undefined;
+  if (Array.isArray(obj)) {
+    for (const item of obj) { const f = findDeep(item, keys, depth + 1); if (f !== undefined) return f; }
+    return undefined;
+  }
+  if (typeof obj !== 'object') return undefined;
+  const rec = obj as Record<string, unknown>;
+  for (const k of keys) { if (k in rec && !isBlank(rec[k])) return rec[k]; }
+  for (const v of Object.values(rec)) { const f = findDeep(v, keys, depth + 1); if (f !== undefined) return f; }
+  return undefined;
+}
+
+function findDeepKeyMatch(obj: unknown, patterns: RegExp[], depth = 0): { key: string; value: unknown } | undefined {
+  if (depth > 4 || obj === undefined || obj === null || typeof obj !== 'object') return undefined;
+  if (Array.isArray(obj)) {
+    for (const item of obj) { const f = findDeepKeyMatch(item, patterns, depth + 1); if (f) return f; }
+    return undefined;
+  }
+  const rec = obj as Record<string, unknown>;
+  for (const [k, v] of Object.entries(rec)) {
+    if (patterns.some(p => p.test(k)) && hasMeaningful(v)) return { key: k, value: v };
+  }
+  for (const v of Object.values(rec)) { const f = findDeepKeyMatch(v, patterns, depth + 1); if (f) return f; }
+  return undefined;
+}
+
+function collectSectionRecords(value: unknown): Record<string, string>[] {
+  if (Array.isArray(value)) return registrosFromArray(value);
+  if (value && typeof value === 'object') {
+    const rec = asRecord(value);
+    // common wrappers
+    for (const k of ['detalhes', 'detalhe', 'registros', 'itens', 'historico', 'ocorrencias', 'dados', 'lista']) {
+      const inner = rec[k];
+      if (Array.isArray(inner)) return registrosFromArray(inner);
+    }
+    const recs = registrosFromArray([rec]);
+    return recs;
+  }
+  return [];
+}
+
+function buildDebitos(est: Record<string, unknown>) {
+  // collect all debit-related entries from estadual (and keep them complete)
+  const debitPairs: string[][] = [];
+  const seen = new Set<string>();
+  const isDebitKey = (k: string) => /multa|debito|d[eé]bito|ipva|licenc|dpvat|seguro|taxa|infrac/i.test(k);
+  for (const [k, v] of Object.entries(est)) {
+    if (!isDebitKey(k)) continue;
+    if (isBlank(v)) continue;
+    const label = formatLabel(k);
+    const val = valueToText(v);
+    if (!val || seen.has(label)) continue;
+    seen.add(label);
+    debitPairs.push([label, val]);
+  }
+  // if nothing explicit, try common fields
+  if (!debitPairs.length) {
+    const multas = findDeep(est, ['multas', 'debitoMulta', 'debitoMultas']);
+    const ipva = findDeep(est, ['ipva', 'debitoIpva']);
+    const lic = findDeep(est, ['licenciamento', 'debitoLicenciamento']);
+    if (multas) debitPairs.push(['Multas', valueToText(multas)]);
+    if (ipva) debitPairs.push(['IPVA', valueToText(ipva)]);
+    if (lic) debitPairs.push(['Licenciamento', valueToText(lic)]);
+  }
+  return debitPairs;
+}
+
+function deriveParecer(r: Record<string, unknown>, parecer: Record<string, unknown>, alertas: { tipo: string }[]) {
+  const corRaw = upper(parecer.cor || parecer.nivel || parecer.classificacao);
+  let nivel = corRaw.includes('VERM') ? 'vermelho' : corRaw.includes('AMAR') || corRaw.includes('ATEN') || corRaw.includes('LARAN') ? 'amarelo' : corRaw.includes('VERD') ? 'verde' : '';
+  const sin = asRecord(r.sinistro);
+  const ind = asRecord(r.indicioSinistro2 || r.indicioSinistro);
+  const rf = asRecord(r.historicoRouboFurto || r.rouboFurto);
+  const grav = asRecord(r.gravame);
+  const leilao = asRecord(r.leilao);
+  const com = asRecord(r.comercializacao);
+  const est = asRecord(r.estadual);
+  const cv = asRecord(r.comunicacaoVenda);
+  const hasSinistro = /SIM|CONSTA/i.test(norm(sin.resposta || sin.mensagem));
+  const hasRoubo = (Array.isArray(rf.registros) && rf.registros.length > 0) || isPositiveMsg(rf.alertaMensagem) || upper(rf.alertaCodigo) === 'SIM' || /SIM|CONSTA|POSITIV/i.test(upper(rf.resposta));
+  const hasRestrJud = !nadaConsta(est.restricaoJudicial) || !nadaConsta(est.restricaoRenajud) || !nadaConsta(est.restricaoJudicialRenajud);
+  const hasGravAtivo = /ATIV|CONSTA|GRAVAD/i.test(upper(grav.situacao || grav.restricao || grav.resposta));
+  const hasLeilao = Array.isArray(asRecord(leilao.leiloes).leilao) ? (asRecord(leilao.leiloes).leilao as unknown[]).length > 0 : Array.isArray(leilao.leiloes) ? (leilao.leiloes as unknown[]).length > 0 : Array.isArray(leilao.registros) ? (leilao.registros as unknown[]).length > 0 : isPositiveMsg(leilao.resposta);
+  const hasComunicVenda = isPositiveMsg(cv.resposta || cv.mensagem);
+  const hasComercial = isPositiveMsg(com.resposta || com.mensagem);
+  const hasIndicio = isPositiveMsg(ind.mensagem || ind.resposta);
+  const hasSevere = hasSinistro || hasRoubo || hasRestrJud || hasComunicVenda;
+  const hasAttention = hasGravAtivo || hasLeilao || hasComercial || hasIndicio;
+  if (hasSevere) nivel = 'vermelho';
+  else if (hasAttention && nivel !== 'vermelho') nivel = 'amarelo';
+  else if (!nivel) nivel = alertas.some(a => a.tipo === 'alerta') ? 'vermelho' : alertas.some(a => a.tipo === 'atencao') ? 'amarelo' : 'verde';
+  const partes: string[] = [];
+  if (hasSinistro) partes.push('sinistro apontado');
+  if (hasRoubo) partes.push('histórico de roubo/furto');
+  if (hasRestrJud) partes.push('restrição judicial');
+  if (hasComunicVenda) partes.push('comunicação de venda');
+  if (hasGravAtivo) partes.push('gravame/restrição financeira');
+  if (hasLeilao) partes.push('oferta em leilão');
+  if (hasComercial) partes.push(`comercialização${com.resposta ? ` (${norm(com.resposta)})` : ''}`);
+  if (hasIndicio) partes.push('indício de sinistro');
+  let resumo = '';
+  if (nivel === 'verde') resumo = 'Nenhum apontamento crítico identificado nos indicadores consultados. Veículo sem alertas relevantes no momento da consulta.';
+  else if (nivel === 'amarelo') resumo = `Foram identificados pontos que exigem atenção: ${partes.join(', ') || 'verificar indicadores retornados'}. Recomenda-se análise cuidadosa antes da negociação.`;
+  else resumo = `Foram identificados apontamentos críticos: ${partes.join(', ') || 'indicadores de alerta presentes'}. Recomenda-se cautela e verificação detalhada antes de qualquer negociação.`;
+  const detalhe = norm(parecer.texto || parecer.observacao || parecer.descricao || parecer.mensagem);
+  if (detalhe && !isIndisponivelMsg(detalhe)) resumo += ` ${detalhe}`;
+  return { nivel, resumo: formatTextBlock(resumo) };
+}
 
 function buildData(response: CompanyResponse, plate: string, status: string, message: string) {
   const r = asRecord(response);
@@ -19,84 +225,232 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   const comercial = asRecord(r.comercializacao);
   const recall = asRecord(r.recall);
   const cv = asRecord(r.comunicacaoVenda);
-  const rf = asRecord(r.historicoRouboFurto);
-  const parecer = asRecord(r.parecerTecnico);
+  const rf = asRecord(r.historicoRouboFurto || r.rouboFurto);
+  const parecerSrc = asRecord(r.parecerTecnico);
+  const indicio = asRecord(r.indicioSinistro2 || r.indicioSinistro);
 
-  const alertas: { icone: string; texto: string; tipo: string }[] = [];
-  if (String(sinistro.resposta || '').toUpperCase().includes('SIM')) alertas.push({ icone: 'sinistro', texto: 'Sinistro encontrado!', tipo: 'alerta' });
-  const leiloes = asRecord(leilao.leiloes).leilao;
-  if (Array.isArray(leiloes) && leiloes.length) alertas.push({ icone: 'leilao', texto: 'Consta oferta em leilão', tipo: 'alerta' });
-  if (String(comercial.resposta || '').trim() !== '' && String(comercial.resposta) !== '0') alertas.push({ icone: 'info', texto: 'Consta comercialização por seguradora', tipo: 'atencao' });
-  const rfAlert = rf.alertaMensagem;
-  if (rfAlert) alertas.push({ icone: 'roubo', texto: String(rfAlert), tipo: 'alerta' });
-  const restJud = String(est.restricaoJudicial || '').toUpperCase();
-  if (restJud && restJud !== 'NADA CONSTA' && restJud !== '') alertas.push({ icone: 'judicial', texto: 'Restrição judicial!', tipo: 'alerta' });
+  const solicitacaoMsg = norm(sol.mensagem || message);
+  const consultaIndisponivel = upper(sol.status) === 'FAILED' || isIndisponivelMsg(solicitacaoMsg) || /indispon/i.test(upper(status));
+  const motivoIndisponivel = consultaIndisponivel ? (solicitacaoMsg || 'Consulta temporariamente indisponível na base consultada.') : '';
 
-  const emplacamento: string[][] = [];
-  const pushEmp = (label: string, key: string, src: Record<string, unknown> = est) => {
-    const v = src[key];
-    if (v !== undefined && v !== null && v !== '') emplacamento.push([label, String(v)]);
-  };
-  pushEmp('Placa', 'placa'); pushEmp('Chassi', 'chassi'); pushEmp('Cor', 'cor');
-  pushEmp('Ano fabricação', 'anoFabricacao'); pushEmp('UF Faturado', 'uf_faturado'); pushEmp('Espécie', 'especie');
-  pushEmp('Situação Chassi', 'situacao'); pushEmp('Terceiro eixo', 'terceiroEixo'); pushEmp('Número DI', 'numeroDI');
-  pushEmp('Grupo modelo veículo', 'grupoModeloVeiculo'); pushEmp('Marca/Modelo', 'modelo'); pushEmp('Tipo de veículo', 'tipoVeiculo');
-  pushEmp('Ano modelo', 'anoModelo'); pushEmp('Lotação', 'qtdPassageiros'); pushEmp('Cilindradas', 'cilindradas');
-  pushEmp('Combustível', 'combustivel'); pushEmp('Município/UF', 'municipio'); pushEmp('UF de Origem', 'UfDeOrigem' in agg ? 'UfDeOrigem' : 'uf');
-  pushEmp('Situação', 'situacao'); pushEmp('Potência', 'potencia'); pushEmp('Procedência', 'procedencia');
-  pushEmp('Capacidade carga', 'capacidadeCarga');
+  const alertas: { icone: string; texto: string; tipo: 'alerta' | 'atencao' }[] = [];
 
-  const baseBin: string[][] = Object.entries(bin).map(([k, v]) => [k, v === null || v === undefined || v === '' ? 'Não Informado' : String(v)]);
-  const baseEstadual: string[][] = Object.entries(est).map(([k, v]) => [k, v === null || v === undefined || v === '' ? 'Não Informado' : String(v)]);
+  const sinistroPos = isPositiveMsg(sinistro.resposta || sinistro.mensagem);
+  if (sinistroPos) alertas.push({ icone: 'sinistro', texto: /consta|ind[íi]cio/i.test(norm(sinistro.resposta)) ? norm(sinistro.resposta) : 'Consta sinistro', tipo: 'alerta' });
 
-  const restricoesArr = Array.isArray(est.restricoes) ? est.restricoes : [];
-  const restricoes = Object.keys(est)
-    .filter(k => k.toLowerCase().includes('restric') || k.toLowerCase().includes('renajud') || k.toLowerCase().includes('renainf'))
-    .map(k => ({ rotulo: k, status: String(est[k]).toUpperCase().includes('NADA CONSTA') || String(est[k]).toUpperCase().includes('NAO CONSTA') ? 'ok' : 'alerta', texto: String(est[k]) }));
+  // Leilão
+  const leiloesRaw = asRecord(leilao.leiloes).leilao ?? leilao.leiloes ?? leilao.registros;
+  const leiloesArr: unknown[] = Array.isArray(leiloesRaw) ? leiloesRaw : leiloesRaw && typeof leiloesRaw === 'object' ? [leiloesRaw] : [];
+  if (leiloesArr.length || isPositiveMsg(leilao.resposta)) alertas.push({ icone: 'leilao', texto: 'Consta oferta em leilão', tipo: 'alerta' });
+
+  // Comercialização - must reflect exact Company text/type
+  const comercialTxt = norm(comercial.resposta || comercial.mensagem);
+  if (comercialTxt && isPositiveMsg(comercialTxt)) {
+    alertas.push({ icone: 'info', texto: comercialTxt, tipo: 'alerta' });
+  }
+
+  // Roubo/Furto - ONLY on positive record/alert, never on negative
+  const rfReg = Array.isArray(rf.registros) ? rf.registros : rf.registros ? [rf.registros] : [];
+  const rfCodigo = upper(rf.alertaCodigo);
+  const rfMsg = norm(rf.alertaMensagem || rf.mensagem || rf.resposta);
+  const rfPositive = rfReg.length > 0 || rfCodigo === 'SIM' || /POSITIV|CONST|ROUB|FURT/i.test(rfCodigo) || (isPositiveMsg(rfMsg) && /roub|furt|consta/i.test(rfMsg));
+  if (rfPositive) {
+    const texto = /roub|furt/i.test(rfMsg) && isPositiveMsg(rfMsg) ? rfMsg : 'Consta histórico de roubo/furto';
+    alertas.push({ icone: 'roubo', texto, tipo: 'alerta' });
+  }
+
+  // Restrições judiciais
+  const restKeys = Object.keys(est).filter(k => /restric|renajud|renainf|judicial/i.test(k));
+  const hasRestricao = restKeys.some(k => !nadaConsta(est[k]) && !isBlank(est[k]));
+  if (hasRestricao) alertas.push({ icone: 'judicial', texto: 'Restrição judicial', tipo: 'alerta' });
+
+  // Indício de sinistro - only when Company returns positive
+  const indicioMsg = norm(indicio.mensagem || indicio.resposta);
+  const indicioPos = isPositiveMsg(indicioMsg) && /ind[íi]cio|consta|sinistr/i.test(indicioMsg);
+  // (shown in section/parecer; top alert not mandated but keep logic consistent via section)
+
+  // BIN: if object has meaningful data, show it. If only unavailable markers, surface as indisponível note but don't hide real data.
+  const binPairsAll = pairsFromObject(bin, { formatKeys: true });
+  const binHasData = hasMeaningful(bin) && binPairsAll.length > 0;
+  const binUnavailableMsg = !binHasData ? (findDeep(bin, ['mensagem', 'status', 'descricao', 'resposta']) as string | undefined) : undefined;
+
+  // Base Estadual - include all fields, formatted labels, preserve values
+  const baseEstadual = pairsFromObject(est, { formatKeys: true });
+
+  // Emplacamento / cabeçalho
+  const marca = norm(bin.marca || est.marca || agg.marca || r.marca);
+  const modelo = norm(bin.modelo || est.modelo || agg.modelo || r.modelo);
+  const marcaModelo = [marca, modelo].filter(Boolean).join(' / ') || 'Não informado';
+
+  // Débitos - all debit fields returned
+  const debitosPares = buildDebitos(est);
+  // also include aggregated/other debit objects if present
+  const debitosOutros = asRecord(r.debitos);
+  if (hasMeaningful(debitosOutros)) {
+    for (const [k, v] of Object.entries(debitosOutros)) {
+      if (isBlank(v)) continue;
+      const label = formatLabel(k);
+      if (!debitosPares.some(p => p[0] === label)) debitosPares.push([label, valueToText(v)]);
+    }
+  }
+
+  // Gravame - hide yellow-highlighted sensitive/internal fields in view (conservative: hide contact/cpf-cnpj of agents/financeira details not essential)
+  const gravameDrop = ['cpfcnpjagente', 'cpfcnpj', 'cpf_cnpj', 'cnpjcpf', 'telefone', 'email', 'endereco', 'endereço', 'logradouro', 'numero', 'bairro', 'cidade', 'municipio', 'ufagente', 'cep'];
+  const gravamesArr: unknown[] = Array.isArray(grav.gravames) ? grav.gravames : Array.isArray(grav.registros) ? grav.registros : grav.resposta && hasMeaningful(grav) ? [grav] : [];
+  const gravameRegs = registrosFromArray(gravamesArr, { dropKeys: gravameDrop });
+
+  // Restrições e Outras Informações - reproduce as Company return, formatted
+  const restricoesTextoParts: string[] = [];
+  // include specific textual restriction/other-info fields from estadual and root
+  const restrTextKeys = ['restricoes', 'restricao', 'outrasInformacoes', 'outras_informacoes', 'observacoes', 'observacao', 'mensagemRestricao', 'informacoes', 'informacoesComplementaresRestricao'];
+  for (const src of [est, r]) {
+    for (const k of Object.keys(src)) {
+      if (/outr.*inform|observ|restric.*texto|mensag.*restric/i.test(k)) {
+        const v = src[k];
+        if (typeof v === 'string' && norm(v)) restricoesTextoParts.push(v);
+        else if (hasMeaningful(v) && typeof v !== 'object') restricoesTextoParts.push(String(v));
+      }
+    }
+    for (const k of restrTextKeys) { if (typeof src[k] === 'string' && norm(src[k])) restricoesTextoParts.push(src[k] as string); }
+  }
+  // build status items from restriction flags (Renajud, Renainf, judicial etc.) exactly as returned
+  const restricoesStatus = restKeys.map(k => {
+    const val = est[k];
+    const valText = valueToText(val) || norm(val);
+    const ok = nadaConsta(valText) || upper(valText) === 'NÃO' || upper(valText) === 'NAO';
+    return { rotulo: formatLabel(k), valor: valText, status: ok ? 'ok' : 'alerta', largura: /renajud|detalh/i.test(k) ? 'full' : '' };
+  });
+  // dedupe restricoes text
+  const restricoesTexto = formatTextBlock(Array.from(new Set(restricoesTextoParts.map(s => norm(s)).filter(Boolean))).join('\n'));
+
+  // Roubo/Furto - hide yellow-highlighted/internal fields, fix spacing
+  const rfDrop = ['consultaid', 'idconsulta', 'protocolo', 'codigoConsultaInterno', 'identificador', 'token'];
+  const rfRegs = registrosFromArray(rfReg, { dropKeys: rfDrop });
+  const rfMensagemFmt = formatTextBlock(rfMsg);
+
+  // Leilão - hide only yellow-highlighted/internal fields
+  const leilaoDrop = ['consultaid', 'idconsulta', 'protocolo', 'identificador', 'token', 'interno'];
+  const leilaoRegs = registrosFromArray(leiloesArr, { dropKeys: leilaoDrop });
+  // fallback if records became empty but there were items
+  const leilaoHas = leiloesArr.length > 0 || isPositiveMsg(leilao.resposta);
+
+  // Comercialização - positive highlight in red, keep text
+  const comercializacaoTexto = formatTextBlock(comercialTxt);
+  const comercializacaoPos = isPositiveMsg(comercialTxt);
+
+  // Recall
+  const recallTxt = norm(recall.resposta || recall.mensagem);
+  const recallFmt = recallTxt ? formatTextBlock(recallTxt) : 'Nada consta';
+
+  // Comparativo de componentes (missing) - from root/estadual/bin/common keys
+  let comparativoRaw = r.comparativo ?? r.comparativoComponentes ?? r.comparativosDeComponentes ?? r.comparativosComponentes ?? est.comparativo ?? bin.comparativo;
+  if (!comparativoRaw) {
+    const found = findDeepKeyMatch(r, [/comparativ/i]);
+    if (found) comparativoRaw = found.value;
+  }
+  let comparativo: any[] | undefined;
+  if (Array.isArray(comparativoRaw)) {
+    comparativo = comparativoRaw.map(item => {
+      const it = asRecord(item);
+      const componente = norm(it.componente || it.item || it.descricao || it.nome || Object.values(it)[0]);
+      const fabrica = norm(it.fabrica || it.fábrica || it.original || it.montadora || it.baseFabrica);
+      const estadual = norm(it.estadual || it.atual || it.baseEstadual || it.vistoria);
+      const comp = norm(it.comparativo || it.status || it.resultado);
+      let st: 'ok' | 'diferente' | 'na' = 'na';
+      const cu = upper(comp);
+      if (/igual|ok|confere|correspond/.test(cu)) st = 'ok';
+      else if (/difer|diverg|nao confere|não confere|alerta/.test(cu)) st = 'diferente';
+      else if (fabrica && estadual) st = upper(fabrica) === upper(estadual) ? 'ok' : 'diferente';
+      return { componente: componente || '-', fabrica: fabrica || '-', estadual: estadual || '-', comparativo: comp || (st === 'ok' ? 'Confere' : st === 'diferente' ? 'Divergente' : '-'), status: st };
+    }).filter(x => x.componente !== '-' || x.fabrica !== '-' || x.estadual !== '-');
+  } else if (comparativoRaw && typeof comparativoRaw === 'object') {
+    const recs = collectSectionRecords(comparativoRaw);
+    if (recs.length) comparativo = recs.map(o => ({ componente: o['Componente'] || Object.values(o)[0] || '-', fabrica: o['Fabrica'] || o['Fábrica'] || '-', estadual: o['Estadual'] || '-', comparativo: o['Comparativo'] || o['Status'] || '-', status: 'na' as const }));
+  }
+
+  // Informações complementares
+  let infoCompl = r.informacoesComplementares ?? r.informacoes_complementares ?? r.infoComplementares ?? est.informacoesComplementares ?? est.informacoes_complementares;
+  if (!infoCompl) { const f = findDeepKeyMatch(r, [/informac.*complement/i]); if (f) infoCompl = f.value; }
+  const informacoesComplementares = typeof infoCompl === 'string' ? formatTextBlock(infoCompl) : hasMeaningful(infoCompl) ? collectSectionRecords(infoCompl) : null;
+
+  // Duplicidade de motor
+  let dupMotor = r.duplicidadeMotor ?? r.duplicidadeDeMotor ?? r.duplicidade_motor ?? est.duplicidadeMotor ?? est.duplicidade;
+  if (!dupMotor) { const f = findDeepKeyMatch(r, [/duplicid.*motor/i]); if (f) dupMotor = f.value; }
+  const duplicidadeMotor = typeof dupMotor === 'string' ? formatTextBlock(dupMotor) : hasMeaningful(dupMotor) ? (Array.isArray(dupMotor) || typeof dupMotor === 'object' ? collectSectionRecords(dupMotor) : norm(dupMotor)) : null;
+
+  // CSV
+  let csv = r.csv ?? r.CSV ?? est.csv ?? r.dadosCsv ?? r.informacoesCsv;
+  if (!csv) { const f = findDeepKeyMatch(r, [/^csv$|csv/i]); if (f) csv = f.value; }
+  const csvInfo = typeof csv === 'string' ? formatTextBlock(csv) : hasMeaningful(csv) ? collectSectionRecords(csv) : null;
+
+  // Detalhamento Renajud
+  let renajud = r.detalhamentoRenajud ?? r.detalhamento_renajud ?? r.renajudDetalhamento ?? est.detalhamentoRenajud ?? est.renajud ?? r.renajud;
+  if (!renajud) { const f = findDeepKeyMatch(r, [/detalh.*renajud|renajud.*detalh/i]); if (f) renajud = f.value; }
+  // if not found separately, maybe inside estadual as complex value
+  if (!renajud && est.detalhamentoNoRenajud) renajud = est.detalhamentoNoRenajud;
+  const detalhamentoRenajud = typeof renajud === 'string' ? formatTextBlock(renajud) : hasMeaningful(renajud) ? collectSectionRecords(renajud) : null;
+
+  // Histórico FIPE
+  let fipe = r.historicoFipe ?? r.historicoFIPE ?? r.fipe ?? r.historico_fipe ?? est.historicoFipe ?? r.tabelaFipe ?? r.tabelaFIPE;
+  if (!fipe) { const f = findDeepKeyMatch(r, [/histor.*fipe|fipe/i]); if (f) fipe = f.value; }
+  const historicoFipe = typeof fipe === 'string' ? formatTextBlock(fipe) : hasMeaningful(fipe) ? collectSectionRecords(fipe) : null;
+
+  const parecer = deriveParecer(r, parecerSrc, alertas);
+
+  const proprietarioTxt = norm(bin.nomeProprietario || bin.proprietario || est.proprietario || est.nomeProprietario);
 
   const data = {
     consulta: {
-      numero: String(sol.codigoConsulta || ''),
-      produto: 'CONSULTA PREMIUM OLHO NO DOC',
-      realizadaEm: String(sol.dataHora || ''),
-      placa: (plate || '').toUpperCase(),
-      marcaModelo: `${text(bin, 'marca', text(est, 'marca'))}/${text(bin, 'modelo', text(est, 'modelo'))}`,
+      numero: norm(sol.codigoConsulta) || undefined,
+      produto: 'Auto Perícia Gold',
+      realizadaEm: norm(sol.dataHora) || undefined,
+      placa: plate,
+      marcaModelo,
       logoUrl: '',
+      indisponivel: consultaIndisponivel ? motivoIndisponivel : '',
     },
     alertas,
-    emplacamento,
-    baseBin,
+    emplacamento: [
+      ['Marca', marca || 'Não informado'],
+      ['Modelo', modelo || 'Não informado'],
+      ['Ano fabricação', text(bin, 'anoFabricacao', text(est, 'anoFabricacao', 'Não informado'))],
+      ['Ano modelo', text(bin, 'anoModelo', text(est, 'anoModelo', 'Não informado'))],
+      ['Cor', text(bin, 'cor', text(est, 'cor', 'Não informado'))],
+      ['Combustível', text(bin, 'combustivel', text(est, 'combustivel', 'Não informado'))],
+      ['Chassi', text(bin, 'chassi', text(est, 'chassi', 'Não informado'))],
+      ['Motor', text(bin, 'motor', text(est, 'motor', 'Não informado'))],
+      ['Renavam', text(bin, 'renavam', text(est, 'renavam', 'Não informado'))],
+      ['Município', text(bin, 'municipio', text(est, 'municipio', 'Não informado'))],
+      ['UF', text(bin, 'uf', text(est, 'uf', 'Não informado'))],
+      ['Situação', text(est, 'situacaoVeiculo', text(est, 'situacao', 'Não informado'))],
+    ],
+    baseBin: binHasData ? binPairsAll : [],
+    baseBinStatus: binHasData ? '' : (binUnavailableMsg ? (isIndisponivelMsg(binUnavailableMsg) ? `BIN indisponível: ${formatTextBlock(binUnavailableMsg)}` : formatTextBlock(binUnavailableMsg)) : (hasMeaningful(bin) ? '' : 'BIN indisponível no momento da consulta.')),
     baseEstadual,
-    proprietario: bin.nomeProprietario || est.proprietario ? { atual: String(bin.nomeProprietario || est.proprietario || '') } : undefined,
-    debitos: (est.debitoMulta || est.debitoIpva) ? {
-      multas: est.debitoMulta ? `Débito de multas: ${est.debitoMulta}` : 'Nada consta',
-      nota: '',
-    } : undefined,
-    gravame: Array.isArray(grav.gravame) ? grav.gravame : (grav.resposta ? [{ descricao: String(grav.resposta) }] : []),
-    recall: (recall.Mensagem || recall.Mensagem2) ? `${recall.Mensagem || ''} ${recall.Mensagem2 || ''}`.trim() : undefined,
-    restricoes: restricoes.length ? restricoes : undefined,
-    comparativo: undefined,
-    vendaDireta: { status: r.vendaDireta && asRecord(r.vendaDireta).constaVendaDireta ? 'alerta' : 'ok', texto: String(asRecord(r.vendaDireta).mensagem || 'VENDA DIRETA - NADA CONSTA') },
-    eventoCorporativo: { status: r.eventoCorporativo && asRecord(r.eventoCorporativo).constaEventoCorporativo ? 'alerta' : 'ok', texto: String(asRecord(r.eventoCorporativo).mensagem || 'EVENTO CORPORATIVO - NADA CONSTA') },
-    parecer: { nivel: String(parecer.cor || 'amarelo') },
-    sinistroCortesia: sinistro.resposta ? { status: String(sinistro.resposta).toUpperCase().includes('SIM') ? 'alerta' : 'ok', titulo: String(sinistro.mensagem || ''), descricao: '' } : undefined,
-    indicioSinistroCortesia: r.indicioSinistro2 ? { status: String(asRecord(r.indicioSinistro2).mensagem || '').toLowerCase().includes('consta') ? 'alerta' : 'ok' } : undefined,
-    comercializacao: comercial.mensagem ? String(comercial.mensagem) : undefined,
-    comunicacaoVenda: cv.mensagem ? String(cv.mensagem) : undefined,
-    leilao: Array.isArray(leiloes) ? leiloes.map((l: any) => ({
-      Cor: l.cor, Lote: l.lote, Marca: l.marca, Patio: l.patio, Placa: l.placa, Chassi: l.chassi, Modelo: l.modelo,
-      'ID leilao': l.idLeilao, 'NR motor': l.nr_motor, 'Ano modelo': l.anoModelo, Comitente: l.comitente, Leiloeiro: l.leiloeiro,
-      'Qtd eixos': l.qtd_eixos, 'Data leilao': l.dataLeilao, Combustivel: l.combustivel, 'Ano fabricacao': l.anoFabricacao,
-      'Categoria do veiculo': l.categoriaDoVeiculo,
-    })) : undefined,
-    rouboFurto: rf.alertaCodigo ? {
-      possuiHistorico: String(rf.alertaCodigo) === '1',
-      mensagem: String(rf.alertaMensagem || ''),
-      registros: Array.isArray(asRecord(rf.historico).rouboFurto) ? asRecord(rf.historico).rouboFurto : [],
-    } : undefined,
-    odometro: [],
+    proprietario: { atual: proprietarioTxt ? proprietarioTxt : 'Consulte a base estadual para informação do proprietário.' },
+    debitos: { itens: debitosPares, texto: '' },
+    gravame: gravameRegs,
+    recall: recallFmt,
+    restricoes: restricoesStatus,
+    restricoesTexto,
+    comparativo,
+    vendaDireta: { status: (r.vendaDireta && (asRecord(r.vendaDireta).constaVendaDireta || isPositiveMsg(asRecord(r.vendaDireta).resposta))) ? 'alerta' : 'ok', titulo: (r.vendaDireta && isPositiveMsg(asRecord(r.vendaDireta).resposta)) ? norm(asRecord(r.vendaDireta).resposta) : (r.vendaDireta && asRecord(r.vendaDireta).constaVendaDireta ? 'Consta venda direta' : 'Nada consta') },
+    eventoCorporativo: { status: (r.eventoCorporativo && (asRecord(r.eventoCorporativo).constaEventoCorporativo || isPositiveMsg(asRecord(r.eventoCorporativo).resposta))) ? 'alerta' : 'ok', titulo: (r.eventoCorporativo && isPositiveMsg(asRecord(r.eventoCorporativo).resposta)) ? norm(asRecord(r.eventoCorporativo).resposta) : (r.eventoCorporativo && asRecord(r.eventoCorporativo).constaEventoCorporativo ? 'Consta evento corporativo' : 'Nada consta') },
+    parecer,
+    sinistroCortesia: { status: sinistroPos ? 'alerta' : 'ok', titulo: sinistroPos ? (norm(sinistro.resposta) || 'Consta sinistro') : 'Nada consta' },
+    indicioSinistroCortesia: { status: indicioPos ? 'alerta' : 'ok', titulo: indicioPos ? (indicioMsg || 'Consta indício de sinistro') : 'Nada consta' },
+    comercializacao: { texto: comercializacaoTexto, destaque: comercializacaoPos },
+    comunicacaoVenda: formatTextBlock(cv.resposta || cv.mensagem || ''),
+    leilao: leilaoRegs,
+    leilaoStatus: leilaoHas && !leilaoRegs.length ? (formatTextBlock(leilao.resposta as string) || 'Consta oferta em leilão') : '',
+    rouboFurto: rfPositive ? { possuiHistorico: true, mensagem: rfMensagemFmt || 'Consta histórico de roubo/furto', registros: rfRegs } : (rfMsg && (isNadaConstaMsg(rfMsg) || /negativ/i.test(rfMsg)) ? { possuiHistorico: false, mensagem: formatTextBlock(rfMsg), registros: [] } : null),
+    informacoesComplementares,
+    duplicidadeMotor,
+    csv: csvInfo,
+    detalhamentoRenajud,
+    historicoFipe,
+    odometro: Array.isArray(r.odometro) ? r.odometro : [],
   };
-
   return data;
 }
 
@@ -107,14 +461,11 @@ export async function goldReportHtml(input: CompanyResponse, plate: string, stat
 }
 
 export async function renderGoldPdf(response: CompanyResponse, plate: string, status: string, message: string) {
-  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || await puppeteer.executablePath();
-  const browser = await puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-  try {
-    const page = await browser.newPage();
-    await page.setContent(await goldReportHtml(response, plate, status, message), { waitUntil: 'load' });
-    const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '8mm', right: '8mm', bottom: '8mm', left: '8mm' } });
-    return Buffer.from(pdf);
-  } finally { await browser.close(); }
+  const html = await goldReportHtml(response, plate, status, message);
+  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath();
+  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], executablePath: typeof executablePath === 'string' ? executablePath : await executablePath });
+  try { const page = await browser.newPage(); await page.setContent(html, { waitUntil: 'load' }); return await page.pdf({ format: 'A4', printBackground: true, margin: { top: '12mm', bottom: '14mm', left: '10mm', right: '10mm' } }); }
+  finally { await browser.close(); }
 }
 
-export const reportHash = (pdf: Buffer) => crypto.createHash('sha256').digest('hex');
+export const reportHash = (pdf: Buffer) => crypto.createHash('sha256').update(pdf).digest('hex');

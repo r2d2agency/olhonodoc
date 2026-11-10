@@ -175,9 +175,29 @@ export default function QueriesTab({ queries, loading, onReload, onNewQuery }: {
           <div className="customer-report-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="customer-report-modal-head">
               <strong>Relatório da consulta</strong>
-              <button onClick={() => setViewingId('')}>Fechar</button>
+              <div className="customer-report-modal-actions">
+                <button
+                  type="button"
+                  className="customer-secondary-button"
+                  onClick={() => {
+                    const frame = document.getElementById('customer-report-frame') as HTMLIFrameElement | null;
+                    if (frame?.contentWindow) { frame.contentWindow.focus(); frame.contentWindow.print(); }
+                  }}
+                >
+                  Imprimir
+                </button>
+                <a
+                  className="customer-secondary-button"
+                  href={`/api/account/queries/${encodeURIComponent(viewingId)}/pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Baixar PDF
+                </a>
+                <button type="button" onClick={() => setViewingId('')}>Fechar</button>
+              </div>
             </div>
-            <iframe src={`/api/account/queries/${encodeURIComponent(viewingId)}/report`} className="customer-report-modal-frame" title="Relatório" />
+            <iframe id="customer-report-frame" src={`/api/account/queries/${encodeURIComponent(viewingId)}/report`} className="customer-report-modal-frame" title="Relatório" />
           </div>
         </div>
       )}
