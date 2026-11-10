@@ -28,7 +28,7 @@ const POST = async (request: Request) => {
   if (!product) return NextResponse.json({ error: 'Nenhum produto ativo encontrado.' }, { status: 400 });
 
   const order = await prisma.order.create({
-    data: { plate: 'TEST0000', productId: product.id, customerId: customer.id, amountCents: 1, subtotalCents: 1, discountCents: 0, totalCents: 1, status: 'PENDING' },
+    data: { plate: 'TEST0000', productId: product.id, customerId: customer.id, amountCents: 500, subtotalCents: 500, discountCents: 0, totalCents: 500, status: 'PENDING' },
   });
 
   try {
