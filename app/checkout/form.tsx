@@ -62,7 +62,20 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     if (!plate) return;
     setAggregateLoading(true); setAggregateError('');
     fetch('/api/account/aggregates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plate }) })
-      .then(async r => { const body = await r.json(); if (!r.ok) throw new Error(body.error || 'Não foi possível consultar o veículo.'); if (body.data.status === 'PROCESSING') { setAggregateError('A Company recebeu a consulta e está processando os dados.'); return; } setAggregate(body.data.aggregates || null); })
+      .then(async r => {
+        const body = await r.json();
+        if (!r.ok) throw new Error(body.error || 'Não foi possível consultar o veículo.');
+        if (body.data.status === 'PROCESSING') { setAggregateError('A Company recebeu a consulta e está processando os dados.'); return; }
+        const ag = body.data.aggregates || null;
+        setAggregate(ag);
+        const known = typeof body.data.knownChassi === 'string' ? body.data.knownChassi : '';
+        const found = ag ? (ag.chassi ?? ag.Chassi ?? ag.CHASSI ?? ag.numeroChassi ?? ag.NumeroChassi) : null;
+        const raw = (typeof found === 'string' && found.trim()) ? found : known;
+        if (raw) {
+          const normalized = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17);
+          if (normalized) setChassi(prev => prev || normalized);
+        }
+      })
       .catch(e => setAggregateError(e instanceof Error ? e.message : 'Não foi possível consultar o veículo.'))
       .finally(() => setAggregateLoading(false));
   }, [plate]);
@@ -191,7 +204,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
       {aggregateLoading && <div className="checkout-aggregate-status"><Clock3 size={16}/> Buscando dados do veículo…</div>}
       {aggregateError && <div className="checkout-aggregate-status"><CircleHelp size={16}/> {aggregateError}</div>}
       {aggregate && <div className="checkout-aggregate-grid">
-        {[['Marca', 'marca'], ['Modelo', 'modelo'], ['Ano', 'anoModelo'], ['Cor', 'cor'], ['Combustível', 'combustivel'], ['Situação', 'situacao'], ['UF', 'Uf'], ['Município', 'municipio']].map(([label, key]) => <div key={key}><small>{label}</small><strong>{String(aggregate[key] || 'Não informado')}</strong></div>)}
+        {[['Marca', 'marca'], ['Modelo', 'modelo'], ['Ano', 'anoModelo'], ['Cor', 'cor'], ['Combustível', 'combustivel'], ['Situação', 'situacao'], ['UF', 'Uf'], ['Município', 'municipio'], ['Chassi', 'chassi']].map(([label, key]) => <div key={key}><small>{label}</small><strong>{String(aggregate[key] ?? aggregate[key.charAt(0).toUpperCase() + key.slice(1)] ?? 'Não informado')}</strong></div>)}
       </div>}
       <div className="checkout-price-row"><span>Subtotal</span><strong className="checkout-price">{brl(coupon ? coupon.subtotalCents : product.priceCents)}</strong></div>
       {coupon && coupon.discountCents > 0 && <div className="checkout-price-row checkout-price-discount"><span>Desconto ({coupon.code})</span><strong>-{brl(coupon.discountCents)}</strong></div>}
