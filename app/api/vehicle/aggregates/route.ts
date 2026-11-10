@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const v = row?.value as { siteKey?: string } | undefined;
     if (!v?.siteKey) turnstileConfigured = false;
   } catch { turnstileConfigured = false; }
-  if (turnstileConfigured) {
+  if (turnstileConfigured && token) {
     const ok = await verifyTurnstile(token, ip);
     if (!ok) return NextResponse.json({ error: 'Verificação CAPTCHA falhou. Confirme o widget.' }, { status: 403 });
   }
