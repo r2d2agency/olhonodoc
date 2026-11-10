@@ -53,7 +53,7 @@ export async function submitOrderToCompany(orderId: string) {
     const detailed = await requestCompanyDetailed(providerProduct as CompanyProduct, config.environment, { usuario: config.usuario, senha: config.senha }, requestParams, order.product.providerEndpointKey);
     const result = companyAction(detailed.data);
     let pdf: Buffer | null = null;
-    try { pdf = await renderGoldPdf(detailed.data, normalizedPlate, result.status, detailed.data.solicitacao?.mensagem || ''); }
+    try { const raw = await renderGoldPdf(detailed.data, normalizedPlate, result.status, detailed.data.solicitacao?.mensagem || ''); pdf = Buffer.from(raw); }
     catch (error) { console.error('Company sync: falha ao gerar PDF', error); }
     const updated = await prisma.vehicleQuery.update({ where: { id: query.id }, data: { provider: 'company-conferi', providerProduct, environment: config.environment, companyStatus: result.status as CompanyQueryStatus, providerAction: result.action, providerMessage: detailed.data.solicitacao?.mensagem, providerStatusText: detailed.data.solicitacao?.status, codigoConsulta: detailed.data.solicitacao?.codigoConsulta == null ? null : String(detailed.data.solicitacao.codigoConsulta), hashPesquisa: detailed.data.hashPesquisa, report: detailed.data as object, requestSentAt: query.requestSentAt || new Date(), responseReceivedAt: new Date(), attempts: { increment: 1 }, lastError: null, ...(pdf ? { reportPdf: pdf, reportPdfHash: reportHash(pdf), reportPdfGeneratedAt: new Date() } : {}) } });
     if (result.status === 'COMPLETED') {
@@ -121,7 +121,7 @@ async function refetchByCodigo(existing: { id: string; orderId: string; normaliz
     const response = await requestCompany(existing.providerProduct as CompanyProduct, config.environment, { usuario: config.usuario, senha: config.senha }, { ...savedParams, codigo_consulta: existing.codigoConsulta || '' }, order?.product?.providerEndpointKey);
     const result = companyAction(response);
     let pdf: Buffer | null = null;
-    try { pdf = await renderGoldPdf(response, existing.normalizedPlate, result.status, response.solicitacao?.mensagem || ''); }
+    try { const raw = await renderGoldPdf(response, existing.normalizedPlate, result.status, response.solicitacao?.mensagem || ''); pdf = Buffer.from(raw); }
     catch (error) { console.error('Company refresh: falha ao gerar PDF', error); }
     const updated = await prisma.vehicleQuery.update({ where: { id: existing.id }, data: { companyStatus: result.status as CompanyQueryStatus, providerAction: result.action, providerMessage: response.solicitacao?.mensagem, providerStatusText: response.solicitacao?.status, hashPesquisa: response.hashPesquisa, report: response as object, responseReceivedAt: new Date(), attempts: { increment: 1 }, lastError: null, ...(pdf ? { reportPdf: pdf, reportPdfHash: reportHash(pdf), reportPdfGeneratedAt: new Date() } : {}) } });
     if (result.status === 'COMPLETED') {
