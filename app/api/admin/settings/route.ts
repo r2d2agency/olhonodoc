@@ -22,6 +22,17 @@ export async function GET(request: Request) {
     try { return NextResponse.json(await getPublicSmtpConfiguration()); }
     catch { return NextResponse.json({ error: 'Não foi possível carregar a configuração de SMTP.' }, { status: 500 }); }
   }
+  if (key === 'turnstile.test') {
+    const url = new URL(request.url);
+    const siteKey = url.searchParams.get('siteKey') || '';
+    const secret = process.env.TURNSTILE_SECRET_KEY || '';
+    if (!siteKey || !secret) return NextResponse.json({ ok: false, error: 'Site key ou secret ausente.' }, { status: 400 });
+    try {
+      const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ secret, response: 'test-token' }).toString() });
+      const data = await res.json();
+      return NextResponse.json({ ok: Boolean(data?.success) === false && data?.['error-codes']?.includes('invalid-input-response'), detail: data });
+    } catch { return NextResponse.json({ ok: false, error: 'Falha ao contatar Cloudflare.' }, { status: 502 }); }
+  }
   if (!allowed.has(key)) return NextResponse.json({ error: 'Chave inválida.' }, { status: 400 });
   try { const row = await prisma.setting.findUnique({ where: { key } }); return NextResponse.json(row?.value ?? {}); }
   catch { return NextResponse.json({ error: 'Não foi possível carregar.' }, { status: 500 }); }
