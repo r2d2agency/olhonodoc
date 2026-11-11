@@ -464,7 +464,13 @@ export async function renderGoldPdf(response: CompanyResponse, plate: string, st
   const html = await goldReportHtml(response, plate, status, message);
   const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath();
   const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], executablePath: typeof executablePath === 'string' ? executablePath : await executablePath });
-  try { const page = await browser.newPage(); await page.setContent(html, { waitUntil: 'load' }); return await page.pdf({ format: 'A4', printBackground: true, margin: { top: '12mm', bottom: '14mm', left: '10mm', right: '10mm' } }); }
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 900 });
+    await page.emulateMediaType('print');
+    await page.setContent(html, { waitUntil: 'load' });
+    return await page.pdf({ format: 'A4', printBackground: true, margin: { top: '12mm', bottom: '14mm', left: '10mm', right: '10mm' } });
+  }
   finally { await browser.close(); }
 }
 
