@@ -104,6 +104,14 @@ export const MODEL_HTML_TEMPLATE = `
   table.comp th:last-child,table.comp td:last-child{text-align:center;border-right:0;width:110px}
   table.comp tr:last-child td{border-bottom:0}
   table.comp td:first-child{font-weight:600}
+  /* Débitos e multas — tabela Descrição/Situação/Valor */
+  table.debitos{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+  table.debitos th{background:var(--fundo-card);text-align:left;font-weight:700;padding:10px 12px;border-bottom:1px solid var(--borda)}
+  table.debitos td{padding:10px 12px;border-bottom:1px solid var(--borda-2);vertical-align:top;overflow-wrap:anywhere}
+  table.debitos tr:last-child td{border-bottom:0}
+  table.debitos td.sit-pendente{color:var(--vermelho-escuro);font-weight:800}
+  table.debitos tr.linha-pendente{background:var(--vermelho-bg)}
+  table.debitos td.valor{font-weight:700;text-align:right;white-space:nowrap}
   .ck{color:var(--verde);font-weight:800;font-size:15px}
   .x{color:var(--vermelho);font-weight:800;font-size:15px}
   .na{color:var(--muted);font-weight:800}
@@ -327,7 +335,16 @@ export const MODEL_HTML_TEMPLATE = `
     if (d.debitos) {
       var itens = d.debitos.itens || [];
       var corpoDeb = '';
-      if (itens.length) {
+      if (itens.length && typeof itens[0] === "object" && !Array.isArray(itens[0])) {
+        // formato novo: [{descricao, situacao, valor, pendente}] — tabela com destaque de pendência
+        corpoDeb = '<div style="overflow:auto"><table class="debitos"><thead><tr><th>Descrição</th><th>Situação</th><th style="text-align:right">Valor</th></tr></thead><tbody>' +
+          itens.map(function (it) {
+            var pend = it.pendente ? ' class="linha-pendente"' : '';
+            return '<tr' + pend + '><td>' + esc(it.descricao) + '</td>' +
+              '<td' + (it.pendente ? ' class="sit-pendente"' : '') + '>' + esc(it.situacao) + '</td>' +
+              '<td class="valor">' + esc(it.valor) + '</td></tr>';
+          }).join("") + '</tbody></table></div>';
+      } else if (itens.length) {
         corpoDeb = campos(itens);
       } else if (d.debitos.multas || d.debitos.ipva) {
         corpoDeb = campos([["Multas", d.debitos.multas || "Nada consta"], ["IPVA", d.debitos.ipva || "Nada consta"]]);
@@ -420,8 +437,8 @@ export const MODEL_HTML_TEMPLATE = `
         : '<div class="bloco"><div class="v">' + esc(d.comercializacao.texto) + '</div></div>';
       h.push(secao("carrinho", "Histórico de comercialização", cBody));
     } else if (!vazio(d.comercializacao)) {
-      // compat string
-      h.push(secao("carrinho", "Informações para comercialização", '<div class="bloco"><div class="v">' + esc(d.comercializacao) + '</div></div>'));
+      // compat string — qualquer histórico de comercialização fica em vermelho como alerta
+      h.push(secao("carrinho", "Informações para comercialização", '<div class="destaque-positivo">' + esc(typeof d.comercializacao === "string" ? d.comercializacao : JSON.stringify(d.comercializacao)) + '</div>'));
     }
 
     if (!vazio(d.odometro)) {

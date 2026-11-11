@@ -38,15 +38,19 @@ const isPositiveMsg = (v: unknown) => {
   return !/^(não|nao)\b/.test(s.toLowerCase());
 };
 
-function formatTextBlock(raw: unknown): string {
-  let s = norm(raw);
-  if (!s) return '';
+function fixSpacing(s: string): string {
+  if (!s) return s;
   s = s.replace(/\r\n?/g, '\n').replace(/\t+/g, ' ');
-  // ensure space after sentence punctuation when glued
-  s = s.replace(/([.!?;,])([A-Za-zÀ-ÖØ-öø-ÿ0-9])/g, '$1 $2');
-  // ensure space before common uppercase-led sentence starts when glued to lowercase/number
+  // ensure space after sentence punctuation when glued (but NOT inside timestamps like 00:00:00 or dates)
+  s = s.replace(/([.!?;,])([A-Za-zÀ-ÖØ-öø-ÿ0-9])/g, (m, p, c) => (/^\d$/.test(c) && /[:/.-]/.test(p) ? m : `${p} ${c}`));
+  // ensure space before common uppercase-led word starts when glued to lowercase/number (ex.: "ALERTADE" -> "ALERTA DE")
   s = s.replace(/([a-zà-öø-ÿ0-9])([A-ZÀ-Ö])/g, '$1 $2');
   s = s.replace(/[ ]{2,}/g, ' ');
+  return s;
+}
+function formatTextBlock(raw: unknown): string {
+  let s = fixSpacing(norm(raw));
+  if (!s) return '';
   s = s.split('\n').map(line => {
     let l = line.trim().replace(/[ ]{2,}/g, ' ');
     if (!l) return '';
@@ -77,13 +81,13 @@ function valueToText(v: unknown): string {
     if (!entries.length) return '';
     return entries.map(([k, val]) => `${formatLabel(k)}: ${valueToText(val)}`).join(' | ');
   }
-  return norm(v);
+  return fixSpacing(norm(v));
 }
 
 function pairsFromObject(obj: Record<string, unknown>, opts?: { dropKeys?: Set<string>; formatKeys?: boolean }): string[][] {
-  const drop = opts?.dropKeys || new Set<string>();
+  const drop = new Set([...(opts?.dropKeys || [])].map(k => k.toLowerCase()));
   return Object.entries(obj)
-    .filter(([k, v]) => !drop.has(k) && !isBlank(v))
+    .filter(([k, v]) => !drop.has(k.toLowerCase()) && !isBlank(v))
     .map(([k, v]) => [opts?.formatKeys ? formatLabel(k) : k, valueToText(v)] as string[]);
 }
 
@@ -145,32 +149,65 @@ function collectSectionRecords(value: unknown): Record<string, string>[] {
   return [];
 }
 
-function buildDebitos(est: Record<string, unknown>) {
-  // collect all debit-related entries from estadual (and keep them complete)
-  const debitPairs: string[][] = [];
-  const seen = new Set<string>();
-  const isDebitKey = (k: string) => /multa|debito|d[eé]bito|ipva|licenc|dpvat|seguro|taxa|infrac/i.test(k);
-  for (const [k, v] of Object.entries(est)) {
-    if (!isDebitKey(k)) continue;
-    if (isBlank(v)) continue;
-    const label = formatLabel(k);
-    const val = valueToText(v);
-    if (!val || seen.has(label)) continue;
-    seen.add(label);
-    debitPairs.push([label, val]);
-  }
-  // if nothing explicit, try common fields
-  if (!debitPairs.length) {
-    const multas = findDeep(est, ['multas', 'debitoMulta', 'debitoMultas']);
-    const ipva = findDeep(est, ['ipva', 'debitoIpva']);
-    const lic = findDeep(est, ['licenciamento', 'debitoLicenciamento']);
-    if (multas) debitPairs.push(['Multas', valueToText(multas)]);
-    if (ipva) debitPairs.push(['IPVA', valueToText(ipva)]);
-    if (lic) debitPairs.push(['Licenciamento', valueToText(lic)]);
-  }
-  return debitPairs;
+type DebitoItem = { descricao: string; situacao: string; valor: string; pendente: boolean };
+function normalizeSituacao(raw: unknown) {
+  return norm(raw).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
 }
+function formatMoneyBRL(raw: unknown): string {
+  const s = norm(raw);
+  if (!s) return '';
+  if (/^R\$\s*/i.test(s)) return s.replace(/^R\$\s*/i, 'R$ ');
+  if (/^-?\d{1,3}(\.\d{3})*,\d{2}$/.test(s) || /^-?\d+,\d{2}$/.test(s)) return `R$ ${s}`;
+  if (/^-?\d+(\.\d+)?$/.test(s)) {
+    const n = Number(s);
+    if (!Number.isNaN(n)) return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+  return `R$ ${s}`;
+}
+function buildDebitos(est: Record<string, unknown>): DebitoItem[] {
+  const defs: { descricao: string; valorKey: string; situacaoKey: string }[] = [
+    { descricao: 'Multas', valorKey: 'debitoMulta', situacaoKey: 'existeDebitoMulta' },
+    { descricao: 'IPVA', valorKey: 'debitoIpva', situacaoKey: 'existeDebitoIPVA' },
+    { descricao: 'Licenciamento', valorKey: 'debitoLicenciamento', situacaoKey: 'existeDebitoLicenciamento' },
+    { descricao: 'DPVAT', valorKey: 'debitoDpvat', situacaoKey: 'existeDebitoDpvat' },
+  ];
+  const itens: DebitoItem[] = [];
+  for (const def of defs) {
+    const hasValor = Object.prototype.hasOwnProperty.call(est, def.valorKey);
+    const hasSit = Object.prototype.hasOwnProperty.call(est, def.situacaoKey);
+    if (!hasValor && !hasSit) continue;
+    const valorRaw = est[def.valorKey];
+    const sitRaw = est[def.situacaoKey];
+    const sitNorm = normalizeSituacao(sitRaw);
+    const consta = sitNorm.includes('CONSTA DEBITO') || sitNorm === 'CONSTA';
+    const semDebito = sitNorm.includes('NAO CONSTA') || sitNorm.includes('SEM DEBITO');
+    const valorBlank = valorRaw === undefined || valorRaw === null || String(valorRaw).trim() === '';
+    const sitBlank = sitRaw === undefined || sitRaw === null || String(sitRaw).trim() === '';
 
+    let situacao = 'Não informado';
+    let valor = 'Não informado';
+    let pendente = false;
+
+    if (consta) {
+      situacao = 'Consta débito';
+      pendente = true;
+      valor = valorBlank ? 'Não informado' : formatMoneyBRL(valorRaw);
+    } else if (semDebito) {
+      situacao = 'Sem débito';
+      valor = valorBlank ? 'R$ 0,00' : formatMoneyBRL(valorRaw);
+    } else if (!sitBlank) {
+      situacao = norm(sitRaw);
+      valor = valorBlank ? 'Não informado' : formatMoneyBRL(valorRaw);
+      pendente = /DEBITO|PEND|MULTA/.test(sitNorm);
+    } else {
+      situacao = 'Não informado';
+      valor = valorBlank ? 'Não informado' : formatMoneyBRL(valorRaw);
+    }
+
+    itens.push({ descricao: def.descricao, situacao, valor, pendente });
+  }
+  return itens;
+}
 function deriveParecer(r: Record<string, unknown>, parecer: Record<string, unknown>, alertas: { tipo: string }[]) {
   const corRaw = upper(parecer.cor || parecer.nivel || parecer.classificacao);
   let nivel = corRaw.includes('VERM') ? 'vermelho' : corRaw.includes('AMAR') || corRaw.includes('ATEN') || corRaw.includes('LARAN') ? 'amarelo' : corRaw.includes('VERD') ? 'verde' : '';
@@ -275,22 +312,25 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   const binUnavailableMsg = !binHasData ? (findDeep(bin, ['mensagem', 'status', 'descricao', 'resposta']) as string | undefined) : undefined;
 
   // Base Estadual - include all fields, formatted labels, preserve values
-  const baseEstadual = pairsFromObject(est, { formatKeys: true });
+  // (exceto as chaves de débito, que têm seção própria "Débitos e multas")
+  const DEBITO_KEYS = new Set(['debitomulta', 'existedebitomulta', 'debitoipva', 'existedebitoipva', 'debitolicenciamento', 'existedebitolicenciamento', 'debitodpvat', 'existedebitodpvat']);
+  const baseEstadual = pairsFromObject(est, { formatKeys: true, dropKeys: DEBITO_KEYS });
 
   // Emplacamento / cabeçalho
   const marca = norm(bin.marca || est.marca || agg.marca || r.marca);
   const modelo = norm(bin.modelo || est.modelo || agg.modelo || r.modelo);
   const marcaModelo = [marca, modelo].filter(Boolean).join(' / ') || 'Não informado';
 
-  // Débitos - all debit fields returned
-  const debitosPares = buildDebitos(est);
-  // also include aggregated/other debit objects if present
+  // Débitos e multas (estadual) - mapeamento explícito e dinâmico, sem misturar com outras fontes
+  const debitosItens = buildDebitos(est);
+  // inclui outros débitos agregados fora do estadual (fonte distinta), sem somar com estadual
   const debitosOutros = asRecord(r.debitos);
   if (hasMeaningful(debitosOutros)) {
     for (const [k, v] of Object.entries(debitosOutros)) {
       if (isBlank(v)) continue;
       const label = formatLabel(k);
-      if (!debitosPares.some(p => p[0] === label)) debitosPares.push([label, valueToText(v)]);
+      if (debitosItens.some(d => d.descricao === label)) continue;
+      debitosItens.push({ descricao: label, situacao: 'Informado', valor: valueToText(v), pendente: false });
     }
   }
 
@@ -323,13 +363,13 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   // dedupe restricoes text
   const restricoesTexto = formatTextBlock(Array.from(new Set(restricoesTextoParts.map(s => norm(s)).filter(Boolean))).join('\n'));
 
-  // Roubo/Furto - hide yellow-highlighted/internal fields, fix spacing
-  const rfDrop = ['consultaid', 'idconsulta', 'protocolo', 'codigoConsultaInterno', 'identificador', 'token'];
+  // Roubo/Furto - oculta campos destacados (dados pessoais/internos) e corrige espaçamento do texto
+  const rfDrop = ['telefone', 'documento', 'numerodocumento', 'informante', 'consultaid', 'idconsulta', 'protocolo', 'codigoConsultaInterno', 'identificador', 'token'];
   const rfRegs = registrosFromArray(rfReg, { dropKeys: rfDrop });
   const rfMensagemFmt = formatTextBlock(rfMsg);
 
-  // Leilão - hide only yellow-highlighted/internal fields
-  const leilaoDrop = ['consultaid', 'idconsulta', 'protocolo', 'identificador', 'token', 'interno'];
+  // Leilão - oculta apenas campos destacados (internos)
+  const leilaoDrop = ['idleilao', 'dataleilao', 'consultaid', 'idconsulta', 'protocolo', 'identificador', 'token', 'interno'];
   const leilaoRegs = registrosFromArray(leiloesArr, { dropKeys: leilaoDrop });
   // fallback if records became empty but there were items
   const leilaoHas = leiloesArr.length > 0 || isPositiveMsg(leilao.resposta);
@@ -428,7 +468,7 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
     baseBinStatus: binHasData ? '' : (binUnavailableMsg ? (isIndisponivelMsg(binUnavailableMsg) ? `BIN indisponível: ${formatTextBlock(binUnavailableMsg)}` : formatTextBlock(binUnavailableMsg)) : (hasMeaningful(bin) ? '' : 'BIN indisponível no momento da consulta.')),
     baseEstadual,
     proprietario: { atual: proprietarioTxt ? proprietarioTxt : 'Consulte a base estadual para informação do proprietário.' },
-    debitos: { itens: debitosPares, texto: '' },
+    debitos: { itens: debitosItens, texto: '' },
     gravame: gravameRegs,
     recall: recallFmt,
     restricoes: restricoesStatus,
