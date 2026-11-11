@@ -146,10 +146,14 @@ export const MODEL_HTML_TEMPLATE = `
   @page{size:A4;margin:12mm 10mm}
   @media print{
     body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .pagina{max-width:none;padding:0}
+    .pagina{max-width:none;padding:0;width:100%}
     .toolbar{display:none !important}
     .quebra{break-before:page}
     .registro,.secao{break-inside:avoid}
+    .alertas{grid-template-columns:repeat(4,minmax(0,1fr)) !important}
+    .campos{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+    .registro{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+    .status-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
   }
 </style>
 </head>
