@@ -134,6 +134,27 @@ function findDeepKeyMatch(obj: unknown, patterns: RegExp[], depth = 0): { key: s
   return undefined;
 }
 
+// Fallback: localiza array de ocorrências de roubo/furto em qualquer nível
+// (ex.: historicoRouboFurto.historico.rouboFurto[])
+function rfHistoricoFallback(root: unknown): unknown {
+  const found = findDeepKeyMatch(root, [/roubo.*furto|furtos?/i]);
+  if (!found) return undefined;
+  const v = found.value;
+  if (Array.isArray(v)) return v;
+  const inner = asRecord(v);
+  for (const k of ['rouboFurto', 'roubos', 'registros', 'ocorrencias', 'itens', 'historico']) {
+    const cand = inner[k];
+    if (Array.isArray(cand)) return cand;
+    if (cand && typeof cand === 'object') {
+      const deep = asRecord(cand);
+      for (const k2 of ['rouboFurto', 'roubos', 'registros', 'ocorrencias', 'itens']) {
+        if (Array.isArray(deep[k2])) return deep[k2];
+      }
+    }
+  }
+  return undefined;
+}
+
 function collectSectionRecords(value: unknown): Record<string, string>[] {
   if (Array.isArray(value)) return registrosFromArray(value);
   if (value && typeof value === 'object') {
@@ -280,14 +301,17 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   const leiloesArr: unknown[] = Array.isArray(leiloesRaw) ? leiloesRaw : leiloesRaw && typeof leiloesRaw === 'object' ? [leiloesRaw] : [];
   if (leiloesArr.length || isPositiveMsg(leilao.resposta)) alertas.push({ icone: 'leilao', texto: 'Consta oferta em leilão', tipo: 'alerta' });
 
-  // Comercialização - must reflect exact Company text/type
-  const comercialTxt = norm(comercial.resposta || comercial.mensagem);
+  // Comercialização - prioriza a mensagem descritiva; resposta "1"/"0" é só flag
+  const comercialTxt = norm(comercial.mensagem || (['1', 'SIM'].includes(upper(comercial.resposta)) ? 'Consta comercialização' : comercial.resposta));
   if (comercialTxt && isPositiveMsg(comercialTxt)) {
     alertas.push({ icone: 'info', texto: comercialTxt, tipo: 'alerta' });
   }
 
   // Roubo/Furto - ONLY on positive record/alert, never on negative
-  const rfReg = Array.isArray(rf.registros) ? rf.registros : rf.registros ? [rf.registros] : [];
+  // (cobre historico.rouboFurto[] aninhado e ocorrencias[])
+  const rfHist = asRecord(rf.historico);
+  const rfRaw = rf.registros ?? rfHist.rouboFurto ?? rfHist.roubos ?? rfHistoricoFallback(r) ?? rf.ocorrencias;
+  const rfReg = Array.isArray(rfRaw) ? rfRaw : rfRaw ? [rfRaw] : [];
   const rfCodigo = upper(rf.alertaCodigo);
   const rfMsg = norm(rf.alertaMensagem || rf.mensagem || rf.resposta);
   const rfPositive = rfReg.length > 0 || rfCodigo === 'SIM' || /POSITIV|CONST|ROUB|FURT/i.test(rfCodigo) || (isPositiveMsg(rfMsg) && /roub|furt|consta/i.test(rfMsg));
@@ -336,7 +360,8 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
 
   // Gravame - hide yellow-highlighted sensitive/internal fields in view (conservative: hide contact/cpf-cnpj of agents/financeira details not essential)
   const gravameDrop = ['cpfcnpjagente', 'cpfcnpj', 'cpf_cnpj', 'cnpjcpf', 'telefone', 'email', 'endereco', 'endereço', 'logradouro', 'numero', 'bairro', 'cidade', 'municipio', 'ufagente', 'cep'];
-  const gravamesArr: unknown[] = Array.isArray(grav.gravames) ? grav.gravames : Array.isArray(grav.registros) ? grav.registros : grav.resposta && hasMeaningful(grav) ? [grav] : [];
+  // Gravame - objeto gravame.gravame[] com os registros; fallback para formatos alternativos
+  const gravamesArr: unknown[] = Array.isArray(grav.gravame) ? grav.gravame : Array.isArray(grav.gravames) ? grav.gravames : Array.isArray(grav.registros) ? grav.registros : grav.resposta && hasMeaningful(grav) ? [grav] : [];
   const gravameRegs = registrosFromArray(gravamesArr, { dropKeys: gravameDrop });
 
   // Restrições e Outras Informações - reproduce as Company return, formatted
@@ -378,8 +403,10 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   const comercializacaoTexto = formatTextBlock(comercialTxt);
   const comercializacaoPos = isPositiveMsg(comercialTxt);
 
-  // Recall
-  const recallTxt = norm(recall.resposta || recall.mensagem);
+  // Recall (cobre chaves capitalizadas Mensagem/Mensagem2 da Company)
+  const recallMsg1 = norm(recall.resposta || recall.Resposta || recall.mensagem || recall.Mensagem);
+  const recallMsg2 = norm(recall.Mensagem2 || recall.mensagem2);
+  const recallTxt = recallMsg1 && recallMsg2 && recallMsg2 !== recallMsg1 ? recallMsg1 + ' ' + recallMsg2 : recallMsg1 || recallMsg2;
   const recallFmt = recallTxt ? formatTextBlock(recallTxt) : 'Nada consta';
 
   // Comparativo de componentes (missing) - from root/estadual/bin/common keys
