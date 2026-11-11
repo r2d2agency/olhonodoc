@@ -112,6 +112,18 @@ export const MODEL_HTML_TEMPLATE = `
   table.debitos td.sit-pendente{color:var(--vermelho-escuro);font-weight:800}
   table.debitos tr.linha-pendente{background:var(--vermelho-bg)}
   table.debitos td.valor{font-weight:700;text-align:right;white-space:nowrap}
+  /* Histórico FIPE — indicadores + gráfico combinado SVG */
+  .fipe-head{margin-bottom:12px}
+  .fipe-head b{font-size:12.5px;display:block}
+  .fipe-head span{color:var(--muted);font-size:10.5px}
+  .fipe-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+  .fipe-card{background:var(--fundo-card);border:1px solid var(--borda-2);border-radius:8px;padding:10px 12px}
+  .fipe-card .fl{font-size:8.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .fipe-card .fv{font-size:13px;font-weight:800;color:var(--texto)}
+  .fipe-card .fv.pos{color:var(--verde-escuro)}
+  .fipe-card .fv.neg{color:var(--vermelho)}
+  .fipe-legenda{display:flex;gap:16px;align-items:center;margin:8px 0 4px;font-size:10px;color:var(--texto-2)}
+  .fipe-legenda i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:baseline}
   .ck{color:var(--verde);font-weight:800;font-size:15px}
   .x{color:var(--vermelho);font-weight:800;font-size:15px}
   .na{color:var(--muted);font-weight:800}
@@ -289,6 +301,104 @@ export const MODEL_HTML_TEMPLATE = `
     return secao(icone, titulo, textoOuVazio(String(valor)), opts);
   }
 
+  function fmtBRL(n) {
+    if (n == null || isNaN(n)) return "—";
+    var neg = n < 0;
+    var abs = Math.abs(n);
+    var int = Math.floor(abs).toString();
+    var dec = Math.round((abs - Math.floor(abs)) * 100).toString();
+    if (dec.length < 2) dec = "0" + dec;
+    int = int.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return (neg ? "-R$ " : "R$ ") + int + "," + dec;
+  }
+  function fmtPct(n, sinal) {
+    if (n == null || isNaN(n)) return "—";
+    var txt = (sinal && n > 0 ? "+" : "") + String(n).replace(".", ",") + "%";
+    return txt;
+  }
+  function fipeSecao(f) {
+    if (vazio(f)) return "";
+    if (typeof f === "string" || Array.isArray(f)) return secaoFlexivel("recall", "Histórico FIPE", f);
+    // formato estruturado { marca, modelo, codigo, anoModelo, referencia, inicial, final, variacao_pct, variacao_nom, historico }
+    var titulo = [f.marca, f.modelo].filter(Boolean).join(" ") || "Histórico FIPE";
+    var sub = [f.codigo ? ("Tabela FIPE - Código " + f.codigo) : "", f.anoModelo ? ("Ano modelo " + f.anoModelo) : "", f.referencia ? ("Ref. " + f.referencia) : ""].filter(Boolean).join(" · ");
+    var pctCls = (f.variacao_pct != null && f.variacao_pct < 0) ? "neg" : "pos";
+    var corpo = '<div class="fipe-head"><b>' + esc(titulo) + '</b>' + (sub ? '<span>' + esc(sub) + '</span>' : '') + '</div>' +
+      '<div class="fipe-cards">' +
+      '<div class="fipe-card"><div class="fl">Valor inicial</div><div class="fv">' + esc(fmtBRL(f.inicial)) + '</div></div>' +
+      '<div class="fipe-card"><div class="fl">Valor final</div><div class="fv">' + esc(fmtBRL(f.final)) + '</div></div>' +
+      '<div class="fipe-card"><div class="fl">Variação acumulada</div><div class="fv ' + pctCls + '">' + esc(fmtPct(f.variacao_pct, true)) + '</div></div>' +
+      '<div class="fipe-card"><div class="fl">Variação em reais</div><div class="fv">' + esc(fmtBRL(f.variacao_nom)) + '</div></div>' +
+      '</div>';
+    var hist = f.historico || [];
+    if (hist.length) {
+      var W = 880, H = 300, PL = 52, PR = 40, PT = 14, PB = 46;
+      var vals = hist.map(function (x) { return x.valor || 0; });
+      var pcts = hist.map(function (x) { return x.variacao_pct; }).filter(function (x) { return x != null; });
+      var maxV = Math.max.apply(null, vals.concat([0])) || 1;
+      var minP = pcts.length ? Math.min.apply(null, pcts.concat([0])) : 0;
+      var maxP = pcts.length ? Math.max.apply(null, pcts.concat([0])) : 0;
+      if (minP === maxP) { minP -= 1; maxP += 1; }
+      var n = hist.length;
+      var slot = (W - PL - PR) / n;
+      var bw = Math.min(34, slot * 0.52);
+      var yV = function (v) { return PT + (H - PT - PB) * (1 - v / maxV); };
+      var yP = function (p) { return PT + (H - PT - PB) * (1 - (p - minP) / (maxP - minP)); };
+      var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" role="img" aria-label="Histórico FIPE">';
+      // grade + eixo esquerdo (R$)
+      var steps = 5;
+      for (var g = 0; g <= steps; g++) {
+        var vv = maxV * g / steps;
+        var yy = yV(vv);
+        var lbl = vv >= 1000 ? ("R$ " + Math.round(vv / 100) / 10 + "k") : ("R$ " + Math.round(vv));
+        s += '<line x1="' + PL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - PR) + '" y2="' + yy.toFixed(1) + '" stroke="#e5e7eb" stroke-width="1"/>' +
+             '<text x="' + (PL - 6) + '" y="' + (yy + 3).toFixed(1) + '" text-anchor="end" font-size="9" fill="#6b7280">' + esc(lbl) + '</text>';
+      }
+      // linha zero do eixo % quando há negativos
+      if (minP < 0) {
+        var yz = yP(0);
+        s += '<line x1="' + PL + '" y1="' + yz.toFixed(1) + '" x2="' + (W - PR) + '" y2="' + yz.toFixed(1) + '" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3,3"/>';
+      }
+      // barras
+      hist.forEach(function (x, i) {
+        var cx = PL + slot * i + slot / 2;
+        var y = yV(x.valor || 0);
+        var hgt = Math.max(2, (PT + (H - PT - PB)) - (y - PT) - 0);
+        var y0 = PT + (H - PT - PB);
+        s += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y0 - y).toFixed(1) + '" rx="2" fill="#2563eb"/>';
+        if (n <= 25 || i % Math.ceil(n / 20) === 0) {
+          s += '<text x="' + cx.toFixed(1) + '" y="' + (H - PB + 14) + '" text-anchor="end" font-size="8.5" fill="#6b7280" transform="rotate(-38 ' + cx.toFixed(1) + ' ' + (H - PB + 14) + ')">' + esc(x.referencia) + '</text>';
+        }
+      });
+      // linha de variação %
+      if (pcts.length) {
+        var pts = [];
+        hist.forEach(function (x, i) {
+          if (x.variacao_pct == null) return;
+          var cx = PL + slot * i + slot / 2;
+          pts.push([cx, yP(x.variacao_pct), x]);
+        });
+        var d = pts.map(function (p, i) { return (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" ");
+        s += '<path d="' + d + '" fill="none" stroke="#dc2626" stroke-width="1.6" stroke-dasharray="4,3"/>';
+        pts.forEach(function (p) {
+          s += '<rect x="' + (p[0] - 3.5).toFixed(1) + '" y="' + (p[1] - 3.5).toFixed(1) + '" width="7" height="7" fill="#fff" stroke="#dc2626" stroke-width="1.4" transform="rotate(45 ' + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + ')"/>';
+        });
+        // rótulos % máx/mín
+        var srt = pts.slice().sort(function (a, b) { return b[2].variacao_pct - a[2].variacao_pct; });
+        if (srt.length) {
+          var mx = srt[0], mn = srt[srt.length - 1];
+          s += '<text x="' + (W - PR + 4) + '" y="' + mx[1].toFixed(1) + '" font-size="9" fill="#dc2626">' + esc(fmtPct(mx[2].variacao_pct, true)) + '</text>';
+          if (mn !== mx) s += '<text x="' + (W - PR + 4) + '" y="' + (mn[1] + 3).toFixed(1) + '" font-size="9" fill="#dc2626">' + esc(fmtPct(mn[2].variacao_pct, true)) + '</text>';
+        }
+      }
+      // eixo direito rótulo
+      s += '<text x="' + (W - 4) + '" y="' + (PT + 2) + '" text-anchor="end" font-size="9" fill="#6b7280">%</text>';
+      s += '</svg>';
+      corpo += '<div class="fipe-legenda"><span><i style="background:#2563eb"></i>Valor FIPE</span><span><i style="background:#dc2626"></i>Variação anual</span></div>' + s;
+    }
+    return secao("recall", "Histórico FIPE", corpo, { classe: "quebra" });
+  }
+
   function render(d) {
     var h = [];
     var c = d.consulta || {};
@@ -386,10 +496,20 @@ export const MODEL_HTML_TEMPLATE = `
     }
 
     h.push(secaoFlexivel("info", "Informações complementares", d.informacoesComplementares));
-    h.push(secaoFlexivel("info", "Duplicidade de motor", d.duplicidadeMotor));
+    if (d.duplicidadeMotor && typeof d.duplicidadeMotor === "object" && !Array.isArray(d.duplicidadeMotor) && (d.duplicidadeMotor.texto || d.duplicidadeMotor.status)) {
+      var dm = d.duplicidadeMotor;
+      var dmCorpo = dm.status === "alerta"
+        ? '<div class="caixa-destaque">' + stBox({ status: "alerta", titulo: dm.texto, descricao: " " }) + '</div>'
+        : dm.status === "ok"
+          ? '<div class="caixa-destaque"><div class="st-box st-ok">' + I.ok + '<div><b>' + esc(dm.texto) + '</b></div></div></div>'
+          : '<div class="bloco"><div class="v">' + esc(dm.texto) + '</div></div>';
+      h.push(secao("info", "Duplicidade de motor", dmCorpo));
+    } else {
+      h.push(secaoFlexivel("info", "Duplicidade de motor", d.duplicidadeMotor));
+    }
     h.push(secaoFlexivel("info", "CSV", d.csv));
     h.push(secaoFlexivel("info", "Detalhamento no Renajud", d.detalhamentoRenajud));
-    h.push(secaoFlexivel("recall", "Histórico FIPE", d.historicoFipe));
+    h.push(fipeSecao(d.historicoFipe));
 
     if (!vazio(d.recall)) {
       h.push(secao("recall", "Recall", '<div class="bloco"><div class="v">' + esc(d.recall) + '</div></div>'));

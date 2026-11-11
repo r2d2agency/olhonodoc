@@ -413,10 +413,17 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   if (!infoCompl) { const f = findDeepKeyMatch(r, [/informac.*complement/i]); if (f) infoCompl = f.value; }
   const informacoesComplementares = typeof infoCompl === 'string' ? formatTextBlock(infoCompl) : hasMeaningful(infoCompl) ? collectSectionRecords(infoCompl) : null;
 
-  // Duplicidade de motor
+  // Duplicidade de motor — extrai mensagem explicitamente; formato dedicado { status, texto }
   let dupMotor = r.duplicidadeMotor ?? r.duplicidadeDeMotor ?? r.duplicidade_motor ?? est.duplicidadeMotor ?? est.duplicidade;
   if (!dupMotor) { const f = findDeepKeyMatch(r, [/duplicid.*motor/i]); if (f) dupMotor = f.value; }
-  const duplicidadeMotor = typeof dupMotor === 'string' ? formatTextBlock(dupMotor) : hasMeaningful(dupMotor) ? (Array.isArray(dupMotor) || typeof dupMotor === 'object' ? collectSectionRecords(dupMotor) : norm(dupMotor)) : null;
+  const dupMsgRaw = typeof dupMotor === 'string' ? dupMotor : hasMeaningful(dupMotor) ? (norm(asRecord(dupMotor).mensagem || asRecord(dupMotor).resposta || asRecord(dupMotor).descricao || valueToText(dupMotor))) : '';
+  const dupMsg = formatTextBlock(dupMsgRaw);
+  const dupAusente = !dupMsg;
+  const dupOk = !dupAusente && (isNadaConstaMsg(dupMsg) || /nenhum registro|sem registro|nao encontrado|não encontrado|negativ/i.test(dupMsg));
+  const duplicidadeMotor = {
+    status: dupAusente ? '' : dupOk ? 'ok' : 'alerta',
+    texto: dupAusente ? 'Informação não disponível.' : dupMsg,
+  };
 
   // CSV
   let csv = r.csv ?? r.CSV ?? est.csv ?? r.dadosCsv ?? r.informacoesCsv;
@@ -430,10 +437,62 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   if (!renajud && est.detalhamentoNoRenajud) renajud = est.detalhamentoNoRenajud;
   const detalhamentoRenajud = typeof renajud === 'string' ? formatTextBlock(renajud) : hasMeaningful(renajud) ? collectSectionRecords(renajud) : null;
 
-  // Histórico FIPE
-  let fipe = r.historicoFipe ?? r.historicoFIPE ?? r.fipe ?? r.historico_fipe ?? est.historicoFipe ?? r.tabelaFipe ?? r.tabelaFIPE;
-  if (!fipe) { const f = findDeepKeyMatch(r, [/histor.*fipe|fipe/i]); if (f) fipe = f.value; }
-  const historicoFipe = typeof fipe === 'string' ? formatTextBlock(fipe) : hasMeaningful(fipe) ? collectSectionRecords(fipe) : null;
+  // Histórico FIPE — objeto precificador.precificador[0] com resumo + historico
+  type FipeHistItem = { referencia: string; valor: number; variacao_pct: number | null; variacao_nom: number | null };
+  type HistoricoFipe = {
+    marca: string; modelo: string; codigo: string; anoModelo: string; referencia: string;
+    inicial: number | null; final: number | null; variacao_pct: number | null; variacao_nom: number | null;
+    historico: FipeHistItem[];
+  } | null;
+  const parseNumBR = (v: unknown): number | null => {
+    const s = norm(v).replace(/R\$\s*/gi, '').trim();
+    if (!s) return null;
+    let n: number;
+    if (s.includes(',')) n = Number(s.replace(/\./g, '').replace(',', '.'));
+    else n = Number(s.replace(/(?<=\d)\s(?=\d)/g, ''));
+    return Number.isFinite(n) ? n : null;
+  };
+  const pickPrecificador = (): Record<string, unknown> | null => {
+    const prec = asRecord(r.precificador);
+    const arrRaw = prec.precificador ?? r.precificador;
+    const arr = Array.isArray(arrRaw) ? arrRaw : Array.isArray(prec) ? prec : null;
+    if (arr && arr.length) {
+      const first = asRecord(arr[0]);
+      if (Object.keys(first).length) return first;
+    }
+    return null;
+  };
+  let historicoFipe: HistoricoFipe | string | Record<string, string>[] | null = null;
+  const prec0 = pickPrecificador();
+  if (prec0) {
+    const resumo = asRecord(prec0.resumo);
+    const histArr: unknown[] = Array.isArray(prec0.historico) ? prec0.historico : [];
+    const historico: FipeHistItem[] = histArr.map((h) => {
+      const hh = asRecord(h);
+      return {
+        referencia: norm(hh.referencia || hh.mes || hh.periodo || hh.data),
+        valor: parseNumBR(hh.valor) ?? 0,
+        variacao_pct: parseNumBR(hh.variacao_percentual ?? hh.variacaoPercentual ?? hh.variacao_pct),
+        variacao_nom: parseNumBR(hh.variacao_nominal ?? hh.variacaoNominal ?? hh.variacao_nom),
+      };
+    }).filter((h) => h.referencia || h.valor);
+    historicoFipe = {
+      marca: norm(prec0.Marca || prec0.marca),
+      modelo: norm(prec0.Modelo || prec0.modelo),
+      codigo: norm(prec0.CodigoFipe || prec0.codigoFipe || prec0.codigo_fipe || prec0.codigo),
+      anoModelo: norm(prec0.AnoModelo || prec0.anoModelo || prec0.ano_modelo),
+      referencia: norm(prec0.mesReferencia || prec0.MesReferencia || prec0.referencia || prec0.Referencia),
+      inicial: parseNumBR(resumo.valor_inicial ?? prec0.valor_inicial),
+      final: parseNumBR(resumo.valor_final ?? prec0.Valor ?? prec0.valor),
+      variacao_pct: parseNumBR(resumo.variacao_acumulada_percentual ?? prec0.variacao_acumulada_percentual),
+      variacao_nom: parseNumBR(resumo.variacao_acumulada_nominal ?? prec0.variacao_acumulada_nominal),
+      historico,
+    };
+  } else {
+    const fipe = r.historicoFipe ?? r.historicoFIPE ?? r.fipe ?? r.historico_fipe ?? est.historicoFipe ?? r.tabelaFipe ?? r.tabelaFIPE;
+    const fipeFound = fipe || (() => { const f = findDeepKeyMatch(r, [/histor.*fipe|fipe/i]); return f ? f.value : null; })();
+    historicoFipe = typeof fipeFound === 'string' ? formatTextBlock(fipeFound) : hasMeaningful(fipeFound) ? collectSectionRecords(fipeFound) : null;
+  }
 
   const parecer = deriveParecer(r, parecerSrc, alertas);
 
