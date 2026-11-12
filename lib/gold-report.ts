@@ -592,10 +592,20 @@ export async function renderGoldPdf(response: CompanyResponse, plate: string, st
   const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], executablePath: typeof executablePath === 'string' ? executablePath : await executablePath });
   try {
     const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 900 });
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
     await page.emulateMediaType('print');
     await page.setContent(html, { waitUntil: 'load' });
-    return await page.pdf({ format: 'A4', printBackground: true, margin: { top: '12mm', bottom: '14mm', left: '10mm', right: '10mm' } });
+    // aguarda render JS do template (conteúdo injetado em #relatorio)
+    await page.waitForFunction(() => {
+      const el = document.getElementById('relatorio');
+      return !!el && el.children.length > 0;
+    }, { timeout: 15000 }).catch(() => {});
+    await page.evaluate(() => (document as any).fonts?.ready).catch(() => {});
+    return await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
   }
   finally { await browser.close(); }
 }
