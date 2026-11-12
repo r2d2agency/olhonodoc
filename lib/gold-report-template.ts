@@ -153,10 +153,10 @@ export const MODEL_HTML_TEMPLATE = `
 
   .vazio{color:var(--muted);font-style:italic}
 
-  @media (max-width:900px){
+  @media screen and (max-width:900px){
     .campos{grid-template-columns:repeat(2,minmax(0,1fr))}
   }
-  @media (max-width:720px){
+  @media screen and (max-width:720px){
     .alertas{grid-template-columns:repeat(2,1fr);gap:10px}
     .campos,.status-grid,.registro,.odometro{grid-template-columns:1fr}
     table.comp{table-layout:auto}
@@ -174,6 +174,9 @@ export const MODEL_HTML_TEMPLATE = `
     .campos{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
     .registro{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
     .status-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+    .odometro{grid-template-columns:1fr 1fr !important}
+    .fipe-cards{grid-template-columns:repeat(4,minmax(0,1fr)) !important}
+    table.comp{table-layout:fixed}
   }
 </style>
 </head>
