@@ -55,17 +55,17 @@ export const MODEL_HTML_TEMPLATE = `
   .secao>.titulo.teal{background:var(--teal)}
   .secao>.corpo{padding:18px 16px 14px}
   .secao.status{border-color:var(--verde-borda);background:var(--verde-bg)}
-  .secao.status .titulo{background:transparent;color:var(--verde-escuro);padding:14px 14px}
+  .secao.status .titulo{background:transparent;color:var(--verde-escuro);padding:14px 14px;border-radius:9px 9px 0 0}
   .secao.status .titulo svg{fill:var(--verde)}
   .secao.status.alerta-st{border-color:var(--vermelho-borda);background:var(--vermelho-bg)}
   .secao.status.alerta-st .titulo{color:var(--vermelho-escuro)}
   .secao.status.alerta-st .titulo svg{fill:var(--vermelho)}
 
   /* Campos - responsivo e sem corte */
-  .campos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:20px;row-gap:10px}
-  .campo{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-bottom:1px dotted var(--borda);padding-bottom:4px;min-width:0}
-  .campo .l{font-weight:700;white-space:normal;flex:0 1 48%;overflow-wrap:anywhere}
-  .campo .v{color:var(--texto-2);text-align:right;flex:1 1 52%;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+  .campos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:16px;row-gap:10px}
+  .campo{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;border-bottom:1px dotted var(--borda);padding-bottom:4px;min-width:0;overflow:hidden}
+  .campo .l{font-weight:700;white-space:normal;flex:0 0 46%;min-width:0;overflow-wrap:anywhere}
+  .campo .v{color:var(--texto-2);text-align:right;flex:1 1 54%;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
 
   .bloco .l{font-weight:700;margin-bottom:4px}
   .bloco .v{color:var(--texto-2);border-bottom:1px dotted var(--borda);padding-bottom:4px;white-space:pre-wrap;overflow-wrap:anywhere}
