@@ -124,6 +124,12 @@ export const MODEL_HTML_TEMPLATE = `
   .fipe-card .fv.neg{color:var(--vermelho)}
   .fipe-legenda{display:flex;gap:16px;align-items:center;margin:8px 0 4px;font-size:10px;color:var(--texto-2)}
   .fipe-legenda i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:baseline}
+  table.fipe-tabela{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;margin-top:4px}
+  table.fipe-tabela th{background:var(--fundo-card);text-align:left;font-weight:700;padding:8px 10px;border:1px solid var(--borda)}
+  table.fipe-tabela td{padding:8px 10px;border:1px solid var(--borda);vertical-align:top;overflow-wrap:anywhere}
+  table.fipe-tabela td.num,table.fipe-tabela th.num{text-align:right;white-space:nowrap}
+  table.fipe-tabela td.pos{color:var(--verde-escuro);font-weight:600}
+  table.fipe-tabela td.neg{color:var(--vermelho);font-weight:600}
   .ck{color:var(--verde);font-weight:800;font-size:15px}
   .x{color:var(--vermelho);font-weight:800;font-size:15px}
   .na{color:var(--muted);font-weight:800}
@@ -325,17 +331,23 @@ export const MODEL_HTML_TEMPLATE = `
     // formato estruturado { marca, modelo, codigo, anoModelo, referencia, inicial, final, variacao_pct, variacao_nom, historico }
     var titulo = [f.marca, f.modelo].filter(Boolean).join(" ") || "Histórico FIPE";
     var sub = [f.codigo ? ("Tabela FIPE - Código " + f.codigo) : "", f.anoModelo ? ("Ano modelo " + f.anoModelo) : "", f.referencia ? ("Ref. " + f.referencia) : ""].filter(Boolean).join(" · ");
+    var hist = f.historico || [];
+    var refIni = (hist.length ? hist[0].referencia : "") || "";
+    var refFim = (hist.length ? hist[hist.length - 1].referencia : "") || f.referencia || "";
+    var valIni = f.inicial != null ? f.inicial : (hist.length ? hist[0].valor : null);
+    var valFim = f.final != null ? f.final : (hist.length ? hist[hist.length - 1].valor : null);
     var pctCls = (f.variacao_pct != null && f.variacao_pct < 0) ? "neg" : "pos";
+    var lblIni = refIni ? ("Valor em " + refIni) : "Valor inicial";
+    var lblFim = refFim ? ("Valor em " + refFim) : "Valor final";
     var corpo = '<div class="fipe-head"><b>' + esc(titulo) + '</b>' + (sub ? '<span>' + esc(sub) + '</span>' : '') + '</div>' +
       '<div class="fipe-cards">' +
-      '<div class="fipe-card"><div class="fl">Valor inicial</div><div class="fv">' + esc(fmtBRL(f.inicial)) + '</div></div>' +
-      '<div class="fipe-card"><div class="fl">Valor final</div><div class="fv">' + esc(fmtBRL(f.final)) + '</div></div>' +
+      '<div class="fipe-card"><div class="fl">' + esc(lblIni) + '</div><div class="fv">' + esc(fmtBRL(valIni)) + '</div></div>' +
+      '<div class="fipe-card"><div class="fl">' + esc(lblFim) + '</div><div class="fv">' + esc(fmtBRL(valFim)) + '</div></div>' +
       '<div class="fipe-card"><div class="fl">Variação acumulada</div><div class="fv ' + pctCls + '">' + esc(fmtPct(f.variacao_pct, true)) + '</div></div>' +
       '<div class="fipe-card"><div class="fl">Variação em reais</div><div class="fv">' + esc(fmtBRL(f.variacao_nom)) + '</div></div>' +
       '</div>';
-    var hist = f.historico || [];
     if (hist.length) {
-      var W = 880, H = 300, PL = 52, PR = 40, PT = 14, PB = 46;
+      var W = 880, H = 300, PL = 52, PR = 44, PT = 14, PB = 46;
       var vals = hist.map(function (x) { return x.valor || 0; });
       var pcts = hist.map(function (x) { return x.variacao_pct; }).filter(function (x) { return x != null; });
       var maxV = Math.max.apply(null, vals.concat([0])) || 1;
@@ -366,7 +378,6 @@ export const MODEL_HTML_TEMPLATE = `
       hist.forEach(function (x, i) {
         var cx = PL + slot * i + slot / 2;
         var y = yV(x.valor || 0);
-        var hgt = Math.max(2, (PT + (H - PT - PB)) - (y - PT) - 0);
         var y0 = PT + (H - PT - PB);
         s += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y0 - y).toFixed(1) + '" rx="2" fill="#2563eb"/>';
         if (n <= 25 || i % Math.ceil(n / 20) === 0) {
@@ -398,6 +409,17 @@ export const MODEL_HTML_TEMPLATE = `
       s += '<text x="' + (W - 4) + '" y="' + (PT + 2) + '" text-anchor="end" font-size="9" fill="#6b7280">%</text>';
       s += '</svg>';
       corpo += '<div class="fipe-legenda"><span><i style="background:#2563eb"></i>Valor FIPE</span><span><i style="background:#dc2626"></i>Variação anual</span></div>' + s;
+      // tabela de histórico (dados do precificador)
+      corpo += '<div style="overflow:auto;margin-top:12px"><table class="fipe-tabela"><thead><tr>' +
+        '<th>Referência</th><th class="num">Valor</th><th class="num">Variação (R$)</th><th class="num">Variação (%)</th>' +
+        '</tr></thead><tbody>' +
+        hist.map(function (x) {
+          var vcls = x.variacao_pct == null ? "" : (x.variacao_pct < 0 ? "neg" : (x.variacao_pct > 0 ? "pos" : ""));
+          return '<tr><td>' + esc(x.referencia) + '</td>' +
+            '<td class="num">' + esc(fmtBRL(x.valor)) + '</td>' +
+            '<td class="num ' + vcls + '">' + esc(x.variacao_nom == null ? "—" : fmtBRL(x.variacao_nom)) + '</td>' +
+            '<td class="num ' + vcls + '">' + esc(fmtPct(x.variacao_pct, true)) + '</td></tr>';
+        }).join("") + '</tbody></table></div>';
     }
     return secao("recall", "Histórico FIPE", corpo, { classe: "quebra" });
   }
