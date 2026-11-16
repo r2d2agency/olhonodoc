@@ -302,7 +302,7 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   if (leiloesArr.length || isPositiveMsg(leilao.resposta)) alertas.push({ icone: 'leilao', texto: 'Consta oferta em leilão', tipo: 'alerta' });
 
   // Comercialização - prioriza a mensagem descritiva; resposta "1"/"0" é só flag
-  const comercialTxt = norm(comercial.mensagem || (['1', 'SIM'].includes(upper(comercial.resposta)) ? 'Consta comercialização' : comercial.resposta));
+  const comercialTxt = norm(comercial.mensagem || (['1', 'SIM'].includes(upper(comercial.resposta)) ? 'Consta comercialização por seguradora' : comercial.resposta));
   if (comercialTxt && isPositiveMsg(comercialTxt)) {
     alertas.push({ icone: 'info', texto: comercialTxt, tipo: 'alerta' });
   }
@@ -337,7 +337,7 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
 
   // Base Estadual - include all fields, formatted labels, preserve values
   // (exceto as chaves de débito, que têm seção própria "Débitos e multas")
-  const DEBITO_KEYS = new Set(['debitomulta', 'existedebitomulta', 'debitoipva', 'existedebitoipva', 'debitolicenciamento', 'existedebitolicenciamento', 'debitodpvat', 'existedebitodpvat']);
+  const DEBITO_KEYS = new Set(['debitomulta', 'existedebitomulta', 'debitoipva', 'existedebitoipva', 'debitolicenciamento', 'existedebitolicenciamento', 'debitodpvat', 'existedebitodpvat', 'dadosatualis', 'dadosatuals', 'dadosatual', 'dadosatuais', 'ultimaatualizacao', 'ultimaatualizacaoveiculo']);
   const baseEstadual = pairsFromObject(est, { formatKeys: true, dropKeys: DEBITO_KEYS });
 
   // Emplacamento / cabeçalho
@@ -359,7 +359,7 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   }
 
   // Gravame - hide yellow-highlighted sensitive/internal fields in view (conservative: hide contact/cpf-cnpj of agents/financeira details not essential)
-  const gravameDrop = ['cpfcnpjagente', 'cpfcnpj', 'cpf_cnpj', 'cnpjcpf', 'telefone', 'email', 'endereco', 'endereço', 'logradouro', 'numero', 'bairro', 'cidade', 'municipio', 'ufagente', 'cep'];
+  const gravameDrop = ['cpfcnpjagente', 'cpfcnpj', 'cpf_cnpj', 'cnpjcpf', 'telefone', 'email', 'endereco', 'endereço', 'logradouro', 'numero', 'bairro', 'cidade', 'municipio', 'ufagente', 'cep', 'contrato', 'documento'];
   // Gravame - objeto gravame.gravame[] com os registros; fallback para formatos alternativos
   const gravamesArr: unknown[] = Array.isArray(grav.gravame) ? grav.gravame : Array.isArray(grav.gravames) ? grav.gravames : Array.isArray(grav.registros) ? grav.registros : grav.resposta && hasMeaningful(grav) ? [grav] : [];
   const gravameRegs = registrosFromArray(gravamesArr, { dropKeys: gravameDrop });

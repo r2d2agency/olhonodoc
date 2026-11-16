@@ -460,7 +460,7 @@ export const MODEL_HTML_TEMPLATE = `
       h.push(secao("lupa", "Base BIN", '<div class="caixa-destaque">' + stBox(st.status === 'alerta' ? {status:'alerta', titulo: st.titulo, descricao: st.descricao} : {status:'ok'}) + '</div>' + (st.status === 'alerta' ? '' : textoOuVazio(d.baseBinStatus))));
     }
 
-    if (!vazio(d.baseEstadual)) h.push(secao("mapa", "Base Estadual (dados atuais)", campos(d.baseEstadual)));
+    if (!vazio(d.baseEstadual)) h.push(secao("mapa", "Base Estadual", campos(d.baseEstadual)));
 
     if (d.proprietario) {
       h.push(secao("id", "Informações de proprietário",
