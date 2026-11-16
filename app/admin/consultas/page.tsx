@@ -311,7 +311,7 @@ function QueryDetailModal({ query, dispatching, generatingPdf, onClose, onDispat
       <div className="query-modal-actions">
         {canDispatch && <button className="admin-cms-primary" type="button" onClick={onDispatch} disabled={Boolean(dispatching)}>{dispatching === query.order.id ? 'Enviando…' : 'Enviar consulta'}</button>}
         {query.companyStatus === 'COMPLETED' && query.report && <button className="admin-cms-primary" type="button" onClick={onGeneratePdf} disabled={generatingPdf === query.id}>{generatingPdf === query.id ? 'Gerando…' : 'Gerar PDF para o cliente'}</button>}
-        <button className="admin-secondary-button" type="button" onClick={onClose}>Fechar</button>
+        <button className="admin-secondary-button" type="button" onClick={() => window.open(`/api/admin/queries/${query.id}/raw`, '_blank')}>Ver raw</button>
       </div>
     </div>
   </div>;

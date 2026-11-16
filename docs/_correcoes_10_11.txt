@@ -1,0 +1,154 @@
+﻿PLACA: ABC1234 - CONSULTA PREMIUM
+
+CORREÇÃO – RETORNO DE BIN INDISPONÍVEL
+
+Na consulta da Olho no Doc, o sistema está retornando a informação "BIN INDISPONÍVEL". No entanto, ao realizar a mesma pesquisa na Company, foi possível identificar que houve retorno das informações da BIN.
+
+Correção solicitada: verificar a integração e o tratamento do retorno da API da BIN, pois a informação disponibilizada pela Company não está sendo refletida corretamente na Olho no Doc.
+
+Ajustar para que, sempre que a Company disponibilizar o retorno da BIN, as informações sejam apresentadas normalmente na Olho no Doc, evitando que o sistema informe incorretamente que a BIN está indisponível.
+
+PRINT OLHO NO DOC: 
+
+PRINT COMPANY: 
+
+
+CORREÇÃO – EXIBIÇÃO DOS DADOS DA BASE ESTADUAL
+É necessário ajustar a configuração dos dados retornados pela Base Estadual para que sejam exibidos corretamente na consulta da Olho no Doc.
+Atualmente, o campo de exibição está muito grande e acaba cortando parte das informações retornadas pela base, impedindo a visualização completa dos dados.
+Correção solicitada: Ajustar o dimensionamento e a configuração do campo de exibição para que todas as informações da Base Estadual apareçam integralmente na consulta da Olho no Doc, sem cortes ou perda de conteúdo.
+PRINT OLHO NO DOC: 
+
+PRINT COMPANY: 
+
+
+
+CORREÇÃO – EXIBIÇÃO DE DÉBITOS E MULTAS
+
+No campo Débitos e Multas, a consulta da Olho no Doc está apresentando apenas as multas, deixando de exibir os demais débitos identificados na pesquisa da Company.
+Correção solicitada: Ajustar a integração e a configuração do campo para que todos os débitos retornados pela pesquisa da Company sejam refletidos corretamente na Olho no Doc, incluindo multas e demais débitos do veículo, garantindo que as informações apresentadas estejam completas e correspondam ao retorno da base consultada.
+PRINT OLHO NO DOC: 
+
+PRINT COMPANY: 
+
+
+
+CORREÇÃO – CAMPO GRAVAME
+No campo Gravame, a visualização da consulta da Olho no Doc está apresentando informações que não devem ser exibidas, conforme destacado em amarelo no print encaminhado.
+Correção solicitada:Ocultar, na visualização da consulta da Olho no Doc, as informações destacadas em amarelo no campo Gravame, mantendo a exibição dos demais dados normalmente.
+PRINT OLHO NO DOC: 
+
+
+CORREÇÃO – CAMPO RESTRIÇÕES E OUTRAS INFORMAÇÕES
+As informações apresentadas no campo Restrições e Outras Informações da Olho no Doc não estão sendo refletidas corretamente em comparação com a pesquisa da Company. Além disso, há problemas de formatação e escrita, como ausência de espaços entre as palavras e frases iniciadas com letras minúsculas.
+Correção solicitada:
+Ajustar o campo para que as informações sejam reproduzidas exatamente conforme o retorno da pesquisa da Company, preservando o conteúdo original e corrigindo a formatação textual, garantindo:
+Espaçamento correto entre as palavras;
+Separação adequada das frases;
+Início das frases com letra maiúscula;
+Apresentação organizada e de fácil leitura.
+O ajuste deve ser aplicado tanto na visualização da consulta quanto no PDF, garantindo a padronização das informações.
+PRINT OLHO NO DOC: 
+
+
+PRINT COMPANY: 
+
+CORREÇÃO – CAMPO HISTÓRICO DE ROUBO E FURTO
+No campo Histórico de Roubo e Furto, estão sendo exibidas informações que não devem aparecer na consulta, conforme destacado em amarelo no print encaminhado. Além disso, o texto apresenta problemas de formatação, com palavras sem o devido espaçamento.
+Correção solicitada:
+Ocultar as informações destacadas em amarelo no campo Histórico de Roubo e Furto;
+Corrigir a formatação do texto, garantindo o espaçamento adequado entre as palavras;
+Manter as demais informações do campo normalmente, com apresentação organizada e de fácil leitura.
+
+CORREÇÃO – CAMPO LEILÃO
+No campo Leilão, está sendo exibida uma informação que não deve constar na consulta, conforme destacado em amarelo no print encaminhado.
+Correção solicitada:
+Ocultar apenas a informação destacada em amarelo, mantendo as demais informações do campo Leilão inalteradas.
+
+CORREÇÃO – HISTÓRICO DE COMERCIALIZAÇÃO POR SEGURADORA
+Correção solicitada:
+No campo Histórico de Comercialização por Seguradora, ajustar a sinalização visual para que a informação seja apresentada em vermelho, como destaque positivo, mantendo o texto e as demais informações inalteradas.
+
+
+
+CORREÇÃO – OPÇÃO DE IMPRESSÃO E DOWNLOAD DO PDF
+Ao clicar em "Ver Relatório", o relatório é aberto e exibido corretamente, porém não há opção para baixar o arquivo em PDF.
+Correção solicitada:
+Incluir no relatório um botão de "Imprimir", permitindo que o usuário gere o PDF e realize o download do documento, além de possibilitar sua impressão.
+
+
+CORREÇÃO – EXIBIÇÃO DO CAMPO COMPARATIVOS DE COMPONENTES
+O campo Comparativos de Componentes não está sendo apresentado na pesquisa da Olho no Doc, embora conste normalmente no resultado da pesquisa da Company.
+Correção solicitada:
+Verificar a integração e ajustar a exibição para que as informações do campo Comparativos de Componentes sejam refletidas corretamente na consulta da Olho no Doc, conforme o retorno da Company.
+PRINT COMPANY: 
+
+
+CORREÇÃO – EXIBIÇÃO DO CAMPO INFORMAÇÕES COMPLEMENTARES
+Problema identificado:
+O campo Informações Complementares não está sendo apresentado na pesquisa da Olho no Doc, embora conste normalmente no resultado da pesquisa da Company.
+Correção solicitada:
+Verificar a integração e ajustar a exibição para que as informações do campo Informações Complementares sejam refletidas corretamente na consulta da Olho no Doc, conforme o retorno da Company, garantindo que nenhum dado seja omitido.
+
+
+CORREÇÃO – EXIBIÇÃO DO CAMPO DUPLICIDADE DE MOTOR
+Problema identificado:
+O campo Duplicidade de Motor não está sendo apresentado na pesquisa da Olho no Doc.
+Correção solicitada:
+Verificar a integração e ajustar a exibição para que o campo Duplicidade de Motor seja apresentado corretamente na consulta da Olho no Doc, conforme as informações retornadas pela pesquisa da Company.
+PRINT COMPANY: 
+
+
+CORREÇÃO – EXIBIÇÃO DO CAMPO CSV
+Problema identificado:
+O campo CSV não está sendo apresentado na pesquisa da Olho no Doc, embora conste no resultado da pesquisa da Company.
+Correção solicitada:
+Verificar a integração e ajustar a exibição para que as informações do campo CSV sejam refletidas corretamente na consulta da Olho no Doc, conforme o retorno da Company.
+
+CORREÇÃO – EXIBIÇÃO DO CAMPO DETALHAMENTO NO RENAJUD
+Problema identificado:
+O campo Detalhamento, dentro da seção Renajud, não está sendo apresentado na pesquisa da Olho no Doc, embora conste no resultado da pesquisa da Company.
+Correção solicitada:
+Ajustar a integração e a exibição para que as informações do campo Detalhamento no Renajud sejam refletidas corretamente na consulta da Olho no Doc, conforme o retorno da Company.
+
+PRINT COMPANY: 
+
+CORREÇÃO – EXIBIÇÃO DO CAMPO HISTÓRICO FIPE
+Problema identificado:
+O campo Histórico FIPE não está sendo apresentado na pesquisa da Olho no Doc, embora conste no resultado da pesquisa da Company.
+Correção solicitada:
+Ajustar a integração e a exibição para que as informações do campo Histórico FIPE sejam refletidas corretamente na consulta da Olho no Doc, conforme o retorno da Company.
+PRINT COMPANY: 
+
+
+
+__________________________________________________________________________________________
+
+
+PLACA: GAU7A34  - CONSULTA PREMIUM
+
+
+
+CORREÇÃO – ALERTAS INCORRETOS NO TOPO DA CONSULTA
+Problema identificado:
+Os alertas apresentados no topo da consulta estão exibindo informações incorretas:
+Comercialização: O sistema apresentou o alerta "Consta comercialização por seguradora", porém o retorno correto da pesquisa é "Consta comercialização por frota".
+Roubo e Furto: O sistema apresentou um alerta em vermelho informando "Não consta roubo e furto". Quando o veículo possui resultado negativo para roubo e furto, não é necessário apresentar esse alerta no topo da consulta.
+Correção solicitada:
+Ajustar o alerta de comercialização para apresentar corretamente "Consta comercialização por frota", conforme o retorno da pesquisa.
+Remover o alerta de roubo e furto quando o resultado for negativo, ou seja, quando não houver registro de roubo ou furto.
+Garantir que os alertas exibidos no topo da consulta correspondam exatamente às informações retornadas pela pesquisa, evitando sinalizações incorretas.
+
+
+CORREÇÃO – CAMPO INDÍCIO DE SINISTRO
+Problema identificado:
+O campo Indício de Sinistro está apresentando uma informação positiva na consulta da Olho no Doc, porém, ao verificar a pesquisa original da Company, constatamos que não houve retorno dessa informação. Portanto, a Olho no Doc está refletindo um resultado incorreto.
+Correção solicitada:
+Ajustar a integração para que o campo apresente o texto "Consta indício de sinistro" sempre que houver retorno positivo na pesquisa da Company.
+Neste caso específico, como a Company não retornou nenhuma informação positiva, a Olho no Doc não deveria ter apresentado esse apontamento.
+PRINT OLHO NO DOC: 
+
+
+PRINT COMPANY: 
+
+
