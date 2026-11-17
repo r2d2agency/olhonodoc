@@ -61,8 +61,8 @@ export const MODEL_HTML_TEMPLATE = `
   .secao.status.alerta-st .titulo{color:var(--vermelho-escuro)}
   .secao.status.alerta-st .titulo svg{fill:var(--vermelho)}
 
-  /* Campos - responsivo e sem corte */
-  .campos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:16px;row-gap:10px}
+  /* Campos - responsivo e sem corte: cai para 2 colunas antes de espremer */
+  .campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));column-gap:16px;row-gap:10px}
   .campo{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;border-bottom:1px dotted var(--borda);padding-bottom:4px;min-width:0;overflow:hidden}
   .campo .l{font-weight:700;white-space:normal;flex:0 0 46%;min-width:0;overflow-wrap:anywhere}
   .campo .v{color:var(--texto-2);text-align:right;flex:1 1 54%;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
@@ -177,7 +177,10 @@ export const MODEL_HTML_TEMPLATE = `
     .quebra{break-before:page}
     .registro,.secao{break-inside:avoid}
     .alertas{grid-template-columns:repeat(4,minmax(0,1fr)) !important}
-    .campos{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+    .campos{grid-template-columns:repeat(3,minmax(0,1fr)) !important;column-gap:12px}
+    .campo{flex-direction:column !important;gap:2px;align-items:stretch}
+    .campo .l{flex:none}
+    .campo .v{text-align:left;flex:none}
     .registro{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
     .status-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
     .odometro{grid-template-columns:1fr 1fr !important}
