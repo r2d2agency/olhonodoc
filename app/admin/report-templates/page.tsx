@@ -25,6 +25,17 @@ export default function ReportTemplatesPage() {
     setMessage('Templates salvos.');
   }
 
+  async function resetDefaults() {
+    if (!window.confirm('Restaurar os templates para a versão padrão do sistema? Suas edições serão perdidas.')) return;
+    setSaving(true); setError(''); setMessage('');
+    const r = await fetch('/api/admin/report-templates', { method: 'POST' });
+    const b = await r.json(); setSaving(false);
+    if (!r.ok) { setError(b.error || 'Não foi possível restaurar.'); return; }
+    setTemplates(b.data || []);
+    setActiveId((b.data?.[0]?.id) || '');
+    setMessage('Templates restaurados para a versão padrão.');
+  }
+
   async function setActive(id: string) {
     setActiveId(id);
     await fetch('/api/admin/report-templates', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activeId: id }) });
@@ -68,6 +79,7 @@ export default function ReportTemplatesPage() {
         </ul>
         <div style={{ marginTop: 12 }}>
           <button className="admin-cms-primary" onClick={save} disabled={saving}>{saving ? 'Salvando…' : 'Salvar alterações'}</button>
+          <button className="admin-secondary-button" style={{ marginLeft: 8 }} onClick={resetDefaults} disabled={saving}>Restaurar padrão do sistema</button>
         </div>
       </section>
     </main>

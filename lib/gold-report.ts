@@ -271,7 +271,7 @@ function deriveParecer(r: Record<string, unknown>, parecer: Record<string, unkno
   return { nivel, resumo: formatTextBlock(resumo) };
 }
 
-function buildData(response: CompanyResponse, plate: string, status: string, message: string) {
+export function buildData(response: CompanyResponse, plate: string, status: string, message: string) {
   const r = asRecord(response);
   const bin = asRecord(r.bin);
   const est = asRecord(r.estadual);

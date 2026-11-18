@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, requireSuperadmin } from '@/lib/auth';
-import { listReportTemplates, saveReportTemplates, setActiveTemplateId, getActiveTemplateId, ReportTemplate } from '@/lib/admin/report-templates';
+import { listReportTemplates, saveReportTemplates, setActiveTemplateId, getActiveTemplateId, resetReportTemplates, ReportTemplate } from '@/lib/admin/report-templates';
 
 function clean(input: unknown): ReportTemplate[] | null {
   if (!Array.isArray(input) || input.length > 50) return null;
@@ -20,6 +20,12 @@ export async function GET() {
   const user = await requireAdmin(); if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 });
   const [templates, activeId] = await Promise.all([listReportTemplates(), getActiveTemplateId()]);
   return NextResponse.json({ data: { templates, activeId } });
+}
+
+export async function POST() {
+  const user = await requireSuperadmin(); if (!user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 });
+  const templates = await resetReportTemplates();
+  return NextResponse.json({ data: templates });
 }
 
 export async function PUT(request: Request) {

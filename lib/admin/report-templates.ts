@@ -34,6 +34,13 @@ export async function setActiveTemplateId(id: string) {
   await prisma.setting.upsert({ where: { key: ACTIVE_KEY }, create: { key: ACTIVE_KEY, value: id }, update: { value: id } });
 }
 
+export async function resetReportTemplates() {
+  await prisma.setting.delete({ where: { key: LIST_KEY } }).catch(() => undefined);
+  await saveReportTemplates(DEFAULT_TEMPLATES);
+  await setActiveTemplateId(DEFAULT_TEMPLATES[0].id);
+  return DEFAULT_TEMPLATES;
+}
+
 export async function getActiveTemplateHtml(): Promise<string> {
   const id = await getActiveTemplateId();
   const templates = await listReportTemplates();

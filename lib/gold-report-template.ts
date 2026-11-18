@@ -359,7 +359,6 @@ export const MODEL_HTML_TEMPLATE = `
       if (minP === maxP) { minP -= 1; maxP += 1; }
       var n = hist.length;
       var slot = (W - PL - PR) / n;
-      var bw = Math.min(34, slot * 0.52);
       var yV = function (v) { return PT + (H - PT - PB) * (1 - v / maxV); };
       var yP = function (p) { return PT + (H - PT - PB) * (1 - (p - minP) / (maxP - minP)); };
       var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" role="img" aria-label="Histórico FIPE">';
@@ -377,14 +376,17 @@ export const MODEL_HTML_TEMPLATE = `
         var yz = yP(0);
         s += '<line x1="' + PL + '" y1="' + yz.toFixed(1) + '" x2="' + (W - PR) + '" y2="' + yz.toFixed(1) + '" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3,3"/>';
       }
-      // barras
-      hist.forEach(function (x, i) {
-        var cx = PL + slot * i + slot / 2;
-        var y = yV(x.valor || 0);
-        var y0 = PT + (H - PT - PB);
-        s += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y0 - y).toFixed(1) + '" rx="2" fill="#2563eb"/>';
+      // linha de valor FIPE + marcadores + rótulos do eixo X
+      var vPts = hist.map(function (x, i) { return [PL + slot * i + slot / 2, yV(x.valor || 0), x]; });
+      var vd = vPts.map(function (p, i) { return (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" ");
+      // área preenchida sob a linha (suave visualmente, mantém leitura)
+      var areaD = vd + " L" + vPts[vPts.length - 1][0].toFixed(1) + " " + (PT + (H - PT - PB)).toFixed(1) + " L" + vPts[0][0].toFixed(1) + " " + (PT + (H - PT - PB)).toFixed(1) + " Z";
+      s += '<path d="' + areaD + '" fill="#2563eb" fill-opacity="0.10" stroke="none"/>';
+      s += '<path d="' + vd + '" fill="none" stroke="#2563eb" stroke-width="2.4" stroke-linejoin="round"/>';
+      vPts.forEach(function (p, i) {
+        s += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" fill="#fff" stroke="#2563eb" stroke-width="1.8"/>';
         if (n <= 25 || i % Math.ceil(n / 20) === 0) {
-          s += '<text x="' + cx.toFixed(1) + '" y="' + (H - PB + 14) + '" text-anchor="end" font-size="8.5" fill="#6b7280" transform="rotate(-38 ' + cx.toFixed(1) + ' ' + (H - PB + 14) + ')">' + esc(x.referencia) + '</text>';
+          s += '<text x="' + p[0].toFixed(1) + '" y="' + (H - PB + 14) + '" text-anchor="end" font-size="8.5" fill="#6b7280" transform="rotate(-38 ' + p[0].toFixed(1) + ' ' + (H - PB + 14) + ')">' + esc(p[2].referencia) + '</text>';
         }
       });
       // linha de variação %
@@ -411,7 +413,7 @@ export const MODEL_HTML_TEMPLATE = `
       // eixo direito rótulo
       s += '<text x="' + (W - 4) + '" y="' + (PT + 2) + '" text-anchor="end" font-size="9" fill="#6b7280">%</text>';
       s += '</svg>';
-      corpo += '<div class="fipe-legenda"><span><i style="background:#2563eb"></i>Valor FIPE</span><span><i style="background:#dc2626"></i>Variação anual</span></div>' + s;
+      corpo += '<div class="fipe-legenda"><span><i style="background:#2563eb"></i>Valor FIPE (linha)</span><span><i style="background:#dc2626"></i>Variação anual (%)</span></div>' + s;
       // tabela de histórico (dados do precificador)
       corpo += '<div style="overflow:auto;margin-top:12px"><table class="fipe-tabela"><thead><tr>' +
         '<th>Referência</th><th class="num">Valor</th><th class="num">Variação (R$)</th><th class="num">Variação (%)</th>' +
