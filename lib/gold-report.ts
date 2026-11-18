@@ -160,7 +160,7 @@ function collectSectionRecords(value: unknown): Record<string, string>[] {
   if (value && typeof value === 'object') {
     const rec = asRecord(value);
     // common wrappers
-    for (const k of ['detalhes', 'detalhe', 'registros', 'itens', 'historico', 'ocorrencias', 'dados', 'lista']) {
+    for (const k of ['detalhes', 'detalhe', 'registros', 'itens', 'historico', 'ocorrencias', 'dados', 'lista', 'processos']) {
       const inner = rec[k];
       if (Array.isArray(inner)) return registrosFromArray(inner);
     }
@@ -294,7 +294,8 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   const alertas: { icone: string; texto: string; tipo: 'alerta' | 'atencao' }[] = [];
 
   const sinistroPos = isPositiveMsg(sinistro.resposta || sinistro.mensagem);
-  if (sinistroPos) alertas.push({ icone: 'sinistro', texto: /consta|ind[íi]cio/i.test(norm(sinistro.resposta)) ? norm(sinistro.resposta) : 'Consta sinistro', tipo: 'alerta' });
+  const sinistroTxt = formatTextBlock(sinistro.mensagem || sinistro.resposta || '');
+  if (sinistroPos) alertas.push({ icone: 'sinistro', texto: sinistroTxt || 'Consta sinistro de indenização integral', tipo: 'alerta' });
 
   // Leilão
   const leiloesRaw = asRecord(leilao.leiloes).leilao ?? leilao.leiloes ?? leilao.registros;
@@ -302,7 +303,10 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   if (leiloesArr.length || isPositiveMsg(leilao.resposta)) alertas.push({ icone: 'leilao', texto: 'Consta oferta em leilão', tipo: 'alerta' });
 
   // Comercialização - prioriza a mensagem descritiva; resposta "1"/"0" é só flag
-  const comercialTxt = norm(comercial.mensagem || (['1', 'SIM'].includes(upper(comercial.resposta)) ? 'Consta comercialização por seguradora' : comercial.resposta));
+  const comercialFlagSim = ['1', 'SIM', 'S', 'TRUE'].includes(upper(comercial.resposta));
+  const comercialTxt = comercialFlagSim
+    ? 'Consta comercialização por seguradora'
+    : (isNadaConstaMsg(comercial.mensagem) || isNadaConstaMsg(comercial.resposta) ? '' : norm(comercial.mensagem || comercial.resposta));
   if (comercialTxt && isPositiveMsg(comercialTxt)) {
     alertas.push({ icone: 'info', texto: comercialTxt, tipo: 'alerta' });
   }
@@ -435,6 +439,34 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
     if (recs.length) comparativo = recs.map(o => ({ componente: o['Componente'] || Object.values(o)[0] || '-', fabrica: o['Fabrica'] || o['Fábrica'] || '-', estadual: o['Estadual'] || '-', comparativo: o['Comparativo'] || o['Status'] || '-', status: 'na' as const }));
   }
 
+  // Comparativo automático: agregados (fábrica) × bin (estadual), quando a Company não envia comparativo pronto
+  if (!comparativo?.length && hasMeaningful(agg) && hasMeaningful(bin)) {
+    const componentes = [
+      ['Marca', 'marca', 'marca'], ['Modelo', 'modelo', 'modelo'], ['Cor', 'cor', 'cor'],
+      ['Chassi', 'chassi', 'chassi'], ['Renavam', 'renavam', 'renavam'], ['Motor', 'motor', 'motor'],
+      ['Ano fabricação', 'anoFabricacao', 'anoFabricacao'], ['Ano modelo', 'anoModelo', 'anoModelo'],
+      ['Combustível', 'combustivel', 'combustivel'], ['Cilindradas', 'cilindradas', 'cilindradas'],
+      ['Potência', 'potencia', 'potencia'], ['Capacidade de carga', 'capacidadeCarga', 'capacidadeCarga'],
+      ['Tipo de carroceria', 'tipoCarroceria', 'tipoCarroceria'], ['Quantidade de eixos', 'eixos', 'numeroEixos'],
+      ['Tipo de chassi', 'tipoChassi', 'tipoChassi'], ['Caixa de câmbio', 'caixaCambio', 'caixaCambio'],
+      ['Espécie', 'especie', 'especie'], ['Procedência', 'procedencia', 'procedencia'],
+      ['Lotação', 'lotacao', 'lotacao'], ['Município', 'municipio', 'municipio'],
+    ] as const;
+    comparativo = componentes.map(([rotulo, aggKey, binKey]) => {
+      const fabrica = norm(agg[aggKey]);
+      const estadual = norm(bin[binKey]);
+      const st: 'ok' | 'diferente' | 'na' = !fabrica || !estadual ? 'na' : upper(fabrica) === upper(estadual) ? 'ok' : 'diferente';
+      return {
+        componente: rotulo,
+        fabrica: fabrica || '-',
+        estadual: estadual || '-',
+        comparativo: st === 'ok' ? 'Confere' : st === 'diferente' ? 'Divergente' : '-',
+        status: st,
+      };
+    }).filter(x => x.status !== 'na' || x.fabrica !== '-' || x.estadual !== '-');
+    if (!comparativo.length) comparativo = undefined;
+  }
+
   // Informações complementares
   let infoCompl = r.informacoesComplementares ?? r.informacoes_complementares ?? r.infoComplementares ?? est.informacoesComplementares ?? est.informacoes_complementares;
   if (!infoCompl) { const f = findDeepKeyMatch(r, [/informac.*complement/i]); if (f) infoCompl = f.value; }
@@ -458,7 +490,7 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
   const csvInfo = typeof csv === 'string' ? formatTextBlock(csv) : hasMeaningful(csv) ? collectSectionRecords(csv) : null;
 
   // Detalhamento Renajud
-  let renajud = r.detalhamentoRenajud ?? r.detalhamento_renajud ?? r.renajudDetalhamento ?? est.detalhamentoRenajud ?? est.renajud ?? r.renajud;
+  let renajud = r.renajudDetalhado ?? r.detalhamentoRenajud ?? r.detalhamento_renajud ?? r.renajudDetalhamento ?? est.detalhamentoRenajud ?? est.renajud ?? r.renajud;
   if (!renajud) { const f = findDeepKeyMatch(r, [/detalh.*renajud|renajud.*detalh/i]); if (f) renajud = f.value; }
   // if not found separately, maybe inside estadual as complex value
   if (!renajud && est.detalhamentoNoRenajud) renajud = est.detalhamentoNoRenajud;
@@ -523,6 +555,18 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
 
   const parecer = deriveParecer(r, parecerSrc, alertas);
 
+  // Detran (dados complementares de CRLV, multas, autuações e informações do veículo)
+  const detran = asRecord(r.detran);
+  const detranCrLv = asRecord(detran.crlv);
+  const detranMultas = asRecord(detran.multas);
+  const detranAutuacoes = asRecord(detran.autuacoes);
+  const detranInfo = asRecord(detran.informacoesVeiculo);
+  const detranDebitos = asRecord(detran.debitos);
+  const detranOdometro = asRecord(detran.odometro);
+
+  // Decodificador de chassi (dados do fabricante)
+  const decodificador = asRecord(r.decodificador);
+
   const proprietarioTxt = norm(bin.nomeProprietario || bin.proprietario || est.proprietario || est.nomeProprietario);
 
   const data = {
@@ -563,7 +607,7 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
     vendaDireta: { status: (r.vendaDireta && (asRecord(r.vendaDireta).constaVendaDireta || isPositiveMsg(asRecord(r.vendaDireta).resposta))) ? 'alerta' : 'ok', titulo: (r.vendaDireta && isPositiveMsg(asRecord(r.vendaDireta).resposta)) ? norm(asRecord(r.vendaDireta).resposta) : (r.vendaDireta && asRecord(r.vendaDireta).constaVendaDireta ? 'Consta venda direta' : 'Nada consta') },
     eventoCorporativo: { status: (r.eventoCorporativo && (asRecord(r.eventoCorporativo).constaEventoCorporativo || isPositiveMsg(asRecord(r.eventoCorporativo).resposta))) ? 'alerta' : 'ok', titulo: (r.eventoCorporativo && isPositiveMsg(asRecord(r.eventoCorporativo).resposta)) ? norm(asRecord(r.eventoCorporativo).resposta) : (r.eventoCorporativo && asRecord(r.eventoCorporativo).constaEventoCorporativo ? 'Consta evento corporativo' : 'Nada consta') },
     parecer,
-    sinistroCortesia: { status: sinistroPos ? 'alerta' : 'ok', titulo: sinistroPos ? (norm(sinistro.resposta) || 'Consta sinistro') : 'Nada consta' },
+    sinistroCortesia: { status: sinistroPos ? 'alerta' : 'ok', titulo: sinistroPos ? (sinistroTxt || 'Consta sinistro de indenização integral') : 'Nada consta' },
     indicioSinistroCortesia: { status: indicioPos ? 'alerta' : 'ok', titulo: indicioPos ? (indicioMsg || 'Consta indício de sinistro') : 'Nada consta' },
     comercializacao: { texto: comercializacaoTexto, destaque: comercializacaoPos },
     comunicacaoVenda: formatTextBlock(cv.resposta || cv.mensagem || ''),
@@ -574,8 +618,26 @@ function buildData(response: CompanyResponse, plate: string, status: string, mes
     duplicidadeMotor,
     csv: csvInfo,
     detalhamentoRenajud,
+    detran: {
+      crlv: pairsFromObject(detranCrLv, { formatKeys: true }),
+      multas: {
+        itens: registrosFromArray(Array.isArray(detranMultas.itens) ? detranMultas.itens : [], { dropKeys: [] }),
+        total: norm(detranMultas.total),
+      },
+      autuacoes: {
+        itens: registrosFromArray(Array.isArray(detranAutuacoes.itens) ? detranAutuacoes.itens : [], { dropKeys: [] }),
+        total: norm(detranAutuacoes.total),
+      },
+      informacoesVeiculo: pairsFromObject(detranInfo, { formatKeys: true }),
+      debitos: pairsFromObject(detranDebitos, { formatKeys: true }),
+      odometro: {
+        mensagem: formatTextBlock(detranOdometro.mensagem),
+        ultimoRegistro: pairsFromObject(asRecord(detranOdometro.ultimoRegistro), { formatKeys: true }),
+      },
+    },
+    decodificador: pairsFromObject(decodificador, { formatKeys: true }),
     historicoFipe,
-    odometro: Array.isArray(r.odometro) ? r.odometro : [],
+    odometro: Array.isArray(r.odometro) ? r.odometro : (Array.isArray(detranOdometro.historico) ? detranOdometro.historico : []),
   };
   return data;
 }

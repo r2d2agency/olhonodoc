@@ -465,6 +465,20 @@ export const MODEL_HTML_TEMPLATE = `
 
     if (!vazio(d.baseEstadual)) h.push(secao("mapa", "Base Estadual", campos(d.baseEstadual)));
 
+    if (d.detran && Object.keys(d.detran).some(function (k) { return !vazio(d.detran[k]); })) {
+      var dt = d.detran;
+      var dtHtml = "";
+      if (!vazio(dt.informacoesVeiculo)) dtHtml += '<div class="subtitulo">Informações do veículo</div>' + campos(dt.informacoesVeiculo);
+      if (!vazio(dt.crlv)) dtHtml += '<div class="subtitulo" style="margin-top:14px">CRLV</div>' + campos(dt.crlv);
+      if (!vazio(dt.debitos)) dtHtml += '<div class="subtitulo" style="margin-top:14px">Débitos Detran</div>' + campos(dt.debitos);
+      if (!vazio(dt.multas) && !vazio(dt.multas.itens)) dtHtml += '<div class="subtitulo" style="margin-top:14px">Multas</div>' + registros(dt.multas.itens) + (dt.multas.total ? '<div class="bloco"><div class="l">Total</div><div class="v">' + esc(dt.multas.total) + '</div></div>' : "");
+      if (!vazio(dt.autuacoes) && !vazio(dt.autuacoes.itens)) dtHtml += '<div class="subtitulo" style="margin-top:14px">Autuações</div>' + registros(dt.autuacoes.itens) + (dt.autuacoes.total ? '<div class="bloco"><div class="l">Total</div><div class="v">' + esc(dt.autuacoes.total) + '</div></div>' : "");
+      if (!vazio(dt.odometro) && (!vazio(dt.odometro.mensagem) || !vazio(dt.odometro.ultimoRegistro))) dtHtml += '<div class="subtitulo" style="margin-top:14px">Odômetro</div>' + (dt.odometro.mensagem ? '<div class="texto-formatado">' + esc(dt.odometro.mensagem) + '</div>' : "") + (vazio(dt.odometro.ultimoRegistro) ? "" : campos(dt.odometro.ultimoRegistro));
+      if (dtHtml) h.push(secao("info", "Dados do Detran", dtHtml));
+    }
+
+    if (!vazio(d.decodificador)) h.push(secao("carro", "Decodificação do chassi (fabricante)", campos(d.decodificador)));
+
     if (d.proprietario) {
       h.push(secao("id", "Informações de proprietário",
         '<div class="bloco curto"><div class="l">Proprietário Atual</div><div class="v">' + esc(d.proprietario.atual) + '</div></div>'));
