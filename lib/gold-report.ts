@@ -682,9 +682,11 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
     ['Cilindradas', numberBR(bin.cilindradas)],
     ['Peso bruto (PBT)', numberBR(bin.pbt)],
     ['Peso bruto (CMT)', numberBR(bin.cmt)],
+    ['Potência', norm(bin.potencia)],
+    ['Capacidade de carga', norm(bin.capacidadeCarga)],
     ['Eixo', numberBR(bin.numeroEixos)],
-    ['Eixo Traseiro Dif', numberBR(bin.numeroEixoTraseiro)],
-    ['Eixo auxiliar', numberBR(bin.numeroEixoAuxiliar)],
+    ['Eixo Traseiro Dif', norm(bin.numeroEixoTraseiro)],
+    ['Eixo auxiliar', norm(bin.numeroEixoAuxiliar)],
   ];
 
   // 5. Restrições e outras informações (texto corrido)
@@ -824,9 +826,101 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
       ano: norm(d.anoFabricacao) + ' / ' + norm(d.anoModelo),
     }));
 
-  // 19. Gravame (formato A — já existente, garante máscara)
+  // ===== ITENS RESTANTES DO RELATÓRIO =====
+  // 3. Dados de Fabricação do Veículo (agregados) — 33 campos
+  const fabricacao: string[][] = [
+    ['Placa', plateWithDash(agg.placa)],
+    ['Marca/Modelo', norm(agg.marca) + ' / ' + stripBrand(agg.modelo, agg.marca)],
+    ['Chassi', norm(agg.chassi)],
+    ['Motor', norm(agg.motor)],
+    ['Combustível', norm(agg.combustivel)],
+    ['Cor', norm(agg.cor)],
+    ['Tipo de veículo', norm(agg.tipoVeiculo)],
+    ['Município/UF', norm(agg.municipio) + ' / ' + upper(agg.Uf || agg.uf)],
+    ['Ano fabricação', norm(agg.anoFabricacao)],
+    ['Ano modelo', norm(agg.anoModelo)],
+    ['UF de Origem', norm(agg.UfDeOrigem)],
+    ['UF Faturado', norm(agg.uf_faturado)],
+    ['Caixa de câmbio', norm(agg.caixaCambio)],
+    ['Situação', norm(agg.situacao)],
+    ['Espécie', norm(agg.especie)],
+    ['Lotação', norm(agg.lotacao)],
+    ['Potência', norm(agg.potencia)],
+    ['Carroceria', norm(agg.tipoCarroceria)],
+    ['Cilindradas', norm(agg.cilindradas)],
+    ['Procedência', norm(agg.procedencia)],
+    ['Situação Chassi', upper(agg.tipoChassi) === 'N' ? 'Normal' : norm(agg.tipoChassi)],
+    ['Capacidade carga', norm(agg.capacidadeCarga)],
+    ['Eixo traseiro', norm(agg.eixoTraseiro)],
+    ['Terceiro eixo', norm(agg.terceiroEixo)],
+    ['Documento importadora', norm(agg.tipoDocImportadora)],
+    ['Identidade importadora', norm(agg.identImportadora) === '0' ? '' : norm(agg.identImportadora)],
+    ['Número DI', norm(agg.numeroDI) === '0' ? '' : norm(agg.numeroDI)],
+    ['Fabricante', norm(agg.fabricante)],
+    ['Segmento', norm(agg.segmento)],
+    ['Grupo modelo veículo', norm(agg.grupoModeloVeiculo)],
+    ['Capacidade máxima tração', norm(agg.capMaximaTracao)],
+    ['Peso bruto', norm(agg.pesoBrutoTotal)],
+    ['Última atualização', dateBR(agg.ultimaAtualizacao)],
+  ];
+
+  // 19. Gravame (layout A)
+  const gravameFormatado = gravameRegs.map((g) => {
+    const situacao = upper(g['Situacao'] || g['situacao'] || '');
+    return {
+      placa: norm(g['Placa']),
+      chassi: norm(g['Chassi']),
+      renavam: norm(g['Renavam']),
+      uf: norm(g['Uf']),
+      ufPlaca: '-',
+      nomeFinanciado: norm(g['Nome Financiado']),
+      nomeAgente: norm(g['Nome Financeira']),
+      dataContrato: norm(g['Data Gravame']),
+      dataGravame: '-',
+      numeroGravame: '-',
+      statusVeiculo: situacao === 'ATUAL' ? 'ATUAL' : situacao === 'HISTÓRICO' ? 'HISTÓRICO' : situacao || '-',
+      descricaoStatus: '-',
+    };
+  });
+
   // 20. Sinistro — mensagem exata
-  const sinistroSpec = sinistroPos ? 'EXISTE SINISTRO DE INDENIZAÇÃO INTEGRAL' : 'NÃO CONSTA SINISTRO DE INDENIZAÇÃO INTEGRAL';
+  const sinistroSpec = sinistroPos ? 'EXISTE SINISTRO DE INDENIZAÇÃO INTEGRAL' : 'NÃO ENCONTRADO SINISTRO DE INDENIZAÇÃO INTEGRAL NAS BASES CONSULTADAS';
+
+  // 24. Indício de sinistro (cortesia)
+  const indicioPosSpec = ['1', 'SIM', 'S', 'TRUE'].includes(upper(indicio.resposta));
+  const indicioSpec = indicioPosSpec ? 'ENCONTRADO INDÍCIO DE SINISTRO NAS BASES CONSULTADAS' : 'NÃO ENCONTRADO INDÍCIO DE SINISTRO NAS BASES CONSULTADAS';
+
+  // 17. Detran completo (6 sub-blocos)
+  const detranInfoFmt = [
+    ['Placa', norm(detranInfo.placa)], ['Situação do Veículo', norm(detranInfo.situacaoVeiculo)],
+    ['Renavam', norm(detranInfo.renavam)], ['Chassi', norm(detranInfo.chassi)],
+    ['Marca/Modelo', norm(detranInfo.marcaModelo)], ['Município', norm(detranInfo.municipio)],
+    ['Ano de Fabricação/Modelo', norm(detranInfo.anoFabricacaoModelo)], ['Combustível', norm(detranInfo.combustivel)],
+    ['Cor', norm(detranInfo.cor)], ['Categoria', norm(detranInfo.categoria)],
+    ['Espécie/Tipo', norm(detranInfo.especieTipo)], ['Restrição à Venda', norm(detranInfo.restricaoVenda)],
+  ] as string[][];
+  const detranCrLvFmt = [
+    ['Licenciamento', norm(detranCrLv.licenciamento)], ['Exercício', norm(detranCrLv.exercicio)],
+    ['Data Pagamento', norm(detranCrLv.dataPagamento)], ['Valor Pago', norm(detranCrLv.valorPago)],
+    ['Emissão Documento', norm(detranCrLv.emissaoDocumento)], ['Número Correios', norm(detranCrLv.numeroCorreios)],
+  ] as string[][];
+  const detranDebitosFmt = [
+    ['IPVA', 'Discriminação do valor: ' + norm(asRecord(detranDebitos.ipva).mensagem)],
+    ['Seguro Obrigatório DPVAT', norm(detranDebitos.dpvat)],
+  ] as string[][];
+  const detranMultasFmt = (Array.isArray(detranMultas.itens) ? detranMultas.itens : []).map((item: unknown) => {
+    const it = asRecord(item);
+    return [norm(it.discriminacao), norm(it.quantidade), norm(it.valor)] as string[];
+  });
+  const detranAutuacoesFmt = (Array.isArray(detranAutuacoes.itens) ? detranAutuacoes.itens : []).map((item: unknown) => {
+    const it = asRecord(item);
+    return [norm(it.discriminacao), norm(it.quantidade), norm(it.valor)] as string[];
+  });
+
+  // CSV, comunicação de venda, recall — textos exatos
+  const csvSpec = /nenhum registro/i.test(norm(asRecord(r.csv).mensagem)) ? 'NÃO ENCONTRADO CSV TIPO: SINISTRADO' : norm(asRecord(r.csv).mensagem);
+  const comVendaSpec = !isPositive(cv.mensagem || cv.resposta) ? 'Não Consta Comunicação de Venda' : formatTextBlock(cv.mensagem || cv.resposta);
+  const recallSpec = /não encontrado|nao encontrado/i.test(recallTxt) ? 'Não encontrado recall' : recallTxt;
 
   // 22. Leilões formatados
   const leiloesSpec = leiloesArr.map((item: unknown) => {
@@ -853,6 +947,8 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
       realizadaEm: norm(sol.dataHora) || undefined,
       placa: plate,
       marcaModelo,
+      clienteNome: norm(r.clienteNome || r.customerName || asRecord(r.customer).name || ''),
+      uf: upper(bin.Uf || bin.uf),
       logoUrl: '',
       indisponivel: consultaIndisponivel ? motivoIndisponivel : '',
     },
@@ -918,6 +1014,28 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
     odometro: Array.isArray(r.odometro) ? r.odometro : (Array.isArray(detranOdometro.historico) ? detranOdometro.historico : []),
     spec: {
       placa: placaFmt,
+      // Selos com textos exatos
+      selos: [
+        sinistroPos && 'SINISTRO ENCONTRADO!',
+        leiloesArr.length > 0 && 'CONSTA OFERTA EM LEILÃO',
+        comercializacaoPos && 'CONSTA COMERCIALIZAÇÃO',
+        rfPositive && 'HISTÓRICO DE ROUBO E/OU FURTO!',
+        hasRestricao && 'RESTRIÇÃO JUDICIAL!',
+      ].filter(Boolean),
+      fabricacao,
+      gravameFormatado,
+      detranCompleto: {
+        informacoes: detranInfoFmt,
+        crlv: detranCrLvFmt,
+        debitos: detranDebitosFmt,
+        multas: { itens: detranMultasFmt, total: norm(detranMultas.total) },
+        autuacoes: { itens: detranAutuacoesFmt, total: norm(detranAutuacoes.total) },
+        odometro: detranOdometro.mensagem ? norm(detranOdometro.mensagem) : odometroSpec,
+      },
+      csv: csvSpec,
+      comunicacaoVenda: comVendaSpec,
+      recall: recallSpec,
+      indicioSinistro: indicioSpec,
       veiculoNacional,
       restricoesTexto: restricoesTextoSpec,
       queixaAtiva,

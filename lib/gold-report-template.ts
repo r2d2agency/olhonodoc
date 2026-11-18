@@ -147,6 +147,15 @@ export const MODEL_HTML_TEMPLATE = `
   .spec-debitos>div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dotted var(--borda);padding:6px 0}
   .spec-debitos>div b{white-space:nowrap}
   .spec-2col>.st-item{display:inline-block;width:calc(50% - 8px);vertical-align:top}
+  .spec-3col .campos{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+  .spec-titulo-principal{flex:1 1 100%;text-align:center;font-weight:800;font-size:18px;letter-spacing:1px;margin-bottom:6px}
+  .spec-placa-wrapper{flex:1 1 auto;text-align:center}
+  .spec-placa-wrapper small{font-weight:800;font-size:12px}
+  .spec-leiloes{display:grid;gap:12px}
+  .spec-leilao .spec-card{width:100%}
+  .spec-selos{display:flex;gap:12px;justify-content:center;margin:18px 0 8px;flex-wrap:wrap}
+  .selo{border:2px solid var(--verde);color:var(--verde-escuro);font-weight:800;font-size:11px;padding:6px 14px;border-radius:20px}
+  .spec-fim{text-align:center;font-weight:800;font-size:13px;margin:10px 0 16px;letter-spacing:1px}
 
   .gauge-box{background:var(--fundo-card);border:1px solid var(--borda-2);border-radius:12px;padding:24px 10px 16px;text-align:center;margin-bottom:16px}
   .gauge-box svg{width:190px;height:110px}
@@ -337,13 +346,14 @@ export const MODEL_HTML_TEMPLATE = `
     return secao(icone, titulo, textoOuVazio(String(valor)), opts);
   }
 
-  function fmtBRL(n) {
+  function fmtBRL(n, semCentavos) {
     if (n == null || n === "") return "—";
     n = typeof n === "string" ? Number(String(n).replace(/[^\d,-]/g, "").replace(",", ".")) : Number(n);
     if (!isFinite(n)) return "—";
     var neg = n < 0;
     var abs = Math.abs(n);
     var int = Math.floor(abs).toString();
+    if (semCentavos) { int = Math.round(abs).toString(); int = int.replace(/\B(?=(\d{3})+(?!\d))/g, "."); return (neg ? "-R$ " : "R$ ") + int; }
     var dec = Math.round((abs - Math.floor(abs)) * 100).toString();
     if (dec.length < 2) dec = "0" + dec;
     int = int.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -369,11 +379,11 @@ export const MODEL_HTML_TEMPLATE = `
     var lblIni = refIni ? ("Valor em " + refIni) : "Valor inicial";
     var lblFim = refFim ? ("Valor em " + refFim) : "Valor final";
     var corpo = '<div class="fipe-head"><b>' + esc(titulo) + '</b>' + (sub ? '<span>' + esc(sub) + '</span>' : '') + '</div>' +
-      '<div class="fipe-cards">' +
-      '<div class="fipe-card"><div class="fl">' + esc(lblIni) + '</div><div class="fv">' + esc(fmtBRL(valIni)) + '</div></div>' +
-      '<div class="fipe-card"><div class="fl">' + esc(lblFim) + '</div><div class="fv">' + esc(fmtBRL(valFim)) + '</div></div>' +
+      '<div class="fipe-cards fipe-2col">' +
+      '<div class="fipe-card"><div class="fl">' + esc(lblIni) + '</div><div class="fv">' + esc(fmtBRL(valIni, true)) + '</div></div>' +
+      '<div class="fipe-card"><div class="fl">' + esc(lblFim) + '</div><div class="fv">' + esc(fmtBRL(valFim, true)) + '</div></div>' +
       '<div class="fipe-card"><div class="fl">Variação acumulada</div><div class="fv ' + pctCls + '">' + esc(fmtPct(f.variacao_pct, true)) + '</div></div>' +
-      '<div class="fipe-card"><div class="fl">Variação em reais</div><div class="fv">' + esc(fmtBRL(f.variacao_nom)) + '</div></div>' +
+      '<div class="fipe-card"><div class="fl">Variação em reais</div><div class="fv">' + esc(fmtBRL(f.variacao_nom, true)) + '</div></div>' +
       '</div>';
     if (hist.length) {
       var W = 880, H = 300, PL = 52, PR = 44, PT = 14, PB = 46;
@@ -402,17 +412,14 @@ export const MODEL_HTML_TEMPLATE = `
         var yz = yP(0);
         s += '<line x1="' + PL + '" y1="' + yz.toFixed(1) + '" x2="' + (W - PR) + '" y2="' + yz.toFixed(1) + '" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3,3"/>';
       }
-      // linha de valor FIPE + marcadores + rótulos do eixo X
-      var vPts = hist.map(function (x, i) { return [PL + slot * i + slot / 2, yV(x.valor || 0), x]; });
-      var vd = vPts.map(function (p, i) { return (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" ");
-      // área preenchida sob a linha (suave visualmente, mantém leitura)
-      var areaD = vd + " L" + vPts[vPts.length - 1][0].toFixed(1) + " " + (PT + (H - PT - PB)).toFixed(1) + " L" + vPts[0][0].toFixed(1) + " " + (PT + (H - PT - PB)).toFixed(1) + " Z";
-      s += '<path d="' + areaD + '" fill="#2563eb" fill-opacity="0.10" stroke="none"/>';
-      s += '<path d="' + vd + '" fill="none" stroke="#2563eb" stroke-width="2.4" stroke-linejoin="round"/>';
-      vPts.forEach(function (p, i) {
-        s += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" fill="#fff" stroke="#2563eb" stroke-width="1.8"/>';
+      // barras azuis para o valor FIPE
+      var bw = 26;
+      hist.forEach(function (x, i) {
+        var cx = PL + slot * i + slot / 2;
+        var y0 = yV(0), y = yV(x.valor || 0);
+        s += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(0, y0 - y).toFixed(1) + '" fill="#2563eb"/>';
         if (n <= 25 || i % Math.ceil(n / 20) === 0) {
-          s += '<text x="' + p[0].toFixed(1) + '" y="' + (H - PB + 14) + '" text-anchor="end" font-size="8.5" fill="#6b7280" transform="rotate(-38 ' + p[0].toFixed(1) + ' ' + (H - PB + 14) + ')">' + esc(p[2].referencia) + '</text>';
+          s += '<text x="' + cx.toFixed(1) + '" y="' + (H - PB + 14) + '" text-anchor="end" font-size="8.5" fill="#6b7280" transform="rotate(-38 ' + cx.toFixed(1) + ' ' + (H - PB + 14) + ')">' + esc(x.referencia) + '</text>';
         }
       });
       // linha de variação %
@@ -439,18 +446,7 @@ export const MODEL_HTML_TEMPLATE = `
       // eixo direito rótulo
       s += '<text x="' + (W - 4) + '" y="' + (PT + 2) + '" text-anchor="end" font-size="9" fill="#6b7280">%</text>';
       s += '</svg>';
-      corpo += '<div class="fipe-legenda"><span><i style="background:#2563eb"></i>Valor FIPE (linha)</span><span><i style="background:#dc2626"></i>Variação anual (%)</span></div>' + s;
-      // tabela de histórico (dados do precificador)
-      corpo += '<div style="overflow:auto;margin-top:12px"><table class="fipe-tabela"><thead><tr>' +
-        '<th>Referência</th><th class="num">Valor</th><th class="num">Variação (R$)</th><th class="num">Variação (%)</th>' +
-        '</tr></thead><tbody>' +
-        hist.map(function (x) {
-          var vcls = x.variacao_pct == null ? "" : (x.variacao_pct < 0 ? "neg" : (x.variacao_pct > 0 ? "pos" : ""));
-          return '<tr><td>' + esc(x.referencia) + '</td>' +
-            '<td class="num">' + esc(fmtBRL(x.valor)) + '</td>' +
-            '<td class="num ' + vcls + '">' + esc(x.variacao_nom == null ? "—" : fmtBRL(x.variacao_nom)) + '</td>' +
-            '<td class="num ' + vcls + '">' + esc(fmtPct(x.variacao_pct, true)) + '</td></tr>';
-        }).join("") + '</tbody></table></div>';
+      corpo += '<div class="fipe-legenda"><span><i style="background:#2563eb"></i>Valor FIPE</span><span><i style="background:#dc2626"></i>Variação anual (%)</span></div>' + s;
     }
     return secao("recall", "Histórico FIPE", corpo, { classe: "quebra" });
   }
@@ -465,17 +461,26 @@ export const MODEL_HTML_TEMPLATE = `
       h.push('<div class="banner-indisponivel">Consulta com indisponibilidade/retorno parcial: ' + esc(c.indisponivel) + '</div>');
     }
 
-    h.push('<header class="cabecalho">' +
+    var realizada = String(c.realizadaEm || '').replace(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}):(\d{2}):\d{2}/, '$1 às $2:$3');
+    h.push('<header class="cabecalho' + (d.spec ? ' spec-header' : '') + '">' +
       '<div class="logo">' + (c.logoUrl ? '<img src="' + esc(c.logoUrl) + '" alt="Logo">' : '') + '</div>' +
+      (d.spec ? '<div class="spec-titulo-principal">AUTO PERÍCIA GOLD</div>' : '') +
       '<div class="info"><div><b>CONSULTA Nº:</b> ' + esc(c.numero || '-') + '</div>' +
-      '<div><b>PRODUTO:</b> ' + esc(c.produto || 'Auto Perícia Gold') + '</div>' +
-      '<div><b>REALIZADA EM:</b> ' + esc(c.realizadaEm || '-') + '</div></div>' +
-      '<div class="placa-mercosul"><div class="topo"><span>MERCOSUL</span><span>BRASIL</span><span class="bandeira"></span></div>' +
-      '<div class="num">' + esc(c.placa || '-') + '</div></div>' +
+      (d.spec ? '<div><b>CONFIDENCIAL PARA:</b> ' + esc(c.clienteNome || '-') + '</div>' : '') +
+      '<div><b>REALIZADA EM:</b> ' + esc(realizada || '-') + '</div>' +
+      (!d.spec ? '<div><b>PRODUTO:</b> ' + esc(c.produto || 'Auto Perícia Gold') + '</div>' : '') + '</div>' +
+      (d.spec ? '<div class="spec-placa-wrapper"><small>' + esc(c.uf || '') + ' -</small>' +
+        '<div class="placa-mercosul"><div class="num">' + esc(c.placa || '-') + '</div></div></div>' :
+        '<div class="placa-mercosul"><div class="topo"><span>MERCOSUL</span><span>BRASIL</span><span class="bandeira"></span></div>' +
+        '<div class="num">' + esc(c.placa || '-') + '</div></div>') +
       '<div class="modelo-carro">' + I.carro + '<div>' + esc(c.marcaModelo || '') + '</div></div>' +
       '</header>');
 
-    if (!vazio(d.alertas)) {
+    if (d.spec && d.spec.selos && d.spec.selos.length) {
+      h.push('<div class="alertas">' + d.spec.selos.map(function (texto) {
+        return '<div class="alerta"><span>' + esc(texto) + '</span></div>';
+      }).join('') + '</div>');
+    } else if (!d.spec && !vazio(d.alertas)) {
       h.push('<div class="alertas">' + d.alertas.map(function (a) {
         var cls = a.tipo === "atencao" ? " atencao" : a.tipo === "ok" ? " ok" : "";
         return '<div class="alerta' + cls + '">' + (ICONES_ALERTA[a.icone] || ICONES_ALERTA.info) + '<span>' + esc(a.texto) + '</span></div>';
@@ -492,8 +497,12 @@ export const MODEL_HTML_TEMPLATE = `
         return '<div class="spec-titulo"' + (cor ? ' style="color:' + cor + '"' : '') + '>' + esc(texto) + '</div>';
       };
 
-      // 4 + 5
-      h.push(secao("carro", "Informações do veículo - Base Nacional", campos(s.veiculoNacional), { classe: 'spec-2col' }));
+      // 3. Dados de Fabricação
+      if (s.fabricacao && s.fabricacao.length) h.push(secao("carro", "Dados de Fabricação do Veículo", campos(s.fabricacao), { classe: 'spec-3col' }));
+
+      // 4 + 5 — eixos só aparecem quando preenchidos
+      var vn = s.veiculoNacional.filter(function (p) { return !/^Eixo (Traseiro Dif|auxiliar)$/.test(p[0]) || (p[1] && p[1] !== '0' && p[1] !== '-'); });
+      h.push(secao("carro", "Informações do veículo - Base Nacional", campos(vn), { classe: 'spec-2col' }));
       h.push(secao("info", "Restrições e outras informações", '<div class="texto-formatado">' + esc(s.restricoesTexto) + '</div>' +
         '<div class="subtitulo" style="margin-top:12px">Queixa e histórico de roubo e furto</div>' +
         bandeira('Queixa ativa', s.queixaAtiva ? 'Existe ocorrência de roubo e furto' : 'Não existe queixa de roubo e furto ativa', s.queixaAtiva) +
@@ -540,7 +549,7 @@ export const MODEL_HTML_TEMPLATE = `
 
       // 14
       if (s.outrasRestricoes && s.outrasRestricoes.length) {
-        h.push(secao("info", "Outras restrições", blocoTitulo('OUTRAS RESTRIÇÕES') + '<div class="spec-2col">' + s.outrasRestricoes.map(function (v) {
+        h.push(secao("info", "Outras restrições", '<div class="spec-2col">' + s.outrasRestricoes.map(function (v) {
           return '<div class="v">' + esc(v) + '</div>';
         }).join('') + '</div>'));
       }
@@ -558,20 +567,51 @@ export const MODEL_HTML_TEMPLATE = `
         : '<div class="v" style="font-weight:700">NÃO CONSTAM OCORRÊNCIAS</div><div class="texto-formatado">Não encontramos nas nossas bases de dados registros de duplicidade com este número de motor.</div>'));
 
       // 17 — Detran
-      if (s.detranSituacao === 'Consultar site' || s.detranUrl) {
+      if (s.detranSituacao === 'Consultar site' || !s.detranCompleto) {
         h.push(secao("info", "DETRAN - Para informações Multas/IPVA/Licenciamento/Restrições",
           '<div class="spec-2col"><div><b>Consultar site:</b> ' + (s.detranUrl ? '<a href="' + esc(s.detranUrl) + '" target="_blank" rel="noopener">' + esc(s.detranUrl) + '</a>' : '') + '</div>' +
           '<div><b>Dívida Ativa:</b> Consulte a Secretaria da Fazenda do Estado</div></div>'));
+      } else if (s.detranCompleto) {
+        var dc = s.detranCompleto;
+        var tabelaMultas = function (itens, total) {
+          if (!itens || !itens.length) return '';
+          return '<table class="comp"><thead><tr><th>Discriminação</th><th>Quantidade</th><th>Valor (R$)</th></tr></thead><tbody>' +
+            itens.map(function (it) { return '<tr><td>' + esc(it[0]) + '</td><td>' + esc(it[1]) + '</td><td>' + esc(it[2]) + '</td></tr>'; }).join('') +
+            '<tr><td><b>Total</b></td><td>-</td><td><b>' + esc(total) + '</b></td></tr></tbody></table>';
+        };
+        var dcHtml = blocoTitulo('INFORMAÇÕES DO VEÍCULO') + campos(dc.informacoes) +
+          blocoTitulo('CRLV') + campos(dc.crlv) +
+          blocoTitulo('DÉBITOS DO VEÍCULO') + campos(dc.debitos) +
+          blocoTitulo('MULTAS SSP') + tabelaMultas(dc.multas.itens, dc.multas.total) +
+          blocoTitulo('RESUMO DAS AUTUAÇÕES DE TRÂNSITO') + tabelaMultas(dc.autuacoes.itens, dc.autuacoes.total) +
+          blocoTitulo('ODÔMETRO') + '<div class="texto-formatado">' + esc(dc.odometro) + '</div>';
+        h.push(secao("info", "Informações Complementares (Cortesia)", dcHtml));
       }
 
-      // 18
-      if (d.detalhamentoRenajud) h.push(secaoFlexivel("info", "Renajud Detalhado", d.detalhamentoRenajud));
+      // CSV, comunicação de venda, recall, indício
+      if (s.csv) h.push(secao("info", "CSV", '<div class="v">' + esc(s.csv) + '</div>'));
+      if (s.comunicacaoVenda) h.push(secao("venda", "Comunicação de venda", '<div class="v">' + esc(s.comunicacaoVenda) + '</div>'));
+      if (s.recall) h.push(secao("recall", "Recall", '<div class="v">' + esc(s.recall) + '</div>'));
+      h.push(secao("triangulo", "Informações de indício de sinistro (Cortesia)", '<div class="v">' + esc(s.indicioSinistro) + '</div>'));
 
-      // 19 — gravame
-      if (!vazio(d.gravame)) h.push(secao("cadeado", "Gravame", registros(d.gravame)));
+      // 18 — Renajud Detalhado (tabela PROCESSOS)
+      if (d.detalhamentoRenajud) {
+        var rens = Array.isArray(d.detalhamentoRenajud) ? d.detalhamentoRenajud : [d.detalhamentoRenajud];
+        h.push(secao("info", "Renajud Detalhado", '<div class="texto-formatado"><b>Placa:</b> ' + esc(s.placa) + ' &nbsp; <b>Chassi:</b> ' + esc(norm(agg.chassi || bin.chassi)) + '</div>' +
+          blocoTitulo('PROCESSOS') + '<table class="comp"><thead><tr><th>Tribunal</th><th>Órgão</th><th>Nº do processo</th><th>Descrição</th><th>Data</th><th>Hora</th></tr></thead><tbody>' +
+          rens.map(function (p) { return '<tr><td>' + esc(p.Tribunal || p['Tribunal'] || '') + '</td><td>' + esc(p.Orgao || p['Órgão'] || '') + '</td><td>' + esc(p.NumeroProcesso || p['Numero Processo'] || '') + '</td><td>' + esc(p.Descricao || '') + '</td><td>' + esc(p.DataInclusao || p['Data Inclusao'] || '') + '</td><td>' + esc(p.HoraInclusao || p['Hora Inclusao'] || '') + '</td></tr>'; }).join('') +
+          '</tbody></table>'));
+      }
+
+      // 19 — gravame (layout A)
+      if (s.gravameFormatado && s.gravameFormatado.length) {
+        h.push(secao("cadeado", "Histórico de Gravame", s.gravameFormatado.map(function (g) {
+          return '<div class="spec-card"><div><b>Placa:</b> ' + esc(g.placa) + '</div><div><b>Chassi:</b> ' + esc(g.chassi) + '</div><div><b>Renavam:</b> ' + esc(g.renavam) + '</div><div><b>UF:</b> ' + esc(g.uf) + '</div><div><b>UF da Placa:</b> ' + esc(g.ufPlaca) + '</div><div><b>Nome Financiado:</b> ' + esc(g.nomeFinanciado) + '</div><div><b>Nome Agente:</b> ' + esc(g.nomeAgente) + '</div><div><b>Data Contrato:</b> ' + esc(g.dataContrato) + '</div><div><b>Data do Gravame:</b> ' + esc(g.dataGravame) + '</div><div><b>Número Gravame:</b> ' + esc(g.numeroGravame) + '</div><div><b>Status Veículo:</b> ' + esc(g.statusVeiculo) + '</div><div><b>Descrição de Status:</b> ' + esc(g.descricaoStatus) + '</div></div>';
+        }).join('')));
+      }
 
       // 20
-      h.push(secao("triangulo", "Sinistro", '<div class="v" style="font-weight:700;color:var(--vermelho)">' + esc(s.sinistroTexto) + '</div>'));
+      h.push(secao("triangulo", "Informações de sinistro (cortesia)", '<div class="v" style="font-weight:700;color:' + (sinistroPos ? 'var(--vermelho)' : 'var(--texto)') + '">' + esc(s.sinistroTexto) + '</div>'));
 
       // 21 — parecer simplificado
       if (s.parecer && s.parecer.nivel) {
@@ -582,8 +622,17 @@ export const MODEL_HTML_TEMPLATE = `
       // 22-26 — comercialização com 4 blocos
       h.push(secao("carrinho", "Informações para comercialização",
         blocoTitulo(s.leiloes.length ? 'CONSTA OFERTA EM LEILÃO' : 'NÃO CONSTA OFERTA EM LEILÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS', s.leiloes.length ? 'var(--vermelho)' : 'var(--verde)') +
-        (s.leiloes.length ? '<div class="spec-cards">' + s.leiloes.map(function (l) {
-          return '<div class="spec-card"><div><b>Placa:</b> ' + esc(l.placa) + '</div><div><b>Data do leilão:</b> ' + esc(l.dataLeilao) + '</div><div><b>Condição:</b> ' + esc(l.condicao) + '</div><div><b>Lote:</b> ' + esc(l.lote) + '</div><div><b>Leiloeiro:</b> ' + esc(l.leiloeiro) + '</div><div><b>Comitente:</b> ' + esc(l.comitente) + '</div><div><b>Marca/Modelo:</b> ' + esc(l.marcaModelo) + '</div><div><b>Ano:</b> ' + esc(l.ano) + '</div><div><b>Tipo:</b> ' + esc(l.tipoVeiculo) + '</div><div><b>Cor:</b> ' + esc(l.cor) + '</div><div><b>N° Motor:</b> N/I</div><div><b>N° Chassi:</b> ' + esc(l.chassi) + '</div><div><b>Nº Renavam:</b> N/I</div><div><b>Sit Chassi:</b> N/I</div><div><b>Observação:</b> N/I</div></div>';
+        (s.leiloes.length ? '<div class="spec-leiloes">' + s.leiloes.map(function (l) {
+          var leiloeiro = /^NC$/i.test(l.leiloeiro) ? 'N/C' : l.leiloeiro;
+          return '<div class="spec-card spec-leilao"><div class="spec-2col">' +
+            '<div><b>Placa:</b> ' + esc(l.placa) + '</div><div><b>Data do leilão:</b> ' + esc(l.dataLeilao) + '</div>' +
+            '<div><b>Condição do veículo:</b> ' + esc(l.condicao) + '</div><div><b>Lote:</b> ' + esc(l.lote) + '</div>' +
+            '<div><b>Leiloeiro:</b> ' + esc(leiloeiro) + '</div><div><b>Comitente:</b> ' + esc(l.comitente) + '</div>' +
+            '<div><b>Marca/Modelo:</b> ' + esc(l.marcaModelo) + '</div><div><b>Ano Fabricação / Modelo:</b> ' + esc(l.ano) + '</div>' +
+            '<div><b>Tipo de veículo:</b> ' + esc(l.tipoVeiculo) + '</div><div><b>Cor:</b> ' + esc(l.cor) + '</div>' +
+            '<div><b>N° Motor:</b> N/I</div><div><b>N° Chassi:</b> ' + esc(l.chassi) + '</div>' +
+            '<div><b>Nº Renavam:</b> N/I</div><div><b>Sit Chassi:</b> N/I</div>' +
+            '<div><b>Observação:</b> N/I</div></div></div>';
         }).join('') + '</div>' : '') +
         blocoTitulo('EVENTO CORPORATIVO/REMARKETING AUTOMOTIVO', s.eventoCorporativo.consta ? 'var(--vermelho)' : 'var(--verde)') +
         '<div class="texto-formatado">' + (s.eventoCorporativo.consta ? 'CONSTA EVENTO CORPORATIVO' : 'NÃO CONSTA EVENTO CORPORATIVO / REMARKETING AUTOMOTIVO PARA A PLACA ' + s.placa.replace(/-/g, '') + ' NAS BASES CONSULTADAS') + '</div>' +
@@ -597,8 +646,10 @@ export const MODEL_HTML_TEMPLATE = `
         h.push(fipeSecao(d.historicoFipe));
       }
 
-      h.push('<div class="avisos"><h3>Avisos legais</h3>' +
-        '<p>As informações contidas nesta consulta são confidenciais e destinadas exclusivamente ao solicitante da pesquisa, para fins legítimos de análise, prevenção à fraude, verificação de procedência veicular e apoio em negociações, sendo vedada sua utilização em desacordo com a legislação vigente.</p>' +
+      h.push('<div class="spec-selos"><span class="selo">✓ QUALIDADE GARANTIDA</span><span class="selo">🔒 SITE SEGURO</span></div>' +
+        '<div class="spec-fim">FIM DESTA PESQUISA.</div>' +
+        '<div class="avisos"><h3>Avisos legais</h3>' +
+        '<p>As informações contidas nesta consulta são confidenciais e destinadas exclusivamente ao solicitante da pesquisa ' + (c.clienteNome ? '(' + esc(c.clienteNome) + (c.clienteCnpj ? ' — CNPJ ' + esc(c.clienteCnpj) : '') + ')' : '') + ', para fins legítimos de análise, prevenção à fraude, verificação de procedência veicular e apoio em negociações, sendo vedada sua utilização em desacordo com a legislação vigente.</p>' +
         '<p>A Olho no Doc limita-se a reunir, organizar e transmitir fielmente informações obtidas em bases públicas e privadas disponíveis na data e horário da consulta, não se responsabilizando por alterações posteriores realizadas pelos órgãos competentes ou entidades fornecedoras dos dados.</p>' +
         '<p>As informações apresentadas possuem caráter exclusivamente informativo e auxiliar, não devendo ser consideradas como único fator decisivo para compra, venda, financiamento, vistoria, transferência ou qualquer outra negociação.</p>' +
         '<p>Esta consulta não substitui a verificação direta junto aos órgãos oficiais, especialmente DETRAN, SENATRAN, instituições financeiras, seguradoras e demais entidades responsáveis.</p>' +
