@@ -174,17 +174,26 @@ export const MODEL_HTML_TEMPLATE = `
     body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .pagina{max-width:none;padding:0;width:100%}
     .toolbar{display:none !important}
-    .quebra{break-before:page}
-    .registro,.secao{break-inside:avoid}
-    .alertas{grid-template-columns:repeat(4,minmax(0,1fr)) !important}
-    .campos{grid-template-columns:repeat(3,minmax(0,1fr)) !important;column-gap:12px}
-    .campo{flex-direction:column !important;gap:2px;align-items:stretch}
+    /* Evita apenas quebras dentro de registros/cards pequenos.
+       Seções grandes devem fluir entre páginas — break-inside:avoid
+       nelas empurra a seção inteira e deixa grandes espaços em branco. */
+    .registro,.st-box,.fipe-card{break-inside:avoid}
+    .secao{break-inside:auto;margin-bottom:6px !important}
+    .secao>.corpo{padding:10px 12px 8px !important}
+    .secao>.titulo{padding:8px 12px !important}
+    .quebra{break-before:auto}
+    .alertas{grid-template-columns:repeat(4,minmax(0,1fr)) !important;margin-bottom:8px !important}
+    .campos{grid-template-columns:repeat(3,minmax(0,1fr)) !important;column-gap:12px;row-gap:6px}
+    .campo{flex-direction:column !important;gap:1px;align-items:stretch;padding-bottom:2px}
     .campo .l{flex:none}
     .campo .v{text-align:left;flex:none}
-    .registro{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
-    .status-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+    .registro{grid-template-columns:repeat(2,minmax(0,1fr)) !important;padding:8px;margin-bottom:6px}
+    .status-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;row-gap:6px}
     .odometro{grid-template-columns:1fr 1fr !important}
-    .fipe-cards{grid-template-columns:repeat(4,minmax(0,1fr)) !important}
+    .fipe-cards{grid-template-columns:repeat(4,minmax(0,1fr)) !important;gap:6px;margin-bottom:8px}
+    .caixa-destaque{padding:8px;margin-bottom:8px}
+    .legenda{padding:10px}
+    .gauge-box{padding:12px 10px 8px;margin-bottom:8px}
     table.comp{table-layout:fixed}
   }
 </style>
