@@ -461,7 +461,8 @@ export const MODEL_HTML_TEMPLATE = `
       h.push('<div class="banner-indisponivel">Consulta com indisponibilidade/retorno parcial: ' + esc(c.indisponivel) + '</div>');
     }
 
-    var realizada = String(c.realizadaEm || '').replace(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}):(\d{2}):\d{2}/, '$1 às $2:$3');
+    var realizadaRaw = String(c.realizadaEm || '');
+    var realizada = realizadaRaw.length > 14 ? realizadaRaw.slice(0, 10) + ' às ' + realizadaRaw.slice(11, 16) : realizadaRaw;
     h.push('<header class="cabecalho' + (d.spec ? ' spec-header' : '') + '">' +
       '<div class="logo">' + (c.logoUrl ? '<img src="' + esc(c.logoUrl) + '" alt="Logo">' : '') + '</div>' +
       (d.spec ? '<div class="spec-titulo-principal">AUTO PERÍCIA GOLD</div>' : '') +
