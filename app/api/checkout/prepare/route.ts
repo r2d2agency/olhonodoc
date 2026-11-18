@@ -107,6 +107,7 @@ export const POST = logRequest('checkout.prepare', async (request: Request) => {
     const message = error instanceof Error ? error.message : '';
     void logger.error('checkout.prepare.failed', { message, stack: error instanceof Error ? (error.stack || '').slice(0, 300) : '' });
     if (message === 'COUPON_REJECTED') return NextResponse.json({ error: 'Cupom inválido para este pedido.' }, { status: 400 });
+    if (/Unique constraint failed.*cpf/i.test(message)) return NextResponse.json({ error: 'Este CPF já está associado a outro cadastro. Use outro CPF ou entre em contato.' }, { status: 409 });
     return NextResponse.json({ error: 'Não foi possível preparar o checkout.' }, { status: 500 });
   }
 });
