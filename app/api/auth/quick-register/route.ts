@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createSession, hashPassword, normalizeCpf, normalizeEmail, normalizePhone } from '@/lib/auth';
 
-function validCpf(cpf: string) { return /^\d{11}$/.test(cpf) && !/^([0-9])\1{10}$/.test(cpf); }
 function validPhone(phone: string) { return /^\d{10,13}$/.test(phone); }
 
 export async function POST(request: Request) {
@@ -11,7 +10,6 @@ export async function POST(request: Request) {
   const name = typeof body?.name === 'string' ? body.name.trim().slice(0, 100) : '';
   const email = typeof body?.email === 'string' ? normalizeEmail(body.email) : '';
   const phone = typeof body?.phone === 'string' ? normalizePhone(body.phone) : '';
-  const cpf = '';
   const password = typeof body?.password === 'string' ? body.password : '';
   if (name.length < 2) return NextResponse.json({ error: 'Informe seu nome completo.' }, { status: 400 });
   if (!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ error: 'Informe um e-mail válido.' }, { status: 400 });
@@ -21,7 +19,7 @@ export async function POST(request: Request) {
   if (existingUser || existingCustomer?.email === email) return NextResponse.json({ error: 'Este e-mail já está cadastrado. Escolha “Já tenho cadastro”.' }, { status: 409 });
   const user = await prisma.$transaction(async (tx) => {
     const created = await tx.user.create({ data: { name, email, passwordHash: await hashPassword(password), role: 'CUSTOMER' } });
-    await tx.customer.create({ data: { userId: created.id, name, email, phone, cpf } });
+    await tx.customer.create({ data: { userId: created.id, name, email, phone, cpf: null } });
     return created;
   });
   await createSession(user.id);
