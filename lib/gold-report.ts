@@ -5,6 +5,7 @@ import puppeteer from 'puppeteer';
 import type { CompanyResponse } from '@/lib/company-conferi';
 import { MODEL_HTML_TEMPLATE } from '@/lib/gold-report-template';
 import { getActiveTemplateHtml } from '@/lib/admin/report-templates';
+import { isNegative, isPositive, compareKey, stripBrand, plateWithDash, money, numberBR, dateBR, situacaoLabel } from '@/lib/gold-report-layout';
 
 const asRecord = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const text = (s: Record<string, unknown>, k: string, fb = 'Não informado') => { const v = s[k]; return v === undefined || v === null || v === '' || v === '0' ? fb : String(v); };
@@ -27,7 +28,12 @@ const hasMeaningful = (v: unknown): boolean => {
 };
 const nadaConsta = (v: unknown) => {
   const u = upper(v);
-  return !u || u === 'NADA CONSTA' || u === 'NAO CONSTA' || u === 'NÃO CONSTA';
+  if (!u) return true;
+  if (['NADA CONSTA', 'NAO CONSTA', 'NÃO CONSTA', 'NÃO HÁ', 'NAO HA', 'SEM REGISTRO', '0', '0,00', '0.00', 'FALSE'].includes(u)) return true;
+  // "NAO CONSTA DEBITO", "NÃO POSSUI...", "NENHUM REGISTRO"... também são negativos
+  if (/^(NAO|NÃO|NENHUM|SEM)\b/.test(u)) return true;
+  if (u === 'INEXISTENTE' || u === 'NAO APLICAVEL' || u === 'NÃO APLICÁVEL') return true;
+  return false;
 };
 const isIndisponivelMsg = (v: unknown) => /indispon/i.test(norm(v));
 const isNadaConstaMsg = (v: unknown) => /nada consta|nao consta|não consta/i.test(norm(v));
@@ -36,17 +42,20 @@ const isPositiveMsg = (v: unknown) => {
   if (!s) return false;
   if (isNadaConstaMsg(s) || isIndisponivelMsg(s)) return false;
   const u = s.toUpperCase();
-  if (['NÃO', 'NAO', 'N', 'NEGATIVO', 'OK'].includes(u)) return false;
-  return !/^(não|nao)\b/.test(s.toLowerCase());
+  if (['NÃO', 'NAO', 'N', 'NEGATIVO', 'OK', '0', '0,00', '0.00', 'FALSE', 'N/D'].includes(u)) return false;
+  if (/^0([.,]0+)?$/.test(u)) return false;
+  if (/^(não|nao|sem|nenhum)\b/.test(s.toLowerCase())) return false;
+  return true;
 };
 
 function fixSpacing(s: string): string {
   if (!s) return s;
   s = s.replace(/\r\n?/g, '\n').replace(/\t+/g, ' ');
   // ensure space after sentence punctuation when glued (but NOT inside timestamps like 00:00:00 or dates)
-  s = s.replace(/([.!?;,])([A-Za-zÀ-ÖØ-öø-ÿ0-9])/g, (m, p, c) => (/^\d$/.test(c) && /[:/.-]/.test(p) ? m : `${p} ${c}`));
-  // ensure space before common uppercase-led word starts when glued to lowercase/number (ex.: "ALERTADE" -> "ALERTA DE")
-  s = s.replace(/([a-zà-öø-ÿ0-9])([A-ZÀ-Ö])/g, '$1 $2');
+  // Só insere espaço após pontuação de sentença, nunca dentro de números/códigos
+  s = s.replace(/([.!?])([A-Za-zÀ-ÖØ-öø-ÿ])/g, '$1 $2');
+  // Corrige palavras coladas comuns em textos da Company, sem tocar em códigos alfanuméricos
+  s = s.replace(/\b(NAO|NÃO)(\w+)/g, '$1 $2').replace(/\b(VEICULO|CIDADE|ESTADO)(\w+)/g, '$1 $2');
   s = s.replace(/[ ]{2,}/g, ' ');
   return s;
 }
@@ -65,7 +74,28 @@ function formatTextBlock(raw: unknown): string {
   return s.trim();
 }
 
+const LABEL_FRIENDLY: Record<string, string> = {
+  cpfcnpjarrendatar: 'CPF/CNPJ do arrendatário',
+  estadualintencaogravamerestricaofinanceira: 'Restrição financeira (intenção de gravame)',
+  estadualintencaogravameagente: 'Agente (intenção de gravame)',
+  estadualintencaogravamenomefinanciado: 'Nome do financiado (intenção)',
+  estadualintencaogravamedocumentofinanciado: 'Documento do financiado (intenção)',
+  estadualgravamenomeagente: 'Nome do agente financeiro',
+  estadualgravamenumerocontrato: 'Número do contrato (gravame)',
+  estadualgravamedocumentofinanciado: 'Documento do financiado (gravame)',
+  estadualgravamedatagravame: 'Data do gravame',
+  estadualgravamevigenciacontrato: 'Vigência do contrato',
+  estadualgravamecodigoagente: 'Código do agente financeiro',
+  lichexelic: 'Licenciamento exercício anterior',
+  debcetesb: 'Débito CETESB',
+  debitoder: 'Débito DER',
+  debitodersa: 'Débito DER/SA',
+  dado: 'Dado consultado',
+  infracaorenainf: 'Infração RENAINF',
+};
 function formatLabel(key: string): string {
+  const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (LABEL_FRIENDLY[normalizedKey]) return LABEL_FRIENDLY[normalizedKey];
   const spaced = key
     .replace(/[_\-]+/g, ' ')
     .replace(/([a-zà-öø-ÿ0-9])([A-ZÀ-Ö])/g, '$1 $2')
@@ -93,6 +123,12 @@ function pairsFromObject(obj: Record<string, unknown>, opts?: { dropKeys?: Set<s
     .map(([k, v]) => [opts?.formatKeys ? formatLabel(k) : k, valueToText(v)] as string[]);
 }
 
+function maskDocument(value: string): string {
+  const digits = String(value).replace(/\D/g, '');
+  if (digits.length === 11) return `***.${digits.slice(3, 6)}.${digits.slice(6, 9)}-**`;
+  if (digits.length === 14) return `**.${digits.slice(2, 5)}.${digits.slice(5, 8)}/****-**`;
+  return value ? '***' : value;
+}
 function registrosFromArray(arr: unknown[], opts?: { dropKeys?: string[] }): Record<string, string>[] {
   const drop = new Set((opts?.dropKeys || []).map(k => k.toLowerCase()));
   return arr.map(item => {
@@ -202,8 +238,8 @@ function buildDebitos(est: Record<string, unknown>): DebitoItem[] {
     const valorRaw = est[def.valorKey];
     const sitRaw = est[def.situacaoKey];
     const sitNorm = normalizeSituacao(sitRaw);
-    const consta = sitNorm.includes('CONSTA DEBITO') || sitNorm === 'CONSTA';
-    const semDebito = sitNorm.includes('NAO CONSTA') || sitNorm.includes('SEM DEBITO');
+    const semDebito = sitNorm.includes('NAO CONSTA') || sitNorm.includes('NÃO CONSTA') || sitNorm.includes('SEM DEBITO') || /^0([.,]0+)?$/.test(sitNorm);
+    const consta = !semDebito && (sitNorm.includes('CONSTA DEBITO') || sitNorm === 'CONSTA');
     const valorBlank = valorRaw === undefined || valorRaw === null || String(valorRaw).trim() === '';
     const sitBlank = sitRaw === undefined || sitRaw === null || String(sitRaw).trim() === '';
 
@@ -221,7 +257,8 @@ function buildDebitos(est: Record<string, unknown>): DebitoItem[] {
     } else if (!sitBlank) {
       situacao = norm(sitRaw);
       valor = valorBlank ? 'Não informado' : formatMoneyBRL(valorRaw);
-      pendente = /DEBITO|PEND|MULTA/.test(sitNorm);
+      const valorZero = valorBlank || /^0([.,]0+)?$/.test(norm(valorRaw).replace(/^R\$\s*/, ''));
+      pendente = valorZero ? false : /DEBITO|PEND|MULTA/.test(sitNorm);
     } else {
       situacao = 'Não informado';
       valor = valorBlank ? 'Não informado' : formatMoneyBRL(valorRaw);
@@ -232,8 +269,19 @@ function buildDebitos(est: Record<string, unknown>): DebitoItem[] {
   return itens;
 }
 function deriveParecer(r: Record<string, unknown>, parecer: Record<string, unknown>, alertas: { tipo: string }[]) {
+  // A cor enviada pela Company é soberana — nunca recalcular quando presente.
   const corRaw = upper(parecer.cor || parecer.nivel || parecer.classificacao);
-  let nivel = corRaw.includes('VERM') ? 'vermelho' : corRaw.includes('AMAR') || corRaw.includes('ATEN') || corRaw.includes('LARAN') ? 'amarelo' : corRaw.includes('VERD') ? 'verde' : '';
+  const nivelFromJson = corRaw.includes('VERM') ? 'vermelho' : corRaw.includes('AMAR') || corRaw.includes('ATEN') || corRaw.includes('LARAN') ? 'amarelo' : corRaw.includes('VERD') ? 'verde' : '';
+  if (nivelFromJson) {
+    const detalheJson = norm(parecer.texto || parecer.observacao || parecer.descricao || parecer.mensagem);
+    const resumoPadrao = nivelFromJson === 'verde'
+      ? 'Nenhum apontamento crítico identificado nos indicadores consultados. Veículo sem alertas relevantes no momento da consulta.'
+      : nivelFromJson === 'amarelo'
+        ? 'Foram identificados pontos que exigem atenção. Recomenda-se análise cuidadosa antes da negociação.'
+        : 'Foram identificados apontamentos críticos. Recomenda-se cautela e verificação detalhada antes de qualquer negociação.';
+    return { nivel: nivelFromJson, resumo: formatTextBlock(detalheJson ? resumoPadrao + ' ' + detalheJson : resumoPadrao) };
+  }
+  let nivel = '';
   const sin = asRecord(r.sinistro);
   const ind = asRecord(r.indicioSinistro2 || r.indicioSinistro);
   const rf = asRecord(r.historicoRouboFurto || r.rouboFurto);
@@ -242,14 +290,21 @@ function deriveParecer(r: Record<string, unknown>, parecer: Record<string, unkno
   const com = asRecord(r.comercializacao);
   const est = asRecord(r.estadual);
   const cv = asRecord(r.comunicacaoVenda);
-  const hasSinistro = /SIM|CONSTA/i.test(norm(sin.resposta || sin.mensagem));
-  const hasRoubo = (Array.isArray(rf.registros) && rf.registros.length > 0) || isPositiveMsg(rf.alertaMensagem) || upper(rf.alertaCodigo) === 'SIM' || /SIM|CONSTA|POSITIV/i.test(upper(rf.resposta));
-  const hasRestrJud = !nadaConsta(est.restricaoJudicial) || !nadaConsta(est.restricaoRenajud) || !nadaConsta(est.restricaoJudicialRenajud);
-  const hasGravAtivo = /ATIV|CONSTA|GRAVAD/i.test(upper(grav.situacao || grav.restricao || grav.resposta));
+  const rfCodigo = norm(rf.alertaCodigo);
+  const rfNegativo = ['0', 'NAO', 'NÃO', 'NEGATIVO'].includes(upper(rfCodigo)) || /^(NAO|NÃO)\b/.test(upper(rf.alertaMensagem));
+  const hasSinistro = ['SIM', '1', 'S', 'TRUE'].includes(upper(sin.resposta)) || (/CONSTA/i.test(norm(sin.mensagem)) && !/NAO|NÃO/i.test(norm(sin.mensagem)));
+  const hasRoubo = !rfNegativo && ((Array.isArray(rf.registros) && rf.registros.length > 0) || isPositiveMsg(rf.alertaMensagem) || upper(rf.alertaCodigo) === 'SIM' || /SIM|CONSTA|POSITIV/i.test(upper(rf.resposta)));
+  const hasRestrJud = !nadaConsta(est.restricaoJudicial) && !nadaConsta(est.restricaoRenajud) && !nadaConsta(est.restricaoJudicialRenajud);
+  const gravames = Array.isArray(grav.gravame) ? grav.gravame : Array.isArray(grav.registros) ? grav.registros : [];
+  const hasGravAtivo = gravames.length > 0 && gravames.some((g: unknown) => {
+    const gg = asRecord(g);
+    const sit = upper(gg.situacao || gg.statusVeiculo);
+    return /ATIV|CONSTA|GRAVAD/.test(sit) && !/CANCELAD|BAIXAD/.test(sit);
+  });
   const hasLeilao = Array.isArray(asRecord(leilao.leiloes).leilao) ? (asRecord(leilao.leiloes).leilao as unknown[]).length > 0 : Array.isArray(leilao.leiloes) ? (leilao.leiloes as unknown[]).length > 0 : Array.isArray(leilao.registros) ? (leilao.registros as unknown[]).length > 0 : isPositiveMsg(leilao.resposta);
-  const hasComunicVenda = isPositiveMsg(cv.resposta || cv.mensagem);
-  const hasComercial = isPositiveMsg(com.resposta || com.mensagem);
-  const hasIndicio = isPositiveMsg(ind.mensagem || ind.resposta);
+  const hasComunicVenda = isPositiveMsg(cv.mensagem) && !nadaConsta(cv.mensagem);
+  const hasComercial = ['1', 'SIM', 'S', 'TRUE'].includes(upper(com.resposta)) || (isPositiveMsg(com.mensagem) && !nadaConsta(com.mensagem));
+  const hasIndicio = ['1', 'SIM', 'S', 'TRUE'].includes(upper(ind.resposta)) || (isPositiveMsg(ind.mensagem) && !nadaConsta(ind.mensagem));
   const hasSevere = hasSinistro || hasRoubo || hasRestrJud || hasComunicVenda;
   const hasAttention = hasGravAtivo || hasLeilao || hasComercial || hasIndicio;
   if (hasSevere) nivel = 'vermelho';
@@ -320,15 +375,23 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
   const rfReg = Array.isArray(rfRaw) ? rfRaw : rfRaw ? [rfRaw] : [];
   const rfCodigo = upper(rf.alertaCodigo);
   const rfMsg = norm(rf.alertaMensagem || rf.mensagem || rf.resposta);
-  const rfPositive = rfReg.length > 0 || rfCodigo === 'SIM' || /POSITIV|CONST|ROUB|FURT/i.test(rfCodigo) || (isPositiveMsg(rfMsg) && /roub|furt|consta/i.test(rfMsg));
+  const rfCodigoNegativo = ['0', 'NAO', 'NÃO', 'NEGATIVO'].includes(rfCodigo) || /^(NAO|NÃO)\b/.test(rfMsg);
+  const rfPositive = !rfCodigoNegativo && (rfReg.length > 0 || rfCodigo === 'SIM' || /POSITIV|CONST|ROUB|FURT/i.test(rfCodigo) || (isPositiveMsg(rfMsg) && /roub|furt|consta/i.test(rfMsg)));
   if (rfPositive) {
     const texto = /roub|furt/i.test(rfMsg) && isPositiveMsg(rfMsg) ? rfMsg : 'Consta histórico de roubo/furto';
     alertas.push({ icone: 'roubo', texto, tipo: 'alerta' });
   }
 
-  // Restrições judiciais
+  // Restrições judiciais — só considera campos com conteúdo efetivamente positivo
   const restKeys = Object.keys(est).filter(k => /restric|renajud|renainf|judicial/i.test(k));
-  const hasRestricao = restKeys.some(k => !nadaConsta(est[k]) && !isBlank(est[k]));
+  const hasRestricao = restKeys.some(k => {
+    const v = est[k];
+    if (isBlank(v) || nadaConsta(v)) return false;
+    const u = upper(v);
+    // "0,00", "0", "N/D" e valores numéricos zero não são restrição
+    if (/^0([.,]0+)?$/.test(u) || u === 'N/D' || u === 'NA') return false;
+    return true;
+  });
   if (hasRestricao) alertas.push({ icone: 'judicial', texto: 'Restrição judicial', tipo: 'alerta' });
 
   // Indício de sinistro - only when Company returns positive
@@ -337,13 +400,14 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
   // (shown in section/parecer; top alert not mandated but keep logic consistent via section)
 
   // BIN: if object has meaningful data, show it. If only unavailable markers, surface as indisponível note but don't hide real data.
-  const binPairsAll = pairsFromObject(bin, { formatKeys: true });
+  const BIN_DROP = new Set(['docproprietario', 'nomeproprietario', 'ultimaatualizacao', 'restricoes', 'restricao1', 'restricao2', 'restricao3', 'restricao4', 'ocorrencias', 'restricaorenainf', 'restricaorenajud', 'situacaorestricoes', 'comparativo']);
+  const binPairsAll = pairsFromObject(bin, { formatKeys: true, dropKeys: BIN_DROP });
   const binHasData = hasMeaningful(bin) && binPairsAll.length > 0;
   const binUnavailableMsg = !binHasData ? (findDeep(bin, ['mensagem', 'status', 'descricao', 'resposta']) as string | undefined) : undefined;
 
   // Base Estadual - include all fields, formatted labels, preserve values
   // (exceto as chaves de débito, que têm seção própria "Débitos e multas")
-  const DEBITO_KEYS = new Set(['debitomulta', 'existedebitomulta', 'debitoipva', 'existedebitoipva', 'debitolicenciamento', 'existedebitolicenciamento', 'debitodpvat', 'existedebitodpvat', 'dadosatualis', 'dadosatuals', 'dadosatual', 'dadosatuais', 'ultimaatualizacao', 'ultimaatualizacaoveiculo']);
+  const DEBITO_KEYS = new Set(['debitomulta', 'existedebitomulta', 'debitoipva', 'existedebitoipva', 'debitolicenciamento', 'existedebitolicenciamento', 'debitodpvat', 'existedebitodpvat', 'dadosatualis', 'dadosatuals', 'dadosatual', 'dadosatuais', 'ultimaatualizacao', 'ultimaatualizacaoveiculo', 'odometro', 'historicoOdometro', 'detran']);
   const baseEstadual = pairsFromObject(est, { formatKeys: true, dropKeys: DEBITO_KEYS });
 
   // Emplacamento / cabeçalho
@@ -368,7 +432,15 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
   const gravameDrop = ['cpfcnpjagente', 'cpfcnpj', 'cpf_cnpj', 'cnpjcpf', 'telefone', 'email', 'endereco', 'endereço', 'logradouro', 'numero', 'bairro', 'cidade', 'municipio', 'ufagente', 'cep', 'contrato', 'documento'];
   // Gravame - objeto gravame.gravame[] com os registros; fallback para formatos alternativos
   const gravamesArr: unknown[] = Array.isArray(grav.gravame) ? grav.gravame : Array.isArray(grav.gravames) ? grav.gravames : Array.isArray(grav.registros) ? grav.registros : grav.resposta && hasMeaningful(grav) ? [grav] : [];
-  const gravameRegs = registrosFromArray(gravamesArr, { dropKeys: gravameDrop });
+  const gravameRegs = registrosFromArray(gravamesArr, { dropKeys: gravameDrop }).map((reg) => {
+    // Mascara documento do financiado (CPF/CNPJ) — dado sensível
+    for (const k of Object.keys(reg)) {
+      if (/documento|cpf|cpfcnpj/i.test(k) && /^\d{11,14}$/.test(String(reg[k]).replace(/\D/g, ''))) {
+        reg[k] = maskDocument(reg[k]);
+      }
+    }
+    return reg;
+  });
 
   // Restrições e Outras Informações - reproduce as Company return, formatted
   const restricoesTextoParts: string[] = [];
@@ -454,10 +526,22 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
       ['Espécie', 'especie', 'especie'], ['Procedência', 'procedencia', 'procedencia'],
       ['Lotação', 'lotacao', 'lotacao'], ['Município', 'municipio', 'municipio'],
     ] as const;
+    // Normaliza para comparação: maiúsculas, sem acentos, sem espaços/pontuação e sem prefixo de marca
+    const compKey = (v: unknown, marcaRaw?: unknown) => {
+      let s = norm(v).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (marcaRaw) {
+        const m = norm(marcaRaw).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (m && s.startsWith(m)) s = s.slice(m.length);
+      }
+      return s;
+    };
+    const marcaComp = compKey(agg.marca);
     comparativo = componentes.map(([rotulo, aggKey, binKey]) => {
       const fabrica = norm(agg[aggKey]);
       const estadual = norm(bin[binKey]);
-      const st: 'ok' | 'diferente' | 'na' = !fabrica || !estadual ? 'na' : upper(fabrica) === upper(estadual) ? 'ok' : 'diferente';
+      const fKey = compKey(fabrica, rotulo === 'Modelo' ? marcaComp : undefined);
+      const eKey = compKey(estadual, rotulo === 'Modelo' ? marcaComp : undefined);
+      const st: 'ok' | 'diferente' | 'na' = !fabrica || !estadual ? 'na' : (fKey === eKey || (!fKey || !eKey)) ? 'ok' : 'diferente';
       return {
         componente: rotulo,
         fabrica: fabrica || '-',
@@ -559,6 +643,7 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
 
   // Detran (dados complementares de CRLV, multas, autuações e informações do veículo)
   const detran = asRecord(r.detran);
+  const detranUrl = norm(detran.url || r.detranUrl || '');
   const detranCrLv = asRecord(detran.crlv);
   const detranMultas = asRecord(detran.multas);
   const detranAutuacoes = asRecord(detran.autuacoes);
@@ -570,6 +655,196 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
   const decodificador = asRecord(r.decodificador);
 
   const proprietarioTxt = norm(bin.nomeProprietario || bin.proprietario || est.proprietario || est.nomeProprietario);
+
+  // ===== ESTRUTURA SEGUNDO ESPECIFICAÇÃO (27 itens) =====
+  const placaFmt = plateWithDash(plate);
+  const specBin = plateWithDash(bin.placa) || placaFmt;
+  const specEst = plateWithDash(est.placa) || placaFmt;
+
+  // 4. Informações do veículo — Base Nacional (campos exatos)
+  const chassiFmt = norm(bin.chassi || '');
+  const tipoChassiFmt = upper(bin.tipoChassi) === 'N' ? 'NORMAL' : upper(bin.tipoChassi);
+  const veiculoNacional: string[][] = [
+    ['Placa', specBin],
+    ['Situação', situacaoLabel(bin.situacao)],
+    ['Marca/Modelo', norm(bin.marca) + ' / ' + stripBrand(bin.modelo, bin.marca)],
+    ['Tipo de veículo', norm(bin.tipoVeiculo)],
+    ['Ano fabricação/Ano modelo', norm(bin.anoFabricacao) + ' / ' + norm(bin.anoModelo)],
+    ['Procedência', norm(bin.procedencia)],
+    ['Município/UF', norm(bin.municipio) + ' / ' + upper(bin.Uf || bin.uf)],
+    ['Chassi', chassiFmt + (tipoChassiFmt ? ' ' + tipoChassiFmt : '')],
+    ['Motor', norm(bin.motor)],
+    ['Renavam', norm(bin.renavam)],
+    ['Combustível', norm(bin.combustivel)],
+    ['Cor', norm(bin.cor)],
+    ['Capacidade de passageiros', norm(bin.lotacao)],
+    ['Espécie', norm(bin.especie)],
+    ['Cilindradas', numberBR(bin.cilindradas)],
+    ['Peso bruto (PBT)', numberBR(bin.pbt)],
+    ['Peso bruto (CMT)', numberBR(bin.cmt)],
+    ['Eixo', numberBR(bin.numeroEixos)],
+    ['Eixo Traseiro Dif', numberBR(bin.numeroEixoTraseiro)],
+    ['Eixo auxiliar', numberBR(bin.numeroEixoAuxiliar)],
+  ];
+
+  // 5. Restrições e outras informações (texto corrido)
+  const restricoesBin = norm(bin.restricoes);
+  const restricoesIndividuais = ['restricao1', 'restricao2', 'restricao3', 'restricao4', 'restricaoRenainf', 'restricaoRenajud', 'ocorrencias']
+    .map(k => norm(bin[k])).filter(v => v && !isNegative(v));
+  const todasRestricoes = Array.from(new Set([restricoesBin, ...restricoesIndividuais].filter(v => v && !isNegative(v))));
+  const restricoesTextoSpec = todasRestricoes.length ? todasRestricoes.join(',') : 'NADA CONSTA';
+
+  // 5b. Queixa e histórico de roubo/furto
+  const queixaAtiva = !isNegative(bin.ocorrencias) && !/NAO POSSUI OCORRENCIA/i.test(norm(bin.ocorrencias));
+  const historicoRfAtivo = isPositive(rf.alertaCodigo) || !isNegative(est.restricaoFurto);
+
+  // 6. Histórico de ocorrências
+  const ocorrenciasRaw = asRecord(rf.historico).rouboFurto;
+  const ocorrenciasArr = Array.isArray(ocorrenciasRaw) ? ocorrenciasRaw : [];
+  const ocorrencias = ocorrenciasArr.map((item: unknown) => {
+    const o = asRecord(item);
+    const ano = (norm(o.anoBo).match(/\d{4}/) || [])[0] || '';
+    return {
+      ocorrencia: norm(o.ocorrencia),
+      ano,
+      orgaoSeguranca: norm(o.orgaoSeguranca),
+      numeroBo: /NAO INFORMADO/i.test(norm(o.numeroBo)) ? '' : norm(o.numeroBo),
+      municipioUf: norm(o.municipioOcorrencia) + ' / ' + norm(o.Ufocorrencia),
+      dataOcorrencia: dateBR(o.dataOcorrencia),
+    };
+  });
+
+  // 7. Comparativo de componentes (4 linhas)
+  const compLinha = (rotulo: string, va: unknown, ve: unknown) => {
+    const a = norm(va), e = norm(ve);
+    const status = !a || !e ? 'na' : compareKey(a) === compareKey(e) ? 'ok' : 'diferente';
+    return { componente: rotulo, fabrica: a || '-', estadual: e || '-', status };
+  };
+  const comparativoSpec = [
+    compLinha('Chassi', agg.chassi, est.chassi),
+    compLinha('Motor', agg.motor, est.motor),
+    compLinha('Cor', upper(agg.cor), upper(est.cor)),
+    compLinha('Combustível', upper(agg.combustivel), upper(est.combustivel)),
+  ];
+
+  // 8. E-Decodificador de chassi
+  const decSpec: string[][] = [
+    ['Chassi', norm(decodificador.Chassi)],
+    ['Origem', norm(agg.procedencia)],
+    ['Região', norm(decodificador.Regiao)],
+    ['País', norm(decodificador.Pais)],
+    ['Montadora', norm(decodificador.Fabricante)],
+    ['Categoria', norm(decodificador.TipoVeiculo)],
+    ['Marca', norm(decodificador.Marca)],
+    ['Modelo', norm(decodificador.Modelo)],
+    ['Versão', norm(decodificador.Versao)],
+    ['Carroceria', norm(decodificador.Carroceria)],
+    ['Ano Fabricação', norm(decodificador.AnoFab)],
+    ['Ano Modelo', norm(decodificador.AnoMod)],
+    ['Cilindradas', numberBR(agg.cilindradas)],
+    ['Combustível', norm(decodificador.Combustivel)],
+  ];
+
+  // 9. Base estadual (Cortesia) — campos exatos
+  const chassiEstFmt = norm(est.chassi) + (norm(est.tipoChassi) ? ' ' + norm(est.tipoChassi) : '');
+  const baseEstadualSpec: string[][] = [
+    ['Placa', specEst],
+    ['Situação', situacaoLabel(est.situacao)],
+    ['Marca/Modelo', norm(est.marca) + ' / ' + stripBrand(est.modelo, est.marca)],
+    ['Tipo de veículo', norm(est.tipoVeiculo)],
+    ['Categoria', norm(est.categoria)],
+    ['Ano fabricação/Ano modelo', norm(est.anoFabricacao) + ' / ' + norm(est.anoModelo)],
+    ['Procedência', norm(est.procedencia)],
+    ['Município/UF', norm(est.municipio) + ' / ' + upper(est.uf)],
+    ['Chassi', chassiEstFmt],
+    ['Motor', norm(est.motor)],
+    ['Renavam', norm(est.renavam)],
+    ['Combustível', norm(est.combustivel)],
+    ['Cor', norm(est.cor)],
+    ['Capacidade de passageiros', norm(est.qtdPassageiros)],
+    ['Potência', norm(est.potencia)],
+    ['Cilindradas', norm(est.cilindradas)],
+    ['Espécie', norm(est.especie)],
+    ['Capacidade de carga', norm(est.capacidadeCarga)],
+  ];
+
+  // 11. Débitos do veículo — 3 linhas
+  const debitoSpec = (situacao: unknown, valor: unknown, alwaysShow = false) => {
+    const v = norm(valor).replace(/^R\$\s*/, '');
+    if (!alwaysShow && /^0([.,]0+)?$/.test(v)) return { situacao: 'Consultar Detran / Sefaz', valor: 'R$ *' };
+    return { situacao: norm(situacao), valor: money(valor) };
+  };
+  const debitosSpec = [
+    { descricao: 'Multas', ...debitoSpec(est.existeDebitoMulta, est.debitoMulta) },
+    { descricao: 'IPVA', ...debitoSpec(est.existeDebitoIPVA, est.debitoIpva) },
+    { descricao: 'Licenciamento', ...debitoSpec(est.existeDebitoLicenciamento, est.debitoLicenciamento, true) },
+  ];
+
+  // 12. Licenciamento (condicional)
+  const licenciamentoAno = norm(est.licexelic);
+
+  // 13. Restrições — 7 linhas, texto simples
+  const restricoesSpec: { rotulo: string; valor: string; positivo: boolean }[] = [
+    { rotulo: 'Roubo e Furto', valor: norm(est.restricaoFurto), positivo: isPositive(est.restricaoFurto) },
+    { rotulo: 'Restrição Administrativa', valor: norm(est.restricaoAdm), positivo: isPositive(est.restricaoAdm) },
+    { rotulo: 'Restrição Tributária', valor: norm(est.restrTributaria), positivo: isPositive(est.restrTributaria) },
+    { rotulo: 'Restrição Judiciária', valor: norm(est.restricaoJudicial), positivo: isPositive(est.restricaoJudicial) },
+    { rotulo: 'Restrição Financeira', valor: norm(est.restricaoFinanceira), positivo: isPositive(est.restricaoFinanceira) },
+    { rotulo: 'Comunicação de Venda', valor: norm(est.comunicacaoVendaAtiva), positivo: isPositive(est.comunicacaoVendaAtiva) },
+    { rotulo: 'Restrição Jurídica', valor: norm(est.restricoesRenajud), positivo: isPositive(est.restricoesRenajud) },
+  ];
+
+  // 14. Outras restrições (condicional)
+  const outrasRestricoes = Array.from(new Set([
+    ...['restricoes_01', 'restricoes_02', 'restricoes_03', 'restricoes_04', 'restricoes_05'].map(k => norm(est[k])),
+    norm(est.outrasRestricoes),
+  ].filter(v => v && isPositive(v)).map(v => v.toUpperCase())));
+
+  // 15. Histórico de Odômetro
+  const odometroHistorico = asRecord(est.HistoricoOdometro);
+  const odometroItens = Array.isArray(odometroHistorico.Odometro) ? odometroHistorico.Odometro : [];
+  const odometroSpec = odometroItens.map((item: unknown) => {
+    const o = asRecord(item);
+    const km = norm(o.Quilometragem || o.km || o.valorOdometro);
+    return `${dateBR(o.DataVistoria || o.data)} - ${numberBR(km)} km`;
+  }).filter(Boolean);
+
+  // 16. Duplicidade de Motor
+  const dupRaw = asRecord(asRecord(dupMotor).duplicidades).duplicidade;
+  const dupArr = Array.isArray(dupRaw) ? dupRaw : [];
+  const chassiConsulta = norm(bin.chassi || est.chassi);
+  const duplicidades = dupArr.map((item: unknown) => asRecord(item))
+    .filter(d => compareKey(d.chassi) !== compareKey(chassiConsulta))
+    .map(d => ({
+      placa: plateWithDash(d.placa),
+      chassi: norm(d.chassi),
+      marcaModelo: norm(d.marca) + ' / ' + norm(d.modelo),
+      cor: norm(d.cor),
+      uf: norm(d.Uf || d.uf),
+      ano: norm(d.anoFabricacao) + ' / ' + norm(d.anoModelo),
+    }));
+
+  // 19. Gravame (formato A — já existente, garante máscara)
+  // 20. Sinistro — mensagem exata
+  const sinistroSpec = sinistroPos ? 'EXISTE SINISTRO DE INDENIZAÇÃO INTEGRAL' : 'NÃO CONSTA SINISTRO DE INDENIZAÇÃO INTEGRAL';
+
+  // 22. Leilões formatados
+  const leiloesSpec = leiloesArr.map((item: unknown) => {
+    const l = asRecord(item);
+    return {
+      placa: plateWithDash(l.placa),
+      dataLeilao: dateBR(l.dataLeilao),
+      condicao: norm(l.condicaoGeralDoVeiculo),
+      lote: norm(l.lote),
+      leiloeiro: norm(l.patio),
+      comitente: norm(l.comitente),
+      marcaModelo: norm(l.marca) + ' / ' + norm(l.modelo),
+      ano: norm(l.anoFabricacao) + ' / ' + norm(l.anoModelo),
+      tipoVeiculo: norm(l.categoriaDoVeiculo),
+      cor: norm(l.cor),
+      chassi: norm(l.chassi),
+    };
+  });
 
   const data = {
     consulta: {
@@ -606,8 +881,8 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
     restricoes: restricoesStatus,
     restricoesTexto,
     comparativo,
-    vendaDireta: { status: (r.vendaDireta && (asRecord(r.vendaDireta).constaVendaDireta || isPositiveMsg(asRecord(r.vendaDireta).resposta))) ? 'alerta' : 'ok', titulo: (r.vendaDireta && isPositiveMsg(asRecord(r.vendaDireta).resposta)) ? norm(asRecord(r.vendaDireta).resposta) : (r.vendaDireta && asRecord(r.vendaDireta).constaVendaDireta ? 'Consta venda direta' : 'Nada consta') },
-    eventoCorporativo: { status: (r.eventoCorporativo && (asRecord(r.eventoCorporativo).constaEventoCorporativo || isPositiveMsg(asRecord(r.eventoCorporativo).resposta))) ? 'alerta' : 'ok', titulo: (r.eventoCorporativo && isPositiveMsg(asRecord(r.eventoCorporativo).resposta)) ? norm(asRecord(r.eventoCorporativo).resposta) : (r.eventoCorporativo && asRecord(r.eventoCorporativo).constaEventoCorporativo ? 'Consta evento corporativo' : 'Nada consta') },
+    vendaDireta: { tituloDaFaixa: 'Venda direta', status: (r.vendaDireta && (asRecord(r.vendaDireta).constaVendaDireta || isPositiveMsg(asRecord(r.vendaDireta).resposta))) ? 'alerta' : 'ok', titulo: (r.vendaDireta && isPositiveMsg(asRecord(r.vendaDireta).resposta)) ? norm(asRecord(r.vendaDireta).resposta) : (r.vendaDireta && asRecord(r.vendaDireta).constaVendaDireta ? 'Consta venda direta' : 'Nada consta') },
+    eventoCorporativo: { tituloDaFaixa: 'Evento corporativo', status: (r.eventoCorporativo && (asRecord(r.eventoCorporativo).constaEventoCorporativo || isPositiveMsg(asRecord(r.eventoCorporativo).resposta))) ? 'alerta' : 'ok', titulo: (r.eventoCorporativo && isPositiveMsg(asRecord(r.eventoCorporativo).resposta)) ? norm(asRecord(r.eventoCorporativo).resposta) : (r.eventoCorporativo && asRecord(r.eventoCorporativo).constaEventoCorporativo ? 'Consta evento corporativo' : 'Nada consta') },
     parecer,
     sinistroCortesia: { status: sinistroPos ? 'alerta' : 'ok', titulo: sinistroPos ? (sinistroTxt || 'Consta sinistro de indenização integral') : 'Nada consta' },
     indicioSinistroCortesia: { status: indicioPos ? 'alerta' : 'ok', titulo: indicioPos ? (indicioMsg || 'Consta indício de sinistro') : 'Nada consta' },
@@ -621,6 +896,7 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
     csv: csvInfo,
     detalhamentoRenajud,
     detran: {
+      url: detranUrl,
       crlv: pairsFromObject(detranCrLv, { formatKeys: true }),
       multas: {
         itens: registrosFromArray(Array.isArray(detranMultas.itens) ? detranMultas.itens : [], { dropKeys: [] }),
@@ -640,6 +916,32 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
     decodificador: pairsFromObject(decodificador, { formatKeys: true }),
     historicoFipe,
     odometro: Array.isArray(r.odometro) ? r.odometro : (Array.isArray(detranOdometro.historico) ? detranOdometro.historico : []),
+    spec: {
+      placa: placaFmt,
+      veiculoNacional,
+      restricoesTexto: restricoesTextoSpec,
+      queixaAtiva,
+      historicoRfAtivo,
+      ocorrencias,
+      comparativo: comparativoSpec,
+      decodificador: decSpec,
+      baseEstadual: baseEstadualSpec,
+      proprietario: proprietarioTxt,
+      debitos: debitosSpec,
+      licenciamentoAno,
+      restricoes: restricoesSpec,
+      outrasRestricoes,
+      odometro: odometroSpec,
+      duplicidades,
+      detranSituacao: norm(detran.situacao),
+      detranUrl: detranUrl,
+      sinistroTexto: sinistroSpec,
+      leiloes: leiloesSpec,
+      parecer: { nivel: parecer.nivel, resumo: parecer.resumo },
+      vendaDireta: { consta: Boolean(asRecord(r.vendaDireta).constaVendaDireta) },
+      eventoCorporativo: { consta: Boolean(asRecord(r.eventoCorporativo).constaEventoCorporativo) },
+      comercializacao: { consta: comercializacaoPos },
+    },
   };
   return data;
 }

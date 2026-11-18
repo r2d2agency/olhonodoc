@@ -136,6 +136,17 @@ export const MODEL_HTML_TEMPLATE = `
   .ck svg{fill:var(--verde)}
   .x svg{fill:var(--vermelho)}
   .na{color:var(--muted);font-weight:800}
+  /* Layout especificação */
+  .spec-2col .campos{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+  .spec-titulo{font-weight:800;font-size:11.5px;text-transform:uppercase;margin:10px 0 6px;color:var(--texto)}
+  .spec-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .spec-card{background:var(--fundo-card);border:1px solid var(--borda-2);border-radius:6px;padding:10px;font-size:10.5px;line-height:1.6;break-inside:avoid}
+  .spec-card b{color:var(--muted);font-weight:600}
+  .spec-pares{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 18px;font-size:11px}
+  .spec-pares b{color:var(--muted);font-weight:600}
+  .spec-debitos>div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dotted var(--borda);padding:6px 0}
+  .spec-debitos>div b{white-space:nowrap}
+  .spec-2col>.st-item{display:inline-block;width:calc(50% - 8px);vertical-align:top}
 
   .gauge-box{background:var(--fundo-card);border:1px solid var(--borda-2);border-radius:12px;padding:24px 10px 16px;text-align:center;margin-bottom:16px}
   .gauge-box svg{width:190px;height:110px}
@@ -276,7 +287,8 @@ export const MODEL_HTML_TEMPLATE = `
 
   function stItem(rotulo, s, full) {
     var val = s && (s.valor || s.texto || s.titulo);
-    var desc = (s && s.descricao) ? esc(s.descricao) : (val && s.status !== 'ok' ? esc(val) : (s && s.status === 'ok' && val ? esc(val) : ''));
+    var valEhNadaConsta = /^(nada consta|nao consta|não consta|sem registro)$/i.test(String(val || '').trim());
+    var desc = (s && s.descricao) ? esc(s.descricao) : (val && s.status !== 'ok' ? esc(val) : (s && s.status === 'ok' && val && !valEhNadaConsta ? esc(val) : ''));
     var box = '<div class="st-box ' + (s && s.status === "alerta" ? "st-alerta" : "st-ok") + '">' + ((s && s.status === "alerta") ? I.erro : I.ok) +
       '<div><b>' + ((s && s.status === "alerta") ? esc(s.titulo || "Consta registro") : "Nada consta") + '</b>' + (desc ? '<span>' + desc + '</span>' : '') + '</div></div>';
     return '<div class="st-item' + (full ? " full" : "") + '"><div class="l">' + esc(rotulo) + '</div>' + box + '</div>';
@@ -287,7 +299,7 @@ export const MODEL_HTML_TEMPLATE = `
     var ok = s.status !== "alerta";
     var ic = ok ? I.ok : I.triangulo;
     var titulo = s.titulo || (ok ? "Nada consta" : "Alerta identificado");
-    return '<section class="secao status ' + (ok ? "" : "alerta-st") + '"><div class="titulo">' + ic + '<span>' + esc(s.texto || "Status") + '</span></div>' +
+    return '<section class="secao status ' + (ok ? "" : "alerta-st") + '"><div class="titulo">' + ic + '<span>' + esc(s.tituloDaFaixa || s.texto || s.titulo || "Status") + '</span></div>' +
       '<div class="corpo">' + stBox({ status: ok ? "ok" : "alerta", titulo: titulo, descricao: s.descricao || " " }) + '</div></section>';
   }
 
@@ -326,7 +338,9 @@ export const MODEL_HTML_TEMPLATE = `
   }
 
   function fmtBRL(n) {
-    if (n == null || isNaN(n)) return "—";
+    if (n == null || n === "") return "—";
+    n = typeof n === "string" ? Number(String(n).replace(/[^\d,-]/g, "").replace(",", ".")) : Number(n);
+    if (!isFinite(n)) return "—";
     var neg = n < 0;
     var abs = Math.abs(n);
     var int = Math.floor(abs).toString();
@@ -468,6 +482,132 @@ export const MODEL_HTML_TEMPLATE = `
       }).join("") + '</div>');
     }
 
+    // ===================== LAYOUT ESPECIFICAÇÃO (27 itens) =====================
+    if (d.spec) {
+      var s = d.spec;
+      var bandeira = function (rotulo, valor, positivo) {
+        return '<div class="st-item"><div class="l">' + esc(rotulo) + '</div><div class="v"' + (positivo ? ' style="color:var(--vermelho);font-weight:700"' : '') + '>' + esc(valor || 'Nada consta') + '</div></div>';
+      };
+      var blocoTitulo = function (texto, cor) {
+        return '<div class="spec-titulo"' + (cor ? ' style="color:' + cor + '"' : '') + '>' + esc(texto) + '</div>';
+      };
+
+      // 4 + 5
+      h.push(secao("carro", "Informações do veículo - Base Nacional", campos(s.veiculoNacional), { classe: 'spec-2col' }));
+      h.push(secao("info", "Restrições e outras informações", '<div class="texto-formatado">' + esc(s.restricoesTexto) + '</div>' +
+        '<div class="subtitulo" style="margin-top:12px">Queixa e histórico de roubo e furto</div>' +
+        bandeira('Queixa ativa', s.queixaAtiva ? 'Existe ocorrência de roubo e furto' : 'Não existe queixa de roubo e furto ativa', s.queixaAtiva) +
+        bandeira('Histórico', s.historicoRfAtivo ? 'Existe histórico de roubo e furto' : 'Não existe histórico de roubo e furto', s.historicoRfAtivo)));
+
+      // 6
+      if (s.ocorrencias && s.ocorrencias.length) {
+        h.push(secao("escudo", "Histórico de ocorrências", '<div class="spec-cards">' + s.ocorrencias.map(function (o) {
+          return '<div class="spec-card"><div><b>Ocorrência:</b> ' + esc(o.ocorrencia) + '</div><div><b>Ano:</b> ' + esc(o.ano) + '</div><div><b>Órgão de segurança:</b> ' + esc(o.orgaoSeguranca) + '</div><div><b>Nº do boletim:</b> ' + esc(o.numeroBo) + '</div><div><b>Município/UF:</b> ' + esc(o.municipioUf) + '</div><div><b>Data da ocorrência:</b> ' + esc(o.dataOcorrencia) + '</div></div>';
+        }).join('') + '</div>'));
+      }
+
+      // 7 — comparativo 4 linhas
+      if (s.comparativo) {
+        h.push(secao("setas", "Comparativo de Componentes Veiculares",
+          '<table class="comp"><thead><tr><th>COMPONENTE</th><th>FÁBRICA</th><th>ESTADUAL</th><th>COMPARATIVO</th></tr></thead><tbody>' +
+          s.comparativo.map(function (r) {
+            var ico = r.status === 'ok' ? '<span class="ck">' + I.ok + '</span>' : r.status === 'diferente' ? '<span class="x">' + I.erro + '</span>' : '<span class="na">—</span>';
+            return '<tr><td>' + esc(r.componente) + '</td><td>' + esc(r.fabrica) + '</td><td>' + esc(r.estadual) + '</td><td>' + ico + '</td></tr>';
+          }).join('') + '</tbody></table>', { semPadding: true }));
+      }
+
+      // 8
+      h.push(secao("info", "E-Decodificador de chassi", '<div class="spec-pares">' + s.decodificador.map(function (p) {
+        return '<div><b>' + esc(p[0]) + ':</b> ' + esc(p[1]) + '</div>';
+      }).join('') + '</div>'));
+
+      // 9 + 10
+      h.push(secao("mapa", "Base estadual (Cortesia)", campos(s.baseEstadual) +
+        (s.proprietario ? '<div class="bloco" style="margin-top:12px"><div class="l">Proprietário Atual</div><div class="v">' + esc(s.proprietario) + '</div></div>' : ''), { classe: 'spec-2col' }));
+
+      // 11
+      h.push(secao("dinheiro", "Débitos do veículo", '<div class="spec-debitos">' + s.debitos.map(function (d) {
+        return '<div><span>' + esc(d.descricao) + ' — ' + esc(d.situacao) + '</span><b>' + esc(d.valor) + '</b></div>';
+      }).join('') + '</div>'));
+
+      // 12
+      if (s.licenciamentoAno) h.push(secao("info", "Licenciamento", blocoTitulo('Ano de exercício do licenciamento: ' + s.licenciamentoAno)));
+
+      // 13
+      h.push(secao("info", "Restrições", '<div class="spec-2col">' + s.restricoes.map(function (r) {
+        return bandeira(r.rotulo, r.valor, r.positivo);
+      }).join('') + '</div>'));
+
+      // 14
+      if (s.outrasRestricoes && s.outrasRestricoes.length) {
+        h.push(secao("info", "Outras restrições", blocoTitulo('OUTRAS RESTRIÇÕES') + '<div class="spec-2col">' + s.outrasRestricoes.map(function (v) {
+          return '<div class="v">' + esc(v) + '</div>';
+        }).join('') + '</div>'));
+      }
+
+      // 15
+      if (s.odometro && s.odometro.length) {
+        h.push(secao("velocimetro", "Histórico de Odômetro", '<div class="texto-formatado">' + s.odometro.map(function (linha) { return esc(linha); }).join('<br>') + '</div>'));
+      }
+
+      // 16
+      h.push(secao("info", "Duplicidade de Motor", (s.duplicidades && s.duplicidades.length)
+        ? '<div class="spec-cards">' + s.duplicidades.map(function (d) {
+            return '<div class="spec-card"><div><b>Placa:</b> ' + esc(d.placa) + '</div><div><b>Chassi:</b> ' + esc(d.chassi) + '</div><div><b>Marca/Modelo:</b> ' + esc(d.marcaModelo) + '</div><div><b>Cor:</b> ' + esc(d.cor) + '</div><div><b>UF:</b> ' + esc(d.uf) + '</div><div><b>Ano:</b> ' + esc(d.ano) + '</div></div>';
+          }).join('') + '</div>'
+        : '<div class="v" style="font-weight:700">NÃO CONSTAM OCORRÊNCIAS</div><div class="texto-formatado">Não encontramos nas nossas bases de dados registros de duplicidade com este número de motor.</div>'));
+
+      // 17 — Detran
+      if (s.detranSituacao === 'Consultar site' || s.detranUrl) {
+        h.push(secao("info", "DETRAN - Para informações Multas/IPVA/Licenciamento/Restrições",
+          '<div class="spec-2col"><div><b>Consultar site:</b> ' + (s.detranUrl ? '<a href="' + esc(s.detranUrl) + '" target="_blank" rel="noopener">' + esc(s.detranUrl) + '</a>' : '') + '</div>' +
+          '<div><b>Dívida Ativa:</b> Consulte a Secretaria da Fazenda do Estado</div></div>'));
+      }
+
+      // 18
+      if (d.detalhamentoRenajud) h.push(secaoFlexivel("info", "Renajud Detalhado", d.detalhamentoRenajud));
+
+      // 19 — gravame
+      if (!vazio(d.gravame)) h.push(secao("cadeado", "Gravame", registros(d.gravame)));
+
+      // 20
+      h.push(secao("triangulo", "Sinistro", '<div class="v" style="font-weight:700;color:var(--vermelho)">' + esc(s.sinistroTexto) + '</div>'));
+
+      // 21 — parecer simplificado
+      if (s.parecer && s.parecer.nivel) {
+        var pcor = { vermelho: '#dc2626', amarelo: '#f59e0b', verde: '#10b981' }[s.parecer.nivel] || '#6b7280';
+        h.push(secao("paleta", "Parecer técnico (Cortesia)", '<div class="v" style="color:' + pcor + ';font-weight:800">' + esc(s.parecer.nivel.toUpperCase()) + '</div>'));
+      }
+
+      // 22-26 — comercialização com 4 blocos
+      h.push(secao("carrinho", "Informações para comercialização",
+        blocoTitulo(s.leiloes.length ? 'CONSTA OFERTA EM LEILÃO' : 'NÃO CONSTA OFERTA EM LEILÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS', s.leiloes.length ? 'var(--vermelho)' : 'var(--verde)') +
+        (s.leiloes.length ? '<div class="spec-cards">' + s.leiloes.map(function (l) {
+          return '<div class="spec-card"><div><b>Placa:</b> ' + esc(l.placa) + '</div><div><b>Data do leilão:</b> ' + esc(l.dataLeilao) + '</div><div><b>Condição:</b> ' + esc(l.condicao) + '</div><div><b>Lote:</b> ' + esc(l.lote) + '</div><div><b>Leiloeiro:</b> ' + esc(l.leiloeiro) + '</div><div><b>Comitente:</b> ' + esc(l.comitente) + '</div><div><b>Marca/Modelo:</b> ' + esc(l.marcaModelo) + '</div><div><b>Ano:</b> ' + esc(l.ano) + '</div><div><b>Tipo:</b> ' + esc(l.tipoVeiculo) + '</div><div><b>Cor:</b> ' + esc(l.cor) + '</div><div><b>N° Motor:</b> N/I</div><div><b>N° Chassi:</b> ' + esc(l.chassi) + '</div><div><b>Nº Renavam:</b> N/I</div><div><b>Sit Chassi:</b> N/I</div><div><b>Observação:</b> N/I</div></div>';
+        }).join('') + '</div>' : '') +
+        blocoTitulo('EVENTO CORPORATIVO/REMARKETING AUTOMOTIVO', s.eventoCorporativo.consta ? 'var(--vermelho)' : 'var(--verde)') +
+        '<div class="texto-formatado">' + (s.eventoCorporativo.consta ? 'CONSTA EVENTO CORPORATIVO' : 'NÃO CONSTA EVENTO CORPORATIVO / REMARKETING AUTOMOTIVO PARA A PLACA ' + s.placa.replace(/-/g, '') + ' NAS BASES CONSULTADAS') + '</div>' +
+        blocoTitulo('HISTÓRICO DE VENDA DIRETA POR MAIOR OFERTA', s.vendaDireta.consta ? 'var(--vermelho)' : 'var(--verde)') +
+        '<div class="texto-formatado">' + (s.vendaDireta.consta ? 'CONSTA HISTÓRICO DE VENDA DIRETA' : 'NÃO CONSTA HISTÓRICO DE VENDA DIRETA PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS') + '</div>' +
+        blocoTitulo('HISTÓRICO DE COMERCIALIZAÇÃO POR BANCO OU SEGURADORA', s.comercializacao.consta ? 'var(--vermelho)' : 'var(--verde)') +
+        '<div class="texto-formatado">' + (s.comercializacao.consta ? 'CONSTA COMERCIALIZAÇÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS' : 'NÃO CONSTA COMERCIALIZAÇÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS') + '</div>')));
+
+      // 27 FIPE
+      if (d.historicoFipe && !vazio(d.historicoFipe) && typeof d.historicoFipe === 'object' && !Array.isArray(d.historicoFipe) && d.historicoFipe.historico) {
+        h.push(fipeSecao(d.historicoFipe));
+      }
+
+      h.push('<div class="avisos"><h3>Avisos legais</h3>' +
+        '<p>As informações contidas nesta consulta são confidenciais e destinadas exclusivamente ao solicitante da pesquisa, para fins legítimos de análise, prevenção à fraude, verificação de procedência veicular e apoio em negociações, sendo vedada sua utilização em desacordo com a legislação vigente.</p>' +
+        '<p>A Olho no Doc limita-se a reunir, organizar e transmitir fielmente informações obtidas em bases públicas e privadas disponíveis na data e horário da consulta, não se responsabilizando por alterações posteriores realizadas pelos órgãos competentes ou entidades fornecedoras dos dados.</p>' +
+        '<p>As informações apresentadas possuem caráter exclusivamente informativo e auxiliar, não devendo ser consideradas como único fator decisivo para compra, venda, financiamento, vistoria, transferência ou qualquer outra negociação.</p>' +
+        '<p>Esta consulta não substitui a verificação direta junto aos órgãos oficiais, especialmente DETRAN, SENATRAN, instituições financeiras, seguradoras e demais entidades responsáveis.</p>' +
+        '</div>');
+      document.getElementById("relatorio").innerHTML = h.join("");
+      return;
+    }
+    // ===================== FIM LAYOUT ESPECIFICAÇÃO =====================
+
     if (!vazio(d.emplacamento)) h.push(secao("carro", "Dados de emplacamento do veículo", campos(d.emplacamento)));
 
     if (!vazio(d.baseBin)) {
@@ -482,8 +622,13 @@ export const MODEL_HTML_TEMPLATE = `
     if (d.detran && Object.keys(d.detran).some(function (k) { return !vazio(d.detran[k]); })) {
       var dt = d.detran;
       var dtHtml = "";
+      if (dt.url) dtHtml += '<div class="bloco"><div class="l">Consultar site do Detran</div><div class="v"><a href="' + esc(dt.url) + '" target="_blank" rel="noopener">' + esc(dt.url) + '</a></div></div>';
       if (!vazio(dt.informacoesVeiculo)) dtHtml += '<div class="subtitulo">Informações do veículo</div>' + campos(dt.informacoesVeiculo);
       if (!vazio(dt.crlv)) dtHtml += '<div class="subtitulo" style="margin-top:14px">CRLV</div>' + campos(dt.crlv);
+      if (dt.crlv && dt.crlv.some(function (p) { return /exercicio/i.test(p[0]); })) {
+        var ex = dt.crlv.find(function (p) { return /exercicio/i.test(p[0]); });
+        if (ex && !vazio(ex[1])) dtHtml += '<div class="bloco"><div class="l">Licenciamento</div><div class="v">Ano de exercício ' + esc(ex[1]) + '</div></div>';
+      }
       if (!vazio(dt.debitos)) dtHtml += '<div class="subtitulo" style="margin-top:14px">Débitos Detran</div>' + campos(dt.debitos);
       if (!vazio(dt.multas) && !vazio(dt.multas.itens)) dtHtml += '<div class="subtitulo" style="margin-top:14px">Multas</div>' + registros(dt.multas.itens) + (dt.multas.total ? '<div class="bloco"><div class="l">Total</div><div class="v">' + esc(dt.multas.total) + '</div></div>' : "");
       if (!vazio(dt.autuacoes) && !vazio(dt.autuacoes.itens)) dtHtml += '<div class="subtitulo" style="margin-top:14px">Autuações</div>' + registros(dt.autuacoes.itens) + (dt.autuacoes.total ? '<div class="bloco"><div class="l">Total</div><div class="v">' + esc(dt.autuacoes.total) + '</div></div>' : "");
@@ -616,9 +761,8 @@ export const MODEL_HTML_TEMPLATE = `
         ? '<div class="destaque-positivo">' + esc(d.comercializacao.texto || 'Consta histórico de comercialização') + '</div>'
         : '<div class="bloco"><div class="v">' + esc(d.comercializacao.texto) + '</div></div>';
       h.push(secao("carrinho", "Histórico de comercialização", cBody));
-    } else if (!vazio(d.comercializacao)) {
-      // compat string — qualquer histórico de comercialização fica em vermelho como alerta
-      h.push(secao("carrinho", "Informações para comercialização", '<div class="destaque-positivo">' + esc(typeof d.comercializacao === "string" ? d.comercializacao : JSON.stringify(d.comercializacao)) + '</div>'));
+    } else if (typeof d.comercializacao === "string" && !vazio(d.comercializacao)) {
+      h.push(secao("carrinho", "Informações para comercialização", '<div class="destaque-positivo">' + esc(d.comercializacao) + '</div>'));
     }
 
     if (!vazio(d.odometro)) {
