@@ -30,7 +30,8 @@ export const MODEL_HTML_TEMPLATE = `
 
   /* Cabeçalho */
   .cabecalho{display:flex;align-items:center;gap:20px;padding-bottom:12px;border-bottom:2px solid var(--borda-2);margin-bottom:12px;flex-wrap:wrap}
-  .cabecalho .logo img{height:72px;display:block}
+  .cabecalho .logo{flex:1 1 100%;display:flex;justify-content:center;align-items:center;margin-bottom:4px}
+  .cabecalho .logo img{height:88px;max-width:320px;width:auto;object-fit:contain;display:block}
   .cabecalho .info{flex:1;min-width:240px;font-size:12px;line-height:1.9}
   .cabecalho .info b{font-weight:700}
   .placa-mercosul{width:150px;border:2px solid #111;border-radius:8px;overflow:hidden;background:#eef2f5;flex:0 0 auto}
@@ -130,8 +131,10 @@ export const MODEL_HTML_TEMPLATE = `
   table.fipe-tabela td.num,table.fipe-tabela th.num{text-align:right;white-space:nowrap}
   table.fipe-tabela td.pos{color:var(--verde-escuro);font-weight:600}
   table.fipe-tabela td.neg{color:var(--vermelho);font-weight:600}
-  .ck{color:var(--verde);font-weight:800;font-size:15px}
-  .x{color:var(--vermelho);font-weight:800;font-size:15px}
+  .ck,.x{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;vertical-align:middle}
+  .ck svg,.x svg{width:18px;height:18px;display:block}
+  .ck svg{fill:var(--verde)}
+  .x svg{fill:var(--vermelho)}
   .na{color:var(--muted);font-weight:800}
 
   .gauge-box{background:var(--fundo-card);border:1px solid var(--borda-2);border-radius:12px;padding:24px 10px 16px;text-align:center;margin-bottom:16px}
@@ -540,7 +543,11 @@ export const MODEL_HTML_TEMPLATE = `
     }
 
     if (!vazio(d.comparativo)) {
-      var marca = { ok: '<span class="ck">✓</span>', diferente: '<span class="x">✕</span>', na: '<span class="na">—</span>' };
+      var marca = {
+        ok: '<span class="ck" title="Confere">' + I.ok + '</span>',
+        diferente: '<span class="x" title="Divergente">' + I.erro + '</span>',
+        na: '<span class="na" title="Não informado">—</span>'
+      };
       h.push(secao("setas", "Comparativo de componentes veiculares",
         '<div style="overflow:auto"><table class="comp"><thead><tr><th>COMPONENTE</th><th>FÁBRICA</th><th>ESTADUAL</th><th>COMPARATIVO</th></tr></thead><tbody>' +
         d.comparativo.map(function (r) {

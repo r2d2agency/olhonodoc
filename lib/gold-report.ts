@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import puppeteer from 'puppeteer';
 import type { CompanyResponse } from '@/lib/company-conferi';
 import { MODEL_HTML_TEMPLATE } from '@/lib/gold-report-template';
@@ -642,8 +644,30 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
   return data;
 }
 
+/** Carrega a logo configurada como data URL (necessário para renderização no PDF). */
+async function resolveLogoDataUrl(): Promise<string> {
+  try {
+    const { getBrandConfig } = await import('@/lib/brand');
+    const brand = await getBrandConfig();
+    const logo = norm(brand.logoDark || brand.logoLight);
+    if (!logo) return '';
+    if (/^data:image\//i.test(logo)) return logo;
+    if (/^https?:\/\//i.test(logo)) return logo;
+    if (logo.startsWith('/')) {
+      const file = path.join(process.cwd(), 'public', logo.replace(/^\/+/, ''));
+      const buf = await fs.readFile(file);
+      const ext = path.extname(file).toLowerCase();
+      const mime = ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : ext === '.webp' ? 'image/webp' : ext === '.svg' ? 'image/svg+xml' : 'image/png';
+      return `data:${mime};base64,${buf.toString('base64')}`;
+    }
+  } catch { /* sem logo — segue sem imagem */ }
+  return '';
+}
+
 export async function goldReportHtml(input: CompanyResponse, plate: string, status: string, message: string) {
   const data = buildData(input, plate, status, message);
+  const logo = await resolveLogoDataUrl();
+  if (logo && data.consulta) data.consulta.logoUrl = logo;
   const template = await getActiveTemplateHtml();
   return template.replace('__DATA__', JSON.stringify(data));
 }
