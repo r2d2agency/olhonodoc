@@ -16,7 +16,12 @@ export async function GET(request: Request) {
     const sent = params.get('sent');
     const received = params.get('received');
     const code = params.get('codigoConsulta');
-    const where = { ...(plate ? { normalizedPlate: plate } : {}), ...(product ? { providerProduct: product } : {}), ...(status ? { companyStatus: status as any } : {}), ...(environment ? { environment } : {}), ...(sent === 'true' ? { requestSentAt: { not: null } } : sent === 'false' ? { requestSentAt: null } : {}), ...(received === 'true' ? { responseReceivedAt: { not: null } } : received === 'false' ? { responseReceivedAt: null } : {}), ...(code ? { codigoConsulta: code } : {}) };
+    const dateFrom = params.get('dateFrom');
+    const dateTo = params.get('dateTo');
+    const dateFilter: Record<string, Date> = {};
+    if (dateFrom && /^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) dateFilter.gte = new Date(`${dateFrom}T00:00:00`);
+    if (dateTo && /^\d{4}-\d{2}-\d{2}$/.test(dateTo)) dateFilter.lte = new Date(`${dateTo}T23:59:59`);
+    const where = { ...(plate ? { normalizedPlate: plate } : {}), ...(product ? { providerProduct: product } : {}), ...(status ? { companyStatus: status as any } : {}), ...(environment ? { environment } : {}), ...(sent === 'true' ? { requestSentAt: { not: null } } : sent === 'false' ? { requestSentAt: null } : {}), ...(received === 'true' ? { responseReceivedAt: { not: null } } : received === 'false' ? { responseReceivedAt: null } : {}), ...(code ? { codigoConsulta: code } : {}), ...(Object.keys(dateFilter).length ? { queriedAt: dateFilter } : {}) };
     // O PDF fica de fora da listagem: ele é baixado sob demanda por
     // /api/admin/queries/[id]/pdf e serializar os bytes aqui engordaria a
     // resposta sem necessidade.

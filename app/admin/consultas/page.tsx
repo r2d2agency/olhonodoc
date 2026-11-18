@@ -62,6 +62,8 @@ export default function AdminQueriesPage() {
   const [environment, setEnvironment] = useState('');
   const [sent, setSent] = useState('');
   const [received, setReceived] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dispatching, setDispatching] = useState('');
@@ -80,6 +82,8 @@ const [regenerating, setRegenerating] = useState(false);
       if (environment) params.set('environment', environment);
       if (sent) params.set('sent', sent);
       if (received) params.set('received', received);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
       const response = await fetch(`/api/admin/queries?${params.toString()}`);
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Não foi possível carregar consultas');
@@ -173,7 +177,10 @@ const [regenerating, setRegenerating] = useState(false);
           <option value="true">Já recebido</option>
           <option value="false">Aguardando retorno</option>
         </select>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} aria-label="Data inicial" title="Data inicial" style={{ maxWidth: 170 }} />
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} aria-label="Data final" title="Data final" style={{ maxWidth: 170 }} />
         <button className="admin-secondary-button" onClick={() => void load()}>Aplicar filtros</button>
+        <button className="admin-secondary-button" onClick={() => { setPlate(''); setProduct(''); setStatus(''); setEnvironment(''); setSent(''); setReceived(''); setDateFrom(''); setDateTo(''); setQueries([]); }}>Limpar</button>
       </div>
     </section>
 

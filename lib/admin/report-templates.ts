@@ -4,6 +4,9 @@ import { HYBRID_HTML_TEMPLATE } from '@/lib/gold-report-template-hibrido';
 
 const LIST_KEY = 'report.templates';
 const ACTIVE_KEY = 'report.activeTemplate';
+/** Versão do layout do template padrão. Incrementar ao alterar MODEL_HTML_TEMPLATE. */
+const TEMPLATE_VERSION = '2026-11-18-spec';
+const VERSION_KEY = 'report.templateVersion';
 
 export type ReportTemplate = { id: string; name: string; html: string; updatedAt: string };
 
@@ -38,10 +41,34 @@ export async function resetReportTemplates() {
   await prisma.setting.delete({ where: { key: LIST_KEY } }).catch(() => undefined);
   await saveReportTemplates(DEFAULT_TEMPLATES);
   await setActiveTemplateId(DEFAULT_TEMPLATES[0].id);
+  await prisma.setting.upsert({ where: { key: VERSION_KEY }, create: { key: VERSION_KEY, value: TEMPLATE_VERSION }, update: { value: TEMPLATE_VERSION } });
   return DEFAULT_TEMPLATES;
 }
 
+/** Migra automaticamente os templates padrão salvos no banco quando o layout do código muda. */
+async function ensureTemplateVersion() {
+  try {
+    const row = await prisma.setting.findUnique({ where: { key: VERSION_KEY } });
+    if (row?.value === TEMPLATE_VERSION) return;
+    const id = await getActiveTemplateId();
+    const stored = (await listReportTemplates()).map(t => ({ ...t }));
+    const defaultIds = new Set(DEFAULT_TEMPLATES.map(t => t.id));
+    let changed = false;
+    // Atualiza somente os templates padrão; templates customizados são preservados.
+    for (const t of stored) {
+      if (defaultIds.has(t.id)) {
+        const fresh = DEFAULT_TEMPLATES.find(d => d.id === t.id);
+        if (fresh && t.html !== fresh.html) { t.html = fresh.html; changed = true; }
+      }
+    }
+    if (changed) await saveReportTemplates(stored);
+    await prisma.setting.upsert({ where: { key: VERSION_KEY }, create: { key: VERSION_KEY, value: TEMPLATE_VERSION }, update: { value: TEMPLATE_VERSION } });
+    void id;
+  } catch { /* segue com o que estiver salvo */ }
+}
+
 export async function getActiveTemplateHtml(): Promise<string> {
+  await ensureTemplateVersion();
   const id = await getActiveTemplateId();
   const templates = await listReportTemplates();
   return templates.find(t => t.id === id)?.html || DEFAULT_TEMPLATES[0].html;
