@@ -6,6 +6,7 @@ function validCpf(cpf: string) { return /^\d{11}$/.test(cpf) && !/^([0-9])\1{10}
 function validPhone(phone: string) { return /^\d{10,13}$/.test(phone); }
 
 export async function POST(request: Request) {
+  try {
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === 'string' ? body.name.trim().slice(0, 100) : '';
   const email = typeof body?.email === 'string' ? normalizeEmail(body.email) : '';
@@ -25,4 +26,8 @@ export async function POST(request: Request) {
   });
   await createSession(user.id);
   return NextResponse.json({ data: { id: user.id, name: user.name, email: user.email, role: user.role } }, { status: 201 });
+  } catch (error) {
+    console.error('[quick-register] falha:', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Não foi possível criar sua conta agora. Tente novamente.' }, { status: 500 });
+  }
 }

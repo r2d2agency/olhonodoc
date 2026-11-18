@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { CarFront, CircleHelp, Clock3, CreditCard, LoaderCircle, LockKeyhole, MapPin, ShieldCheck, Tag, User } from 'lucide-react';
 import type { CatalogProduct } from '@/lib/catalog';
 import { captureAttribution, trackEvent } from '@/lib/tracking';
+import { readJson } from '@/lib/client-response';
 import PaymentMethodSelector from './payment-method-selector';
 
 type Address = { postalCode: string; street: string; number: string; complement: string; neighborhood: string; city: string; state: string };
@@ -63,7 +64,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     setAggregateLoading(true); setAggregateError('');
     fetch('/api/account/aggregates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plate }) })
       .then(async r => {
-        const body = await r.json();
+        const body = await readJson(r);
         if (!r.ok) throw new Error(body.error || 'Não foi possível consultar o veículo.');
         if (body.data.status === 'PROCESSING') { setAggregateError('A Company recebeu a consulta e está processando os dados.'); return; }
         const ag = body.data.aggregates || null;
@@ -86,7 +87,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     setCepLoading(true); setError('');
     try {
       const response = await fetch(`/api/checkout/cep?cep=${digits}`);
-      const body = await response.json();
+      const body = await readJson(response);
       if (!response.ok) throw new Error(body.error || 'CEP não encontrado.');
       setAddress(a => ({ ...a, street: body.data.street, neighborhood: body.data.neighborhood, city: body.data.city, state: body.data.state }));
     } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível consultar o CEP.'); }
@@ -101,7 +102,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     setLoading(true); setError('');
     try {
       const response = await fetch('/api/checkout/prepare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productSlug: product.slug, plate, chassi: chassi || undefined, cpf, phone, address, couponCode: coupon ? coupon.code : '' }) });
-      const body = await response.json();
+      const body = await readJson(response);
       if (!response.ok) throw new Error(body.error);
       setOrder(body.data);
       // Total zerado (cupom 100%): confirma o pedido na hora, sem tela de pagamento.
@@ -115,7 +116,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     setPaymentLoading(true); setError('');
     try {
       const response = await fetch('/api/checkout/payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: pendingOrderId || order!.orderId }) });
-      const body = await response.json();
+      const body = await readJson(response);
       if (!response.ok) throw new Error(body.error);
       if (body.data.provider === 'free') {
         window.location.assign('/minha-conta?pedido=confirmado');

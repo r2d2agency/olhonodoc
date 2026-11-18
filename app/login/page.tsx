@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Check, LoaderCircle } from 'lucide-react';
 import { FormEvent, useState } from 'react';
+import { readJson } from '@/lib/client-response';
 
-async function readResponse(response: Response) { const text = await response.text(); try { return text ? JSON.parse(text) : {}; } catch { return {}; } }
+const readResponse = readJson;
 
 export default function LoginPage() {
   const [registerMode, setRegisterMode] = useState(false); const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [showPassword, setShowPassword] = useState(false); const [error, setError] = useState(''); const [loading, setLoading] = useState(false);
