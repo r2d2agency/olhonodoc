@@ -590,7 +590,7 @@ export const MODEL_HTML_TEMPLATE = `
         blocoTitulo('HISTÓRICO DE VENDA DIRETA POR MAIOR OFERTA', s.vendaDireta.consta ? 'var(--vermelho)' : 'var(--verde)') +
         '<div class="texto-formatado">' + (s.vendaDireta.consta ? 'CONSTA HISTÓRICO DE VENDA DIRETA' : 'NÃO CONSTA HISTÓRICO DE VENDA DIRETA PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS') + '</div>' +
         blocoTitulo('HISTÓRICO DE COMERCIALIZAÇÃO POR BANCO OU SEGURADORA', s.comercializacao.consta ? 'var(--vermelho)' : 'var(--verde)') +
-        '<div class="texto-formatado">' + (s.comercializacao.consta ? 'CONSTA COMERCIALIZAÇÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS' : 'NÃO CONSTA COMERCIALIZAÇÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS') + '</div>')));
+        '<div class="texto-formatado">' + (s.comercializacao.consta ? 'CONSTA COMERCIALIZAÇÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS' : 'NÃO CONSTA COMERCIALIZAÇÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS') + '</div>'));
 
       // 27 FIPE
       if (d.historicoFipe && !vazio(d.historicoFipe) && typeof d.historicoFipe === 'object' && !Array.isArray(d.historicoFipe) && d.historicoFipe.historico) {
