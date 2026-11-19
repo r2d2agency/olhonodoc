@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CreditCard, LoaderCircle, LockKeyhole, QrCode, Receipt } from 'lucide-react';
 import MercadoPagoCardForm from './mercadopago-card-form';
 
@@ -23,15 +23,17 @@ export default function PaymentMethodSelector({ orderId, publicKey, amountCents,
   const [error, setError] = useState('');
   const [pixData, setPixData] = useState<{ qrCode: string; qrCodeBase64: string } | null>(null);
   const [boletoData, setBoletoData] = useState<{ ticketUrl: string } | null>(null);
+  const autoStarted = useRef(false);
 
   const available: Array<{ id: 'card' | 'pix' | 'boleto'; label: string; icon: React.ReactNode }> = [];
   if (methods.card) available.push({ id: 'card', label: 'Cartão de crédito', icon: <CreditCard size={18} /> });
   if (methods.pix) available.push({ id: 'pix', label: 'Pix', icon: <QrCode size={18} /> });
   if (methods.boleto) available.push({ id: 'boleto', label: 'Boleto', icon: <Receipt size={18} /> });
 
-  // Quando o cliente já escolheu no modal, dispara a geração automaticamente.
+  // Método escolhido no modal: gera a cobrança automaticamente uma única vez na montagem.
   useEffect(() => {
-    if (!preferredMethod || selected) return;
+    if (autoStarted.current || !preferredMethod) return;
+    autoStarted.current = true;
     if (preferredMethod === 'card') { setSelected('card'); return; }
     setSelected(preferredMethod);
     void generateOffline(preferredMethod);
