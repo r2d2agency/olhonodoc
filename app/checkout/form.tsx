@@ -111,10 +111,18 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
       // Total zerado (cupom 100%): confirma o pedido na hora, sem tela de pagamento.
       if ((body.data.totalCents ?? body.data.amountCents ?? 0) <= 0) { setPreferredMethod('card'); await pay(body.data.orderId); return; }
       // Busca as opções do provedor (sem gerar cobrança) para o modal saber
-      // quais métodos exibir, e abre o modal antes da tela de pagamento.
+      // quais métodos exibir, e guarda para a tela de pagamento não precisar
+      // refazer a chamada (evita flash de "Verifique sua conexão").
       const options = await fetch('/api/checkout/payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: body.data.orderId }) });
       const optBody = await readJson(options);
-      if (options.ok && optBody.data?.methods) setPaymentMethods(optBody.data.methods);
+      if (options.ok && optBody.data?.provider === 'mercadopago') {
+        setPaymentProvider('mercadopago');
+        setPublicKey(optBody.data.publicKey || '');
+        setPaymentMethods(optBody.data.methods || { card: true, pix: true, boleto: true });
+      } else if (options.ok && optBody.data?.provider === 'asaas') {
+        setPaymentProvider('asaas');
+        setCheckoutUrl(optBody.data.checkoutUrl || '');
+      }
       setShowPaymentModal(true);
     } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível preparar o checkout.'); }
     finally { setLoading(false); }
@@ -144,10 +152,9 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     finally { setPaymentLoading(false); }
   }
 
-  async function choosePaymentMethod(method: 'card' | 'pix' | 'boleto') {
+  function choosePaymentMethod(method: 'card' | 'pix' | 'boleto') {
     setPreferredMethod(method);
     setShowPaymentModal(false);
-    await pay();
   }
 
   // O provedor é carregado apenas depois que o cliente escolhe o método no modal
@@ -156,7 +163,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
   if (order && preferredMethod) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="active">2</span></span><span className="eyebrow">PAGAMENTO</span><h1>Escolha como pagar.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> · {product.name} · placa <strong>{plate}</strong> · {brl(order.totalCents)}{order.couponCode ? ` (cupom ${order.couponCode})` : ''}.</p>{error && <p className="form-error">{error}</p>}{!paymentProvider && <p className="checkout-loading">{paymentLoading ? 'Carregando opções de pagamento…' : 'Verifique sua conexão e tente novamente.'} {!paymentLoading && <button className="button" onClick={() => setShowPaymentModal(true)}><CreditCard size={17}/> Escolher forma de pagamento</button>}</p>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={orderAmountCents} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} preferredMethod={preferredMethod} onSuccess={() => { window.location.assign('/minha-conta?pedido=confirmado'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}</section></div></main>;
 
   return <main className="checkout-page">
-    <PaymentMethodModal open={showPaymentModal} amountLabel={brl(coupon ? coupon.totalCents : product.priceCents)} methods={paymentMethods} onChoose={(method) => void choosePaymentMethod(method)} onClose={() => setShowPaymentModal(false)} />
+    <PaymentMethodModal open={showPaymentModal} amountLabel={brl(coupon ? coupon.totalCents : product.priceCents)} methods={paymentMethods} onChoose={(method) => choosePaymentMethod(method)} onClose={() => setShowPaymentModal(false)} />
     <div className="checkout-shell">
     <section className="checkout-card">
       <span className="checkout-step-indicator"><span className="active">1</span><span>2</span></span>
