@@ -51,9 +51,16 @@ export default function IntegrationsPage() {
     setTestingSale(true); setSaleResult("");
     try {
       const response = await fetch("/api/admin/payment-providers/test-sale", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ method: testMethod }) });
-      const body = await response.json();
-      setSaleResult(response.ok ? (body.data?.qrCode ? "Pix OK: " + (body.data.qrCode || "").slice(0,40) : body.data?.ticketUrl ? "Boleto: " + body.data.ticketUrl : "OK: " + JSON.stringify(body.data)) : (body.error || "Falha"));
-    } catch { setSaleResult("Falha de rede."); }
+      const text = await response.text().catch(() => "");
+      let body: any = {};
+      try { body = text ? JSON.parse(text) : {}; } catch { /* resposta não-JSON */ }
+      if (response.ok) {
+        setSaleResult(body.data?.qrCode ? "Pix OK: " + String(body.data.qrCode).slice(0, 40) : body.data?.ticketUrl ? "Boleto: " + body.data.ticketUrl : "OK: " + JSON.stringify(body.data));
+      } else {
+        // Mostra o erro real da API (inclui MP_ERROR / PAYMENT_PROVIDER_INVALID_RESPONSE)
+        setSaleResult(body.error || (text ? `HTTP ${response.status}: ${text.slice(0, 200)}` : `HTTP ${response.status}`));
+      }
+    } catch (e) { setSaleResult("Falha de rede: " + (e instanceof Error ? e.message : "sem resposta do servidor")); }
     finally { setTestingSale(false); }
   }
   async function testAsaas() {

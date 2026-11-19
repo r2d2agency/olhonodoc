@@ -396,14 +396,13 @@ export async function createOfflinePayment(orderId: string, input: OfflinePaymen
     offlineDetails = await fetchOfflinePaymentDetails(config.environment, config.mercadopago.accessToken, externalId, orderExternalId);
   }
   if (!offlineDetails.qrCode && !offlineDetails.qrCodeBase64 && !offlineDetails.ticketUrl) {
-    // A Orders API respondeu 200 mas não há QR/link nem no detalhe do pagamento,
-    // mesmo depois de repetir a busca. Sem esse dado não há como o cliente pagar,
-    // então falhar aqui é melhor do que devolver 200 vazio.
-    void logger.error('payment.offline.details_empty', { orderId, method: input.paymentMethodId, providerOrderId: orderExternalId, hint: isPix ? 'o Mercado Pago aceitou a cobrança mas não devolveu o QR Code do Pix; verifique a chave Pix e o método no painel do Mercado Pago' : 'verifique o método no painel do Mercado Pago' });
-    if (isPix) throw new Error('MP_PIX_KEY_MISSING');
-    throw new Error('PAYMENT_PROVIDER_INVALID_RESPONSE');
+    // A cobrança existe no Mercado Pago mesmo sem o link no corpo da resposta.
+    // Em vez de estourar (o que fez o navegador mostrar "Falha de rede" e deixou
+    // um boleto órfão), devolvemos os IDs para o admin localizar no painel MP.
+    void logger.warn('payment.offline.details_empty', { orderId, method: input.paymentMethodId, providerOrderId: orderExternalId, externalId, status });
+    return { payment, status, ...offlineDetails, providerOrderId: orderExternalId, externalId, warning: isPix ? 'QR Code não retornado pelo Mercado Pago. Verifique a chave Pix.' : 'Link do boleto não retornado. Localize o pagamento pelo ID no painel do Mercado Pago.' };
   }
-  return { payment, status, ...offlineDetails };
+  return { payment, status, ...offlineDetails, providerOrderId: orderExternalId, externalId };
 }
 
 /**
@@ -485,7 +484,7 @@ const OFFLINE_DETAILS_ATTEMPTS = 4;
 const OFFLINE_DETAILS_DELAY_MS = 1200;
 // Orçamento total da busca: com o QR assíncrono o Pix costuma aparecer em 2-3s,
 // mas a rota não pode ficar pendurada esperando por isso.
-const OFFLINE_DETAILS_BUDGET_MS = 8000;
+const OFFLINE_DETAILS_BUDGET_MS = 4500;
 
 /**
  * Busca o QR Code do Pix / o link do boleto no recurso de pagamento do Mercado Pago.

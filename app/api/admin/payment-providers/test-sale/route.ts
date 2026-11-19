@@ -43,7 +43,8 @@ const POST = async (request: Request) => {
       payerIdentification: { type: 'CPF', number: '11144477735' },
       notificationUrl: `${new URL(request.url).origin}/api/webhooks/mercadopago`,
     });
-    return NextResponse.json({ data: { orderId: order.id, status: result.status, qrCode: result.qrCode, qrCodeBase64: result.qrCodeBase64, ticketUrl: result.ticketUrl } });
+    const extra = result as any;
+    return NextResponse.json({ data: { orderId: order.id, status: result.status, qrCode: result.qrCode, qrCodeBase64: result.qrCodeBase64, ticketUrl: result.ticketUrl, providerOrderId: extra.providerOrderId || extra.payment?.providerOrderId, externalId: extra.externalId || extra.payment?.externalId, warning: extra.warning } });
   } catch (error) {
     const code = error instanceof Error ? error.message : '';
     return NextResponse.json({ error: code || 'Falha ao gerar cobrança.', orderId: order.id }, { status: 502 });
