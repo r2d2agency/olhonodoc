@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { ArrowDownToLine, ArrowRight, Check, Clock3, FileText, LoaderCircle, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowDownToLine, ArrowRight, Check, Clock3, FileText, LoaderCircle, Receipt, RefreshCw, Trash2 } from 'lucide-react';
 import type { AccountQuery } from './portal';
 
 export const ANALYSIS_THRESHOLD_MS = 15 * 60 * 1000;
@@ -127,6 +127,13 @@ export default function QueriesTab({ queries, loading, onReload, onNewQuery }: {
                   <div className="customer-query-result">
                     <strong>Gerando o laudo…</strong>
                     <span>A consulta foi concluída e o PDF está sendo preparado. Volte em instantes e use o botão Atualizar status.</span>
+                  </div>
+                )}
+                {pending && item.ticketUrl && (
+                  <div className="customer-query-result">
+                    <strong>Boleto disponível</strong>
+                    <span>O boleto ainda está em aberto. Você pode abrir ou baixar novamente.</span>
+                    <a className="customer-query-download" href={item.ticketUrl} target="_blank" rel="noopener noreferrer"><Receipt size={15} /> Abrir boleto</a>
                   </div>
                 )}
                 {pending && (
