@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CreditCard, LoaderCircle, LockKeyhole, QrCode, Receipt } from 'lucide-react';
 import MercadoPagoCardForm from './mercadopago-card-form';
+import PaymentSuccess from './payment-success';
 
 type Props = {
   orderId: string;
@@ -23,6 +24,7 @@ export default function PaymentMethodSelector({ orderId, publicKey, amountCents,
   const [error, setError] = useState('');
   const [pixData, setPixData] = useState<{ qrCode: string; qrCodeBase64: string } | null>(null);
   const [boletoData, setBoletoData] = useState<{ ticketUrl: string } | null>(null);
+  const [successMethod, setSuccessMethod] = useState<'pix' | 'card' | null>(null);
   const autoStarted = useRef(false);
 
   const available: Array<{ id: 'card' | 'pix' | 'boleto'; label: string; icon: React.ReactNode }> = [];
@@ -73,7 +75,7 @@ export default function PaymentMethodSelector({ orderId, publicKey, amountCents,
       try { body = raw ? JSON.parse(raw) : {}; } catch { throw new Error(`HTTP ${response.status} — resposta não-JSON do servidor: ${raw.slice(0, 200) || '(corpo vazio)'}.`); }
       if (!response.ok) throw new Error(body.error || 'Não foi possível consultar o status do pagamento.');
       const status = body.data?.status;
-      if (status === 'APPROVED') { onSuccess(); return; }
+      if (status === 'APPROVED') { setSuccessMethod('pix'); return; }
       if (['REJECTED', 'CANCELLED', 'EXPIRED', 'REFUNDED', 'CHARGEBACK'].includes(status)) {
         throw new Error('O pagamento não foi aprovado. Confira os dados ou tente outro método de pagamento.');
       }
@@ -84,8 +86,10 @@ export default function PaymentMethodSelector({ orderId, publicKey, amountCents,
     } finally { setChecking(false); }
   }
 
+  if (successMethod) return <PaymentSuccess method={successMethod} onFinish={onSuccess} />;
+
   if (selected === 'card') {
-    return <MercadoPagoCardForm orderId={orderId} publicKey={publicKey} amountCents={amountCents} payerEmail={payerEmail} payerCpf={payerCpf} onSuccess={onSuccess} onError={onError} />;
+    return <MercadoPagoCardForm orderId={orderId} publicKey={publicKey} amountCents={amountCents} payerEmail={payerEmail} payerCpf={payerCpf} onSuccess={() => setSuccessMethod('card')} onError={onError} />;
   }
 
   if (selected === 'pix' && pixData) {
