@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CreditCard, LoaderCircle, LockKeyhole, QrCode, Receipt } from 'lucide-react';
 import MercadoPagoCardForm from './mercadopago-card-form';
 
@@ -11,11 +11,12 @@ type Props = {
   payerEmail: string;
   payerCpf: string;
   methods: { card: boolean; pix: boolean; boleto: boolean };
+  preferredMethod?: 'card' | 'pix' | 'boleto' | null;
   onSuccess: () => void;
   onError: (message: string) => void;
 };
 
-export default function PaymentMethodSelector({ orderId, publicKey, amountCents, payerEmail, payerCpf, methods, onSuccess, onError }: Props) {
+export default function PaymentMethodSelector({ orderId, publicKey, amountCents, payerEmail, payerCpf, methods, preferredMethod, onSuccess, onError }: Props) {
   const [selected, setSelected] = useState<'card' | 'pix' | 'boleto' | null>(null);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -27,6 +28,15 @@ export default function PaymentMethodSelector({ orderId, publicKey, amountCents,
   if (methods.card) available.push({ id: 'card', label: 'Cartão de crédito', icon: <CreditCard size={18} /> });
   if (methods.pix) available.push({ id: 'pix', label: 'Pix', icon: <QrCode size={18} /> });
   if (methods.boleto) available.push({ id: 'boleto', label: 'Boleto', icon: <Receipt size={18} /> });
+
+  // Quando o cliente já escolheu no modal, dispara a geração automaticamente.
+  useEffect(() => {
+    if (!preferredMethod || selected) return;
+    if (preferredMethod === 'card') { setSelected('card'); return; }
+    setSelected(preferredMethod);
+    void generateOffline(preferredMethod);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferredMethod]);
 
   async function generateOffline(method: 'pix' | 'boleto') {
     setLoading(true); setError('');

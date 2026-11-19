@@ -275,3 +275,18 @@ footer nav{display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:#435a72}
 body{padding-bottom:65px}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}
 .reveal{opacity:1;transform:none}}}
+
+/* Modal de escolha de forma de pagamento */
+.payment-modal-backdrop{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,26,40,.65);backdrop-filter:blur(3px)}
+.payment-modal{position:relative;width:min(100%,460px);max-height:90vh;overflow:auto;padding:30px;border-radius:12px;background:#fff;box-shadow:0 24px 70px rgba(3,26,40,.35)}
+.payment-modal-close{position:absolute;top:14px;right:14px;display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:50%;background:#f1f5f7;color:#52707c;cursor:pointer}
+.payment-modal h2{margin:8px 0 6px;color:#17394c;font-size:1.4rem}
+.payment-modal>p{margin:0 0 18px;color:#607682;font-size:.85rem}
+.payment-modal-options{display:grid;gap:10px}
+.payment-modal-option{display:flex;align-items:center;gap:14px;width:100%;padding:16px;border:1px solid #d7e3e8;border-radius:8px;background:#fff;color:#13a974;text-align:left;cursor:pointer;transition:border-color .15s,background .15s}
+.payment-modal-option:hover{border-color:#13a974;background:#f0faf5}
+.payment-modal-option span{display:grid;gap:3px}
+.payment-modal-option strong{color:#17394c;font-size:.9rem}
+.payment-modal-option small{color:#7a8a93;font-size:.72rem}
+.payment-modal-note{margin-top:18px!important;color:#8a9aa3!important;font-size:.7rem!important;line-height:1.5}
+@media(max-width:560px){.payment-modal{padding:22px}.payment-modal-option{padding:13px}}

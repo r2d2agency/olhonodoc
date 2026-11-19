@@ -7,6 +7,7 @@ import type { CatalogProduct } from '@/lib/catalog';
 import { captureAttribution, trackEvent } from '@/lib/tracking';
 import { readJson } from '@/lib/client-response';
 import PaymentMethodSelector from './payment-method-selector';
+import PaymentMethodModal from './payment-method-modal';
 
 type Address = { postalCode: string; street: string; number: string; complement: string; neighborhood: string; city: string; state: string };
 const emptyAddress: Address = { postalCode: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' };
@@ -35,6 +36,8 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
   const [coupon, setCoupon] = useState<{ code: string; discountCents: number; subtotalCents: number; totalCents: number } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [preferredMethod, setPreferredMethod] = useState<'card' | 'pix' | 'boleto' | null>(null);
 
   const brl = (cents: number) => (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -107,6 +110,8 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
       setOrder(body.data);
       // Total zerado (cupom 100%): confirma o pedido na hora, sem tela de pagamento.
       if ((body.data.totalCents ?? body.data.amountCents ?? 0) <= 0) { await pay(body.data.orderId); return; }
+      // Abre o modal para escolher o método antes de gerar a cobrança.
+      setShowPaymentModal(true);
     } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível preparar o checkout.'); }
     finally { setLoading(false); }
   }
@@ -135,13 +140,20 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
     finally { setPaymentLoading(false); }
   }
 
-  // Pedido com valor zerado (cupom de 100%): confirma e envia direto, sem tela de pagamento.
-  // Caso contrário, carrega o provedor automaticamente para exibir as opções sem clique intermediário.
-  useEffect(() => { if (order && !paymentProvider && !paymentLoading) { pay(); } }, [order, paymentProvider, paymentLoading]);
+  async function choosePaymentMethod(method: 'card' | 'pix' | 'boleto') {
+    setPreferredMethod(method);
+    setShowPaymentModal(false);
+    await pay();
+  }
 
-  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="active">2</span></span><span className="eyebrow">PAGAMENTO</span><h1>Escolha como pagar.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> · {product.name} · placa <strong>{plate}</strong> · {brl(order.totalCents)}{order.couponCode ? ` (cupom ${order.couponCode})` : ''}.</p>{error && <p className="form-error">{error}</p>}{!paymentProvider && <p className="checkout-loading">{paymentLoading ? 'Carregando opções de pagamento…' : 'Verifique sua conexão e tente novamente.'} {!paymentLoading && <button className="button" onClick={() => pay()}><CreditCard size={17}/> Tentar novamente</button>}</p>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={orderAmountCents} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} onSuccess={() => { window.location.assign('/minha-conta?pedido=confirmado'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}</section></div></main>;
+  // O provedor é carregado apenas depois que o cliente escolhe o método no modal
+  // (ou quando o pedido é gratuito, tratado em submit()).
 
-  return <main className="checkout-page"><div className="checkout-shell">
+  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="active">2</span></span><span className="eyebrow">PAGAMENTO</span><h1>Escolha como pagar.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> · {product.name} · placa <strong>{plate}</strong> · {brl(order.totalCents)}{order.couponCode ? ` (cupom ${order.couponCode})` : ''}.</p>{error && <p className="form-error">{error}</p>}{!paymentProvider && <p className="checkout-loading">{paymentLoading ? 'Carregando opções de pagamento…' : 'Verifique sua conexão e tente novamente.'} {!paymentLoading && <button className="button" onClick={() => pay()}><CreditCard size={17}/> Tentar novamente</button>}</p>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={orderAmountCents} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} preferredMethod={preferredMethod} onSuccess={() => { window.location.assign('/minha-conta?pedido=confirmado'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}</section></div></main>;
+
+  return <main className="checkout-page">
+    <PaymentMethodModal open={showPaymentModal} amountLabel={brl(coupon ? coupon.totalCents : product.priceCents)} methods={paymentMethods} onChoose={(method) => void choosePaymentMethod(method)} onClose={() => setShowPaymentModal(false)} />
+    <div className="checkout-shell">
     <section className="checkout-card">
       <span className="checkout-step-indicator"><span className="active">1</span><span>2</span></span>
       <span className="eyebrow">SEUS DADOS</span>
