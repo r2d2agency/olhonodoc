@@ -614,10 +614,18 @@ export const MODEL_HTML_TEMPLATE = `
       // 20
       h.push(secao("triangulo", "Informações de sinistro (cortesia)", '<div class="v" style="font-weight:700;color:' + (s.sinistroPositivo ? 'var(--vermelho)' : 'var(--texto)') + '">' + esc(s.sinistroTexto) + '</div>'));
 
-      // 21 — parecer simplificado
+      // 21 — parecer com gauge e legenda (restaurado)
       if (s.parecer && s.parecer.nivel) {
-        var pcor = { vermelho: '#dc2626', amarelo: '#f59e0b', verde: '#10b981' }[s.parecer.nivel] || '#6b7280';
-        h.push(secao("paleta", "Parecer técnico (Cortesia)", '<div class="v" style="color:' + pcor + ';font-weight:800">' + esc(s.parecer.nivel.toUpperCase()) + '</div>'));
+        var pResumo = s.parecer.resumo ? '<div class="parecer-resumo"><strong>Resultado da análise:</strong><br>' + esc(s.parecer.resumo) + '</div>' : '';
+        h.push(secao("paleta", "Parecer técnico (Cortesia)",
+          gauge(s.parecer.nivel) + pResumo +
+          '<div class="legenda">' +
+          '<p>Essa informação indica uma estimativa de como o veículo tende a ser aceito pelas seguradoras, considerando os apontamentos identificados no histórico consultado. A análise não representa aprovação ou recusa definitiva de seguro.</p>' +
+          '<div class="nivel-card" style="--cor:#10b981"><h4>Verde — Tudo ok / boa aceitação</h4><p>Não foram identificados apontamentos críticos relevantes na consulta realizada.</p></div>' +
+          '<div class="nivel-card" style="--cor:#f59e0b"><h4>Amarelo — Atenção</h4><p>Há pontos que exigem análise cuidadosa, vistoria ou condições específicas junto à seguradora/comprador.</p></div>' +
+          '<div class="nivel-card" style="--cor:#dc2626"><h4>Vermelho — Alerta</h4><p>Há apontamentos críticos que podem dificultar, limitar ou impedir a contratação de seguro e a negociação.</p></div>' +
+          '<div class="obs"><h4>Observação importante</h4>O parecer é orientativo e considera os dados retornados na data/hora da consulta. A aprovação final depende da análise de cada instituição.</div>' +
+          '</div>', { classe: "quebra" }));
       }
 
       // 22-26 — comercialização com 4 blocos
