@@ -1118,13 +1118,19 @@ export async function renderGoldPdf(response: CompanyResponse, plate: string, st
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
     await page.emulateMediaType('print');
-    await page.setContent(html, { waitUntil: 'load' });
+    // domcontentloaded evita esperar fontes externas (Google Fonts), que podem
+    // travar a geracao por minutos em containers sem acesso externo rapido.
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
     // aguarda render JS do template (conteúdo injetado em #relatorio)
     await page.waitForFunction(() => {
       const el = document.getElementById('relatorio');
       return !!el && el.children.length > 0;
     }, { timeout: 15000 }).catch(() => {});
-    await page.evaluate(() => (document as any).fonts?.ready).catch(() => {});
+    // espera limitada pelas fontes — nunca bloqueia a geracao
+    await Promise.race([
+      page.evaluate(() => (document as any).fonts?.ready).catch(() => undefined),
+      new Promise(resolve => setTimeout(resolve, 2500)),
+    ]);
     return await page.pdf({
       format: 'A4',
       printBackground: true,
