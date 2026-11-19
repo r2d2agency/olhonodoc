@@ -55,7 +55,8 @@ export default function IntegrationsPage() {
       let body: any = {};
       try { body = text ? JSON.parse(text) : {}; } catch { /* resposta não-JSON */ }
       if (response.ok) {
-        setSaleResult(body.data?.qrCode ? "Pix OK: " + String(body.data.qrCode).slice(0, 40) : body.data?.ticketUrl ? "Boleto: " + body.data.ticketUrl : "OK: " + JSON.stringify(body.data));
+        setSaleResult(body.data?.qrCode ? "Pix OK: " + String(body.data.qrCode).slice(0, 40) : body.data?.ticketUrl ? "Boleto: " + body.data.ticketUrl : "OK: " + JSON.stringify(body.data?.debugRaw ? { ...body.data, debugRaw: '(ver consola)' } : body.data));
+        if (body.data?.debugRaw) console.info('[MP debug raw]', body.data.debugRaw);
       } else {
         // Mostra o erro real da API (inclui MP_ERROR / PAYMENT_PROVIDER_INVALID_RESPONSE)
         setSaleResult(body.error || (text ? `HTTP ${response.status}: ${text.slice(0, 200)}` : `HTTP ${response.status}`));

@@ -202,7 +202,27 @@ function extractQrCode(rawResponse: any) {
     const ticketUrl = candidate.ticket_url || candidate.ticketUrl || candidate.external_resource_url || '';
     if (qrCode || qrCodeBase64 || ticketUrl) return { qrCode, qrCodeBase64, ticketUrl };
   }
+  // Busca recursiva: o link do boleto pode vir em caminhos diferentes conforme a conta.
+  const found = findDeepPaymentLink(rawResponse);
+  if (found) return found;
   return { qrCode: '', qrCodeBase64: '', ticketUrl: '' };
+}
+
+/** Busca em qualquer profundidade por qr_code / ticket_url / external_resource_url. */
+function findDeepPaymentLink(value: unknown, depth = 0): { qrCode: string; qrCodeBase64: string; ticketUrl: string } | null {
+  if (depth > 8 || value === null || value === undefined) return null;
+  if (Array.isArray(value)) {
+    for (const item of value) { const f = findDeepPaymentLink(item, depth + 1); if (f) return f; }
+    return null;
+  }
+  if (typeof value !== 'object') return null;
+  const rec = value as Record<string, unknown>;
+  const qrCode = String(rec.qr_code || rec.qrCode || '');
+  const qrCodeBase64 = String(rec.qr_code_base64 || rec.qrCodeBase64 || '');
+  const ticketUrl = String(rec.ticket_url || rec.ticketUrl || rec.external_resource_url || '');
+  if (qrCode || qrCodeBase64 || ticketUrl) return { qrCode, qrCodeBase64, ticketUrl };
+  for (const v of Object.values(rec)) { const f = findDeepPaymentLink(v, depth + 1); if (f) return f; }
+  return null;
 }
 
 /** O id do pagamento é o identificador que o webhook do Mercado Pago notifica (`data.id`). */
