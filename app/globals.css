@@ -305,3 +305,23 @@ body{padding-bottom:65px}
 @keyframes payment-success-check{0%{opacity:0;transform:scale(.5)}100%{opacity:1;transform:scale(1)}}
 @keyframes payment-success-bar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @media(prefers-reduced-motion:reduce){.payment-success,.payment-success-ring,.payment-success-ring svg,.payment-success-bar span{animation:none}}
+
+/* Garagem do cliente */
+.customer-vehicle-search{display:flex;align-items:center;gap:9px;max-width:420px;padding:0 12px;border:1px solid #d7e3e8;border-radius:6px;background:#fff;color:#7a8a93}
+.customer-vehicle-search input{flex:1;min-width:0;min-height:42px;border:0;outline:0;color:#17394c;background:transparent;font-size:.85rem}
+.customer-vehicle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.customer-vehicle-card-item{padding:18px;border:1px solid #dce7ed;border-radius:10px;background:#fff;box-shadow:0 4px 18px rgba(17,55,82,.05)}
+.customer-vehicle-card-top{display:flex;align-items:flex-start;gap:12px}
+.customer-vehicle-icon{display:grid;place-items:center;width:42px;height:42px;flex:none;border-radius:8px;background:#e8f7f0;color:#13a974}
+.customer-vehicle-card-top h3{margin:2px 0;font-size:1.2rem;letter-spacing:.08em;color:#17394c}
+.customer-vehicle-card-top small{color:#7a8a93;font-size:.72rem}
+.customer-vehicle-toggle{display:grid;place-items:center;width:32px;height:32px;margin-left:auto;border:1px solid #dce7ed;border-radius:6px;background:#fff;color:#52707c;cursor:pointer}
+.customer-vehicle-info{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid #edf2f4}
+.customer-vehicle-info small,.customer-vehicle-details small{display:block;color:#8a9aa3;font-size:.6rem;letter-spacing:.08em}
+.customer-vehicle-info strong,.customer-vehicle-details strong{display:block;margin-top:2px;color:#17394c;font-size:.8rem}
+.customer-vehicle-details{margin-top:14px;padding-top:12px;border-top:1px dashed #dce7ed}
+.customer-vehicle-details p{margin:0 0 10px}
+.customer-vehicle-queries{display:grid;gap:6px}
+.customer-vehicle-queries>div{display:flex;align-items:center;gap:8px;padding:8px;border-radius:5px;background:#f7fafb;font-size:.72rem;color:#52707c}
+.customer-vehicle-queries small{margin-left:auto;white-space:nowrap}
+@media(max-width:560px){.customer-vehicle-grid{grid-template-columns:1fr}}
