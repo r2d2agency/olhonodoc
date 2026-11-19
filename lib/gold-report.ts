@@ -1054,6 +1054,7 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
       detranSituacao: norm(detran.situacao),
       detranUrl: detranUrl,
       sinistroTexto: sinistroSpec,
+      sinistroPositivo: sinistroPos,
       leiloes: leiloesSpec,
       parecer: { nivel: parecer.nivel, resumo: parecer.resumo },
       vendaDireta: { consta: Boolean(asRecord(r.vendaDireta).constaVendaDireta) },

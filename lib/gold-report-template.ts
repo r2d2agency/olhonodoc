@@ -612,7 +612,7 @@ export const MODEL_HTML_TEMPLATE = `
       }
 
       // 20
-      h.push(secao("triangulo", "Informações de sinistro (cortesia)", '<div class="v" style="font-weight:700;color:' + (sinistroPos ? 'var(--vermelho)' : 'var(--texto)') + '">' + esc(s.sinistroTexto) + '</div>'));
+      h.push(secao("triangulo", "Informações de sinistro (cortesia)", '<div class="v" style="font-weight:700;color:' + (s.sinistroPositivo ? 'var(--vermelho)' : 'var(--texto)') + '">' + esc(s.sinistroTexto) + '</div>'));
 
       // 21 — parecer simplificado
       if (s.parecer && s.parecer.nivel) {
