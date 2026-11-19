@@ -109,8 +109,12 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
       if (!response.ok) throw new Error(body.error);
       setOrder(body.data);
       // Total zerado (cupom 100%): confirma o pedido na hora, sem tela de pagamento.
-      if ((body.data.totalCents ?? body.data.amountCents ?? 0) <= 0) { await pay(body.data.orderId); return; }
-      // Abre o modal para escolher o método antes de gerar a cobrança.
+      if ((body.data.totalCents ?? body.data.amountCents ?? 0) <= 0) { setPreferredMethod('card'); await pay(body.data.orderId); return; }
+      // Busca as opções do provedor (sem gerar cobrança) para o modal saber
+      // quais métodos exibir, e abre o modal antes da tela de pagamento.
+      const options = await fetch('/api/checkout/payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: body.data.orderId }) });
+      const optBody = await readJson(options);
+      if (options.ok && optBody.data?.methods) setPaymentMethods(optBody.data.methods);
       setShowPaymentModal(true);
     } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível preparar o checkout.'); }
     finally { setLoading(false); }
@@ -149,7 +153,7 @@ export default function CheckoutForm({ product, plate }: { product: CatalogProdu
   // O provedor é carregado apenas depois que o cliente escolhe o método no modal
   // (ou quando o pedido é gratuito, tratado em submit()).
 
-  if (order) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="active">2</span></span><span className="eyebrow">PAGAMENTO</span><h1>Escolha como pagar.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> · {product.name} · placa <strong>{plate}</strong> · {brl(order.totalCents)}{order.couponCode ? ` (cupom ${order.couponCode})` : ''}.</p>{error && <p className="form-error">{error}</p>}{!paymentProvider && <p className="checkout-loading">{paymentLoading ? 'Carregando opções de pagamento…' : 'Verifique sua conexão e tente novamente.'} {!paymentLoading && <button className="button" onClick={() => pay()}><CreditCard size={17}/> Tentar novamente</button>}</p>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={orderAmountCents} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} preferredMethod={preferredMethod} onSuccess={() => { window.location.assign('/minha-conta?pedido=confirmado'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}</section></div></main>;
+  if (order && preferredMethod) return <main className="checkout-page"><div className="checkout-shell"><section className="checkout-card"><span className="checkout-step-indicator"><span className="done">1</span><span className="active">2</span></span><span className="eyebrow">PAGAMENTO</span><h1>Escolha como pagar.</h1><p>Pedido <strong>{order.orderId.slice(-8).toUpperCase()}</strong> · {product.name} · placa <strong>{plate}</strong> · {brl(order.totalCents)}{order.couponCode ? ` (cupom ${order.couponCode})` : ''}.</p>{error && <p className="form-error">{error}</p>}{!paymentProvider && <p className="checkout-loading">{paymentLoading ? 'Carregando opções de pagamento…' : 'Verifique sua conexão e tente novamente.'} {!paymentLoading && <button className="button" onClick={() => setShowPaymentModal(true)}><CreditCard size={17}/> Escolher forma de pagamento</button>}</p>}{paymentProvider === 'mercadopago' && <PaymentMethodSelector orderId={order.orderId} publicKey={publicKey} amountCents={orderAmountCents} payerEmail={payerEmail} payerCpf={cpf} methods={paymentMethods} preferredMethod={preferredMethod} onSuccess={() => { window.location.assign('/minha-conta?pedido=confirmado'); }} onError={setError}/>}{paymentProvider === 'asaas' && checkoutUrl && <button className="button" onClick={() => window.location.assign(checkoutUrl)}><CreditCard size={17}/> Ir para pagamento</button>}</section></div></main>;
 
   return <main className="checkout-page">
     <PaymentMethodModal open={showPaymentModal} amountLabel={brl(coupon ? coupon.totalCents : product.priceCents)} methods={paymentMethods} onChoose={(method) => void choosePaymentMethod(method)} onClose={() => setShowPaymentModal(false)} />
