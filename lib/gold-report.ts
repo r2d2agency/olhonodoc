@@ -1053,6 +1053,7 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
       duplicidades,
       detranSituacao: norm(detran.situacao),
       detranUrl: detranUrl,
+      chassiConsulta: norm(bin.chassi || agg.chassi || est.chassi),
       sinistroTexto: sinistroSpec,
       sinistroPositivo: sinistroPos,
       leiloes: leiloesSpec,

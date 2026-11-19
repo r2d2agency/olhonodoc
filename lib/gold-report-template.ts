@@ -598,7 +598,7 @@ export const MODEL_HTML_TEMPLATE = `
       // 18 — Renajud Detalhado (tabela PROCESSOS)
       if (d.detalhamentoRenajud) {
         var rens = Array.isArray(d.detalhamentoRenajud) ? d.detalhamentoRenajud : [d.detalhamentoRenajud];
-        h.push(secao("info", "Renajud Detalhado", '<div class="texto-formatado"><b>Placa:</b> ' + esc(s.placa) + ' &nbsp; <b>Chassi:</b> ' + esc(norm(agg.chassi || bin.chassi)) + '</div>' +
+        h.push(secao("info", "Renajud Detalhado", '<div class="texto-formatado"><b>Placa:</b> ' + esc(s.placa) + ' &nbsp; <b>Chassi:</b> ' + esc(s.chassiConsulta) + '</div>' +
           blocoTitulo('PROCESSOS') + '<table class="comp"><thead><tr><th>Tribunal</th><th>Órgão</th><th>Nº do processo</th><th>Descrição</th><th>Data</th><th>Hora</th></tr></thead><tbody>' +
           rens.map(function (p) { return '<tr><td>' + esc(p.Tribunal || p['Tribunal'] || '') + '</td><td>' + esc(p.Orgao || p['Órgão'] || '') + '</td><td>' + esc(p.NumeroProcesso || p['Numero Processo'] || '') + '</td><td>' + esc(p.Descricao || '') + '</td><td>' + esc(p.DataInclusao || p['Data Inclusao'] || '') + '</td><td>' + esc(p.HoraInclusao || p['Hora Inclusao'] || '') + '</td></tr>'; }).join('') +
           '</tbody></table>'));
