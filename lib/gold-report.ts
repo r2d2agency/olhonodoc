@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
+import QRCode from 'qrcode';
 import type { CompanyResponse } from '@/lib/company-conferi';
 import { MODEL_HTML_TEMPLATE } from '@/lib/gold-report-template';
 import { getActiveTemplateHtml } from '@/lib/admin/report-templates';
@@ -1090,6 +1091,21 @@ export async function goldReportHtml(input: CompanyResponse, plate: string, stat
   const data = buildData(input, plate, status, message);
   const logo = await resolveLogoDataUrl();
   if (logo && data.consulta) data.consulta.logoUrl = logo;
+
+  // QR Code de validação: aponta para uma página pública que confirma a origem da consulta.
+  try {
+    const r = asRecord(input);
+    const token = norm(r.hashPesquisa);
+    if (token && data.spec) {
+      const baseUrl = norm(process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_URL || '').replace(/\/$/, '');
+      if (baseUrl) {
+        const validationUrl = `${baseUrl}/validar/${encodeURIComponent(token)}`;
+        (data.spec as Record<string, unknown>).validationUrl = validationUrl;
+        (data.spec as Record<string, unknown>).qrCode = await QRCode.toDataURL(validationUrl, { width: 120, margin: 1, errorCorrectionLevel: 'M' });
+      }
+    }
+  } catch { /* QR opcional — não quebra o laudo */ }
+
   const template = await getActiveTemplateHtml();
   return template.replace('__DATA__', JSON.stringify(data));
 }

@@ -153,6 +153,10 @@ export const MODEL_HTML_TEMPLATE = `
   .spec-placa-wrapper small{font-weight:800;font-size:12px}
   .spec-leiloes{display:grid;gap:12px}
   .spec-leilao .spec-card{width:100%}
+  .spec-validacao{display:flex;align-items:center;justify-content:center;gap:14px;margin:18px 0;padding:14px;border:1px solid var(--verde-borda);border-radius:8px;background:var(--verde-bg)}
+  .spec-validacao img{width:90px;height:90px;flex:none}
+  .spec-validacao b{color:var(--verde-escuro);font-size:11px}
+  .spec-validacao small{color:var(--texto-2);font-size:9px;overflow-wrap:anywhere}
   .spec-selos{display:flex;gap:12px;justify-content:center;margin:18px 0 8px;flex-wrap:wrap}
   .selo{border:2px solid var(--verde);color:var(--verde-escuro);font-weight:800;font-size:11px;padding:6px 14px;border-radius:20px}
   .spec-fim{text-align:center;font-weight:800;font-size:13px;margin:10px 0 16px;letter-spacing:1px}
@@ -655,7 +659,8 @@ export const MODEL_HTML_TEMPLATE = `
         h.push(fipeSecao(d.historicoFipe));
       }
 
-      h.push('<div class="spec-selos"><span class="selo">✓ QUALIDADE GARANTIDA</span><span class="selo">🔒 SITE SEGURO</span></div>' +
+      h.push((s.qrCode ? '<div class="spec-validacao"><img src="' + esc(s.qrCode) + '" alt="QR Code de validação"/><div><b>CONSULTA ORIGINAL E VALIDADA PELA OLHO NO DOC</b><br><small>Escaneie o QR Code para conferir os dados básicos e a autenticidade desta consulta.</small>' + (s.validationUrl ? '<br><small>' + esc(s.validationUrl) + '</small>' : '') + '</div></div>' : '') +
+        '<div class="spec-selos"><span class="selo">✓ QUALIDADE GARANTIDA</span><span class="selo">🔒 SITE SEGURO</span></div>' +
         '<div class="spec-fim">FIM DESTA PESQUISA.</div>' +
         '<div class="avisos"><h3>Avisos legais</h3>' +
         '<p>As informações contidas nesta consulta são confidenciais e destinadas exclusivamente ao solicitante da pesquisa ' + (c.clienteNome ? '(' + esc(c.clienteNome) + (c.clienteCnpj ? ' — CNPJ ' + esc(c.clienteCnpj) : '') + ')' : '') + ', para fins legítimos de análise, prevenção à fraude, verificação de procedência veicular e apoio em negociações, sendo vedada sua utilização em desacordo com a legislação vigente.</p>' +

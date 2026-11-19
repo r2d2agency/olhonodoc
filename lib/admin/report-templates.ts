@@ -5,7 +5,7 @@ import { HYBRID_HTML_TEMPLATE } from '@/lib/gold-report-template-hibrido';
 const LIST_KEY = 'report.templates';
 const ACTIVE_KEY = 'report.activeTemplate';
 /** Versão do layout do template padrão. Incrementar ao alterar MODEL_HTML_TEMPLATE. */
-const TEMPLATE_VERSION = '2026-11-18-spec-v5';
+const TEMPLATE_VERSION = '2026-11-19-spec-v6';
 const VERSION_KEY = 'report.templateVersion';
 
 export type ReportTemplate = { id: string; name: string; html: string; updatedAt: string };
