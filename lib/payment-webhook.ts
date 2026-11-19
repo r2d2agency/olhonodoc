@@ -158,7 +158,10 @@ export async function processPaymentEvent(provider: string, externalEventId: str
     await tx.paymentEvent.update({ where: { id: event.id }, data: { status: orderStatus ? 'PROCESSED' : 'IGNORED', processedAt: new Date(), error: null } });
   });
   if (orderStatus === 'PAID') {
-    try { await submitOrderToCompany(payment.orderId); } catch { /* consulta pode ser reprocessada pelo admin */ }
+    // Não aguarda a Company: chamada pelo botão "Já paguei" e pelo webhook,
+    // uma chamada lenta travaria a resposta HTTP e o proxy retornaria 502 HTML.
+    // O envio é idempotente e pode ser reprocessado pelo admin.
+    void submitOrderToCompany(payment.orderId).catch(() => undefined);
   }
   return { processed: true, orderStatus };
 }
