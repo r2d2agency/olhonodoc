@@ -62,21 +62,19 @@ export const POST = logRequest('checkout.card-payment', async (request: Request)
     // provedor. Falha no e-mail não invalida o pagamento: o cliente continua
     // vendo a confirmação na tela.
     if (['APPROVED', 'AUTHORIZED', 'IN_PROCESS'].includes(result.status)) {
-      try {
-        await sendPaymentChargeEmail(payerEmail, {
-          orderId: order.id,
-          plate: order.plate,
-          productName: order.product?.name || 'Consulta veicular',
-          amountCents: order.totalCents ?? order.amountCents ?? 0,
-          subtotalCents: order.subtotalCents ?? undefined,
-          discountCents: order.discountCents || undefined,
-          couponCode: order.coupon?.code,
-          method: 'card',
-        });
-        void logger.info('payment.card.email_sent', { orderId: order.id, status: result.status });
-      } catch (emailError) {
-        void logger.error('payment.card.email_failed', { orderId: order.id, message: emailError instanceof Error ? emailError.message : 'erro' });
-      }
+      // E-mail em segundo plano: falha ou lentidão do SMTP não podem atrasar
+      // a resposta da cobrança (o proxy do EasyPanel devolveria 502 HTML).
+      void sendPaymentChargeEmail(payerEmail, {
+        orderId: order.id,
+        plate: order.plate,
+        productName: order.product?.name || 'Consulta veicular',
+        amountCents: order.totalCents ?? order.amountCents ?? 0,
+        subtotalCents: order.subtotalCents ?? undefined,
+        discountCents: order.discountCents || undefined,
+        couponCode: order.coupon?.code,
+        method: 'card',
+      }).then(() => void logger.info('payment.card.email_sent', { orderId: order.id, status: result.status }))
+        .catch((emailError) => void logger.error('payment.card.email_failed', { orderId: order.id, message: emailError instanceof Error ? emailError.message : 'erro' }));
     }
     return NextResponse.json({ data: { paymentId: result.payment.id, status: result.status, payerEmail } });
   }
