@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser, normalizeDigits } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { createCardPayment, getPaymentConfiguration, getMercadoPagoInstallments } from '@/lib/payment-provider';
+import { createCardPayment, getPaymentConfiguration } from '@/lib/payment-provider';
 import { logger, logRequest } from '@/lib/logger';
 import { sendPaymentChargeEmail } from '@/lib/email';
 
@@ -33,20 +33,11 @@ export const POST = logRequest('checkout.card-payment', async (request: Request)
       return NextResponse.json({ error: 'Este método de pagamento não está disponível.' }, { status: 400 });
     }
 
-    // Revalida o plano de parcelamento escolhido contra a oferta real do provedor.
-    const amountCents = await prisma.order.findUnique({ where: { id: order.id }, select: { totalCents: true, amountCents: true } }).then(row => row?.totalCents ?? row?.amountCents ?? 0);
-    try {
-      const plans = await getMercadoPagoInstallments(amountCents, body.paymentMethodId);
-      const chosen = plans.find(plan => plan.quantity === body.installments);
-      if (!chosen) {
-        void logger.warn('payment.card.installment_not_offered', { orderId: order.id, installments: body.installments });
-        return NextResponse.json({ error: 'Esta quantidade de parcelas não está disponível. Escolha outra opção.' }, { status: 400 });
-      }
-    } catch (error) {
-      // Se o provedor não conseguir listar os planos, segue com a quantidade pedida:
-      // o Mercado Pago ainda valida a parcelagem no momento da cobrança.
-      void logger.warn('payment.card.installment_check_unavailable', { orderId: order.id, message: error instanceof Error ? error.message : 'erro' });
-    }
+    // O Mercado Pago valida a parcelagem no momento da criação da cobrança.
+    // Não revalidamos aqui: a rota /installments pode ter usado fallback local
+    // (provedor indisponível) e uma segunda chamada falharia inconsistemente,
+    // bloqueando até a opção 1x que o próprio MP aceita.
+    void logger.info('payment.card.installment_forwarded', { orderId: order.id, installments: body.installments, method: body.paymentMethodId });
 
     void logger.info('payment.card.validated', { orderId: order.id, method: body.paymentMethodId, installments: body.installments });
     const result = await createCardPayment(order.id, {
