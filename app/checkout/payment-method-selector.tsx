@@ -17,7 +17,7 @@ type Props = {
 };
 
 export default function PaymentMethodSelector({ orderId, publicKey, amountCents, payerEmail, payerCpf, methods, preferredMethod, onSuccess, onError }: Props) {
-  const [selected, setSelected] = useState<'card' | 'pix' | 'boleto' | null>(null);
+  const [selected, setSelected] = useState<'card' | 'pix' | 'boleto' | null>(preferredMethod || null);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');

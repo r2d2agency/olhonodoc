@@ -168,14 +168,28 @@ export async function providerPaymentStatus(provider: string, externalId: string
   if (provider === 'mercadopago') {
     if (!config.mercadopago.accessToken) throw new Error('PROVIDER_STATUS_ERROR');
     const headers = { Authorization: `Bearer ${config.mercadopago.accessToken}` };
-    let response = await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(externalId)}`, { headers, signal: AbortSignal.timeout(10000) });
+    const timeout = () => AbortSignal.timeout(5000);
+    // IDs de pagamento (PAY...) devem ser consultados direto em /v1/payments:
+    // tentar /v1/orders primeiro gera um 404 e duas chamadas, estourando o
+    // timeout do proxy no botão "Já paguei".
+    const isPaymentId = /^PAY/i.test(externalId);
+    if (isPaymentId) {
+      const payRes = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(externalId)}`, { headers, signal: timeout() });
+      if (!payRes.ok) {
+        void logger.error('webhook.mercadopago.status_lookup_failed', { externalId, paymentsStatus: payRes.status });
+        throw new Error('PROVIDER_STATUS_ERROR');
+      }
+      const paymentData = await payRes.json();
+      void logger.info('webhook.mercadopago.status_from_payment', { externalId, providerStatus: paymentData.status });
+      return { status: normalizeProviderStatus(paymentData), data: paymentData };
+    }
+    let response = await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(externalId)}`, { headers, signal: timeout() });
     if (response.ok) {
       const data = await response.json();
       const paymentStatus = data.transactions?.payments?.[0];
       return { status: normalizeProviderStatus(paymentStatus), data };
     }
-    // O webhook pode notificar com o id do payment em vez do id da order; o endpoint de orders responde 404 nesse caso.
-    const fallback = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(externalId)}`, { headers, signal: AbortSignal.timeout(10000) });
+    const fallback = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(externalId)}`, { headers, signal: timeout() });
     if (!fallback.ok) {
       void logger.error('webhook.mercadopago.status_lookup_failed', { externalId, ordersStatus: response.status, paymentsStatus: fallback.status });
       throw new Error('PROVIDER_STATUS_ERROR');
