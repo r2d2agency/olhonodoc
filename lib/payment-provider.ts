@@ -324,6 +324,14 @@ export async function createCardPayment(orderId: string, input: CardPaymentInput
   const externalId = extractProviderPaymentId(rawResponse, orderExternalId);
   const payment = await prisma.payment.upsert({ where: { idempotencyKey }, create: { orderId, provider: 'mercadopago', externalId, providerOrderId: orderExternalId, method: input.paymentMethodId, installments: input.installments, status, amountCents: amount, idempotencyKey, rawResponse }, update: { externalId, providerOrderId: orderExternalId, method: input.paymentMethodId, installments: input.installments, status, rawResponse } });
   void logger.info('payment.card.created', { orderId, method: input.paymentMethodId, installments: input.installments, amountCents: amount, providerOrderId: orderExternalId, providerPaymentId: externalId, status, sendWebhook: Boolean(input.notificationUrl) });
+
+  // A Orders API devolve o status final na própria resposta. Processar aqui
+  // evita depender apenas do webhook (que pode chegar depois do redirecionamento
+  // e deixar o pedido como PENDING na tela do cliente).
+  if (['APPROVED', 'AUTHORIZED', 'IN_PROCESS'].includes(status)) {
+    const { processPaymentEvent } = await import('@/lib/payment-webhook');
+    await processPaymentEvent('mercadopago', `card:${payment.id}:${externalId}`, externalId, status, rawResponse, 'card_checkout');
+  }
   return { payment, status };
 }
 
