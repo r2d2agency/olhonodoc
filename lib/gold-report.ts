@@ -1097,7 +1097,7 @@ export async function goldReportHtml(input: CompanyResponse, plate: string, stat
     const r = asRecord(input);
     const token = norm(r.hashPesquisa);
     if (token && data.spec) {
-      const baseUrl = norm(process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_URL || '').replace(/\/$/, '');
+      const baseUrl = norm(process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '').replace(/\/$/, '');
       if (baseUrl) {
         const validationUrl = `${baseUrl}/validar/${encodeURIComponent(token)}`;
         (data.spec as Record<string, unknown>).validationUrl = validationUrl;
