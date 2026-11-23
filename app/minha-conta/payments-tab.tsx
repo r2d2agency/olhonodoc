@@ -18,6 +18,15 @@ const statusLabel: Record<string, string> = {
   REFUNDED: 'Reembolsado', CHARGEBACK: 'Chargeback', EXPIRED: 'Expirado',
 };
 const methodLabel: Record<string, string> = { card: 'Cartão', pix: 'Pix', bolbradesco: 'Boleto', boleto: 'Boleto', free: 'Gratuito' };
+const eventTypeLabel: Record<string, string> = {
+  order: 'Notificação de pedido', payment: 'Notificação de pagamento', status_check: 'Consulta de status',
+  card_checkout: 'Pagamento com cartão', checkout: 'Checkout', card: 'Cartão',
+};
+const eventStatusLabel: Record<string, string> = {
+  RECEIVED: 'Recebido', PROCESSED: 'Processado', IGNORED: 'Ignorado', FAILED: 'Falhou', ERROR: 'Erro',
+};
+const eventTypeText = (type: string | null) => type ? (eventTypeLabel[type] || type.replace(/_/g, ' ')) : 'Webhook';
+const eventStatusText = (status: string) => eventStatusLabel[status] || status.toLowerCase();
 const methodIcon = (method: string | null) => method === 'pix' ? <QrCode size={16} /> : method === 'card' ? <CreditCard size={16} /> : <Receipt size={16} />;
 
 export default function PaymentsTab() {
@@ -57,7 +66,7 @@ export default function PaymentsTab() {
           </div>
           <p>Criado em {new Date(p.createdAt).toLocaleString('pt-BR')} · atualizado em {new Date(p.updatedAt).toLocaleString('pt-BR')}. Tentativas: {p.attempts}.</p>
           {p.externalId && <p><small>ID da transação: {p.externalId}</small></p>}
-          {p.events.length > 0 && <div className="customer-query-result"><strong>Eventos do provedor</strong>{p.events.map(ev => <span key={ev.externalEventId}>{ev.eventType || 'webhook'} — {ev.status} · {new Date(ev.createdAt).toLocaleString('pt-BR')}</span>)}</div>}
+          {p.events.length > 0 && <div className="customer-query-result"><strong>Eventos do provedor</strong>{p.events.map(ev => <span key={ev.externalEventId}>{eventTypeText(ev.eventType)} — {eventStatusText(ev.status)} · {new Date(ev.createdAt).toLocaleString('pt-BR')}</span>)}</div>}
         </article>)}
       </div>}
   </section>;
