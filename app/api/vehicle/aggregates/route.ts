@@ -26,6 +26,28 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
   }
 }
 
+/** Verifica o token do Google reCAPTCHA v3. Score abaixo de 0.5 é considerado bot. */
+async function verifyRecaptcha(token: string, ip: string): Promise<boolean> {
+  let secret = process.env.RECAPTCHA_SECRET_KEY || '';
+  try {
+    const row = await prisma.setting.findUnique({ where: { key: 'recaptcha' } });
+    const v = row?.value as { secretKey?: string } | undefined;
+    if (v?.secretKey) secret = v.secretKey;
+  } catch { /* segue sem segredo do banco */ }
+  if (!secret) return true; // dev fallback if not configured
+  try {
+    const res = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ secret, response: token, remoteip: ip }).toString(),
+    });
+    const data = await res.json();
+    return Boolean(data?.success) && Number(data?.score ?? 0) >= 0.5;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: Request) {
   const ip = clientIp(request);
   const now = Date.now();
@@ -42,6 +64,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const plate = typeof body?.plate === 'string' ? body.plate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : '';
   const token = typeof body?.turnstileToken === 'string' ? body.turnstileToken : '';
+  const recaptchaToken = typeof body?.recaptchaToken === 'string' ? body.recaptchaToken : '';
   if (!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(plate) && !/^[A-Z]{3}[0-9]{4}$/.test(plate)) return NextResponse.json({ error: 'Informe uma placa válida.' }, { status: 400 });
 
   // Only enforce Turnstile if both secret env and site key are configured
@@ -54,6 +77,19 @@ export async function POST(request: Request) {
   if (turnstileConfigured && token) {
     const ok = await verifyTurnstile(token, ip);
     if (!ok) return NextResponse.json({ error: 'Verificação CAPTCHA falhou. Confirme o widget.' }, { status: 403 });
+  }
+
+  // Google reCAPTCHA v3 — quando configurado, exige token válido.
+  let recaptchaConfigured = Boolean(process.env.RECAPTCHA_SECRET_KEY);
+  try {
+    const row = await prisma.setting.findUnique({ where: { key: 'recaptcha' } });
+    const v = row?.value as { siteKey?: string; secretKey?: string } | undefined;
+    if (v?.siteKey && v?.secretKey) recaptchaConfigured = true;
+  } catch { recaptchaConfigured = false; }
+  if (recaptchaConfigured) {
+    if (!recaptchaToken) return NextResponse.json({ error: 'Verificação de segurança necessária. Aguarde e tente novamente.' }, { status: 403 });
+    const ok = await verifyRecaptcha(recaptchaToken, ip);
+    if (!ok) return NextResponse.json({ error: 'Verificação de segurança falhou. Tente novamente.' }, { status: 403 });
   }
 
   try {
