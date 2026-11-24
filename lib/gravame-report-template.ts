@@ -25,7 +25,7 @@ export const GRAVAME_HTML_TEMPLATE = `
   .placa-mercosul .topo .bandeira{width:12px;height:8px;background:#16a34a;position:relative}
   .placa-mercosul .topo .bandeira:after{content:"";position:absolute;inset:2px 3px;background:#facc15;border-radius:50%}
   .placa-mercosul .num{font-size:22px;font-weight:700;letter-spacing:4px;text-align:center;padding:2px 0 3px;font-family:'Courier New',monospace}
-  .secao{border:1px solid var(--borda);border-radius:10px;overflow:hidden;margin-bottom:10px;break-inside:avoid-page}
+  .secao{border:1px solid var(--borda);border-radius:10px;overflow:hidden;margin-bottom:10px;break-inside:auto}
   .secao>.titulo{background:var(--azul);color:#fff;font-weight:700;font-size:12.5px;text-transform:uppercase;padding:12px 16px;display:flex;align-items:center;gap:10px}
   .secao>.titulo svg{width:16px;height:16px;fill:#fff;flex:none}
   .secao>.corpo{padding:16px}
