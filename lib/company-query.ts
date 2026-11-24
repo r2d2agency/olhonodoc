@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { CompanyQueryStatus } from '@prisma/client';
 import { companyAction, getCompanySettings, requestCompany, requestCompanyDetailed, type CompanyProduct, CompanyTransportError } from '@/lib/company-conferi';
 import { renderGoldPdf, reportHash } from '@/lib/gold-report';
+import { renderGravamePdf, gravameReportHash } from '@/lib/gravame-report';
 import { completeOrder } from '@/lib/order-lifecycle';
 import { sendQueryCompleted, sendQueryInAnalysis, sendQueryProcessing } from '@/lib/email';
 
@@ -9,6 +10,20 @@ const supported = new Set<CompanyProduct>(['conferi-agregados', 'conferi-auto-ve
 export const MAX_ATTEMPTS = 3;
 /** Após esse tempo em PROCESSING, a consulta vai para a Mesa de Análise Técnica. */
 export const ANALYSIS_THRESHOLD_MS = 15 * 60 * 1000;
+
+async function renderReportPdf(providerProduct: string, data: unknown, plate: string, status: string, message: string, customerName?: string): Promise<{ pdf: Buffer; hash: string } | null> {
+  try {
+    if (providerProduct === 'conferi-gravame') {
+      const pdf = Buffer.from(await renderGravamePdf(data, plate, customerName));
+      return { pdf, hash: gravameReportHash(pdf) };
+    }
+    const pdf = Buffer.from(await renderGoldPdf(data as any, plate, status, message));
+    return { pdf, hash: reportHash(pdf) };
+  } catch (error) {
+    console.error(`[company-query] falha ao gerar PDF (${providerProduct}):`, error);
+    return null;
+  }
+}
 
 function retryable(error: unknown) {
   if (!(error instanceof CompanyTransportError)) return false;
@@ -52,11 +67,11 @@ export async function submitOrderToCompany(orderId: string) {
   try {
     const detailed = await requestCompanyDetailed(providerProduct as CompanyProduct, config.environment, { usuario: config.usuario, senha: config.senha }, requestParams, order.product.providerEndpointKey);
     const result = companyAction(detailed.data);
-    let pdf: Buffer | null = null;
-    try { const raw = await renderGoldPdf(detailed.data, normalizedPlate, result.status, detailed.data.solicitacao?.mensagem || ''); pdf = Buffer.from(raw); }
-    catch (error) { console.error('Company sync: falha ao gerar PDF', error); }
+    const notifyTarget = await loadNotifyTarget(orderId);
+    const rendered = await renderReportPdf(providerProduct, detailed.data, normalizedPlate, result.status, detailed.data.solicitacao?.mensagem || '', notifyTarget?.name);
+    const pdf = rendered?.pdf || null;
     console.log('[company-query] RESPOSTA COMPLETA:', JSON.stringify(detailed.data));
-    const updated = await prisma.vehicleQuery.update({ where: { id: query.id }, data: { provider: 'company-conferi', providerProduct, environment: config.environment, companyStatus: result.status as CompanyQueryStatus, providerAction: result.action, providerMessage: detailed.data.solicitacao?.mensagem, providerStatusText: detailed.data.solicitacao?.status, codigoConsulta: detailed.data.solicitacao?.codigoConsulta == null ? null : String(detailed.data.solicitacao.codigoConsulta), hashPesquisa: detailed.data.hashPesquisa, report: detailed.data as object, requestSentAt: query.requestSentAt || new Date(), responseReceivedAt: new Date(), attempts: { increment: 1 }, lastError: null, ...(pdf ? { reportPdf: pdf, reportPdfHash: reportHash(pdf), reportPdfGeneratedAt: new Date() } : {}) } });
+    const updated = await prisma.vehicleQuery.update({ where: { id: query.id }, data: { provider: 'company-conferi', providerProduct, environment: config.environment, companyStatus: result.status as CompanyQueryStatus, providerAction: result.action, providerMessage: detailed.data.solicitacao?.mensagem, providerStatusText: detailed.data.solicitacao?.status, codigoConsulta: detailed.data.solicitacao?.codigoConsulta == null ? null : String(detailed.data.solicitacao.codigoConsulta), hashPesquisa: detailed.data.hashPesquisa, report: detailed.data as object, requestSentAt: query.requestSentAt || new Date(), responseReceivedAt: new Date(), attempts: { increment: 1 }, lastError: null, ...(rendered ? { reportPdf: rendered.pdf, reportPdfHash: rendered.hash, reportPdfGeneratedAt: new Date() } : {}) } });
     if (result.status === 'COMPLETED') {
       await completeOrder(orderId);
       const target = await loadNotifyTarget(orderId);
@@ -121,11 +136,10 @@ async function refetchByCodigo(existing: { id: string; orderId: string; normaliz
   try {
     const response = await requestCompany(existing.providerProduct as CompanyProduct, config.environment, { usuario: config.usuario, senha: config.senha }, { ...savedParams, codigo_consulta: existing.codigoConsulta || '' }, order?.product?.providerEndpointKey);
     const result = companyAction(response);
-    let pdf: Buffer | null = null;
-    try { const raw = await renderGoldPdf(response, existing.normalizedPlate, result.status, response.solicitacao?.mensagem || ''); pdf = Buffer.from(raw); }
-    catch (error) { console.error('Company refresh: falha ao gerar PDF', error); }
+    const notifyTarget = await loadNotifyTarget(existing.orderId);
+    const rendered = await renderReportPdf(existing.providerProduct || '', response, existing.normalizedPlate, result.status, response.solicitacao?.mensagem || '', notifyTarget?.name);
 console.log('[company-query] RESPOSTA COMPLETA (refresh):', JSON.stringify(response));
-    const updated = await prisma.vehicleQuery.update({ where: { id: existing.id }, data: { companyStatus: result.status as CompanyQueryStatus, providerAction: result.action, providerMessage: response.solicitacao?.mensagem, providerStatusText: response.solicitacao?.status, hashPesquisa: response.hashPesquisa, report: response as object, responseReceivedAt: new Date(), attempts: { increment: 1 }, lastError: null, ...(pdf ? { reportPdf: pdf, reportPdfHash: reportHash(pdf), reportPdfGeneratedAt: new Date() } : {}) } });
+    const updated = await prisma.vehicleQuery.update({ where: { id: existing.id }, data: { companyStatus: result.status as CompanyQueryStatus, providerAction: result.action, providerMessage: response.solicitacao?.mensagem, providerStatusText: response.solicitacao?.status, hashPesquisa: response.hashPesquisa, report: response as object, responseReceivedAt: new Date(), attempts: { increment: 1 }, lastError: null, ...(rendered ? { reportPdf: rendered.pdf, reportPdfHash: rendered.hash, reportPdfGeneratedAt: new Date() } : {}) } });
     if (result.status === 'COMPLETED') {
       await completeOrder(existing.orderId);
       const target = await loadNotifyTarget(existing.orderId);
