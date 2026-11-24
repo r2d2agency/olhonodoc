@@ -25,10 +25,13 @@ export function buildBinData(input: unknown, plate: string, customerName?: strin
   const sol = asRecord(r.solicitacao);
   const sitRaw = norm(bin.situacao);
   const situacao = SITUACAO_FIX[sitRaw.toUpperCase()] || sitRaw;
-  const munUf = `${norm(bin.municipio) || '-'} / ${norm(bin.Uf || bin.uf) || '-'}`;
-  const chassi = [norm(bin.chassi), norm(bin.tipoChassi)].filter(Boolean).join(' ');
+  const NI = 'Não informado';
+  const munUf = `${norm(bin.municipio) || NI} / ${norm(bin.Uf || bin.uf) || NI}`;
+  const chassiBase = norm(bin.chassi) || NI;
+  const tipoChassi = norm(bin.tipoChassi);
+  const chassi = tipoChassi ? `${chassiBase} ${tipoChassi}` : chassiBase;
 
-  const fmt = (v: unknown) => norm(v) || '-';
+  const fmt = (v: unknown) => norm(v) || NI;
   const campos: [string, string, boolean?][] = [
     ['Placa', plateWithDash(bin.placa || plate)],
     ['Situação', situacao],
@@ -56,16 +59,42 @@ export function buildBinData(input: unknown, plate: string, customerName?: strin
     ['Número do Câmbio', fmt(bin.caixaCambio)],
   ];
 
-  // Selos: só aparecem quando há ocorrência.
-  const selos: string[] = [];
+  // Selos: só aparecem quando há ocorrência. Cada um define seu ícone.
+  const selos: { icone: 'carro' | 'alerta'; texto: string }[] = [];
   const rf = asRecord(r.historicoRouboFurto);
   const rfCodigo = norm(rf.alertaCodigo);
   const rfAtivo = ['1', 'SIM', 'S', 'TRUE'].includes(rfCodigo.toUpperCase())
     || isPositive(bin.restricao3) || isPositive(bin.ocorrencias) || /roubo|furt/i.test(norm(bin.restricoes));
-  if (rfAtivo) selos.push('HISTÓRICO DE\nROUBO E/OU\nFURTO!');
+  if (rfAtivo) selos.push({ icone: 'carro', texto: 'HISTÓRICO DE\nROUBO E/OU\nFURTO!' });
   const restrKeys = ['restricao1', 'restricao2', 'restricao4', 'restricaoRenainf', 'restricaoRenajud']
     .map(k => norm(bin[k])).filter(v => v && isPositive(v) && !/DEFERIDA/i.test(v));
-  if (restrKeys.length) selos.push('RESTRIÇÃO\nJUDICIAL!');
+  if (restrKeys.length) selos.push({ icone: 'alerta', texto: 'RESTRIÇÃO\nJUDICIAL!' });
+
+  // Queixa e histórico de roubo/furto.
+  const queixaAtiva = rfAtivo;
+  const historicoRfAtivo = rfAtivo;
+
+  // Histórico de ocorrências: cards com os dados essenciais de cada BO.
+  const rfHist = asRecord(rf.historico);
+  const rfRaw = rfHist.rouboFurto;
+  const rfArr = Array.isArray(rfRaw) ? rfRaw : [];
+  const dateBR = (v: unknown) => {
+    const s = norm(v);
+    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) return `${m[1]}/${m[2]}/${m[3]}`;
+    return s || NI;
+  };
+  const ocorrencias = rfArr.map((item: unknown) => {
+    const o = asRecord(item);
+    return {
+      ocorrencia: norm(o.ocorrencia) || NI,
+      ano: (norm(o.anoBo).match(/\d{4}/) || [])[0] || NI,
+      orgaoSeguranca: norm(o.orgaoSeguranca) || NI,
+      numeroBo: /nao informado/i.test(norm(o.numeroBo)) ? NI : norm(o.numeroBo) || NI,
+      municipioUf: `${norm(o.municipioOcorrencia) || NI} / ${norm(o.Ufocorrencia) || NI}`,
+      dataOcorrencia: dateBR(o.dataOcorrencia),
+    };
+  });
 
   return {
     numero: norm(sol.codigoConsulta) || '-',
@@ -76,6 +105,9 @@ export function buildBinData(input: unknown, plate: string, customerName?: strin
     campos,
     restricoes: [norm(bin.restricoes)]
       .filter(v => v && isPositive(v)).join(', ') || 'NADA CONSTA',
+    queixaAtiva,
+    historicoRfAtivo,
+    ocorrencias,
     hashPesquisa: norm(r.hashPesquisa),
     logoUrl: '',
   };

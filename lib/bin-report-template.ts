@@ -38,6 +38,12 @@ export const BIN_HTML_TEMPLATE = `
   .campo .v{color:var(--texto-2);text-align:right;overflow-wrap:anywhere}
   .campo .v.positivo{color:var(--vermelho);font-weight:700}
   .texto-formatado{white-space:pre-wrap;overflow-wrap:anywhere}
+  .queixa-box{display:grid;gap:8px}
+  .queixa-linha{display:flex;align-items:center;gap:8px;border:1px solid var(--vermelho-borda);border-radius:5px;padding:10px 12px;color:var(--vermelho);font-size:11px;font-weight:600}
+  .queixa-linha svg{width:14px;height:14px;fill:var(--vermelho);flex:none}
+  .ocorrencia-card{border:1px solid var(--borda);border-radius:8px;background:var(--fundo-card);padding:14px;margin-top:10px;break-inside:avoid;font-size:11px}
+  .ocorrencia-card p{margin-bottom:4px}
+  .ocorrencia-card b{color:var(--muted)}
   .spec-validacao{display:flex;align-items:center;justify-content:center;gap:14px;margin:18px 0;padding:14px;border:1px solid var(--verde-borda);border-radius:8px;background:var(--verde-bg)}
   .spec-validacao img{width:90px;height:90px;flex:none}
   .spec-validacao b{color:var(--verde-escuro);font-size:11px}
@@ -60,15 +66,17 @@ export const BIN_HTML_TEMPLATE = `
   function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
   function campo(p){return '<div class="campo"><span class="l">'+esc(p[0])+':</span><span class="v'+(p[2]?' positivo':'')+'">'+esc(p[1]||'-')+'</span></div>'}
   function secao(titulo,corpo,icone){return '<section class="secao"><div class="titulo">'+(icone||'')+esc(titulo)+'</div><div class="corpo">'+corpo+'</div></section>'}
-  var I={carro:'<svg viewBox="0 0 24 24"><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11v7a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7zm2.2-1h9.6l-1-3H8.2l-1 3z"/></svg>',info:'<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 3h2v2h-2V5zm0 4h2v8h-2V9z"/></svg>',alerta:'<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>'};
+  var I={carro:'<svg viewBox="0 0 24 24"><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11v7a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7zm2.2-1h9.6l-1-3H8.2l-1 3z"/></svg>',roubo:'<svg viewBox="0 0 24 24"><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11v7a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7zm2.2-1h9.6l-1-3H8.2l-1 3zM4 3l3 2M20 3l-3 2" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="12" cy="11" r="2" fill="currentColor"/></svg>',info:'<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 3h2v2h-2V5zm0 4h2v8h-2V9z"/></svg>',alerta:'<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>'};
   function render(d){
     var h=[];
     h.push('<header class="cabecalho">'+(d.logoUrl?'<div class="logo"><img src="'+esc(d.logoUrl)+'" alt="Olho no Doc"></div>':'')+
       '<div class="info"><div><b>CONSULTA Nº:</b> '+esc(d.numero||'-')+'</div><div><b>CONFIDENCIAL PARA:</b> '+esc(d.cliente||'-')+'</div><div><b>REALIZADA EM:</b> '+esc(d.realizadaEm||'-')+'</div></div>'+
       '<div class="placa-mercosul"><div class="topo"><span>MERCOSUL</span><span>BRASIL</span><span class="bandeira"></span></div><div class="num">'+esc(d.placa||'-')+'</div></div></header>');
-    if(d.selos&&d.selos.length) h.push('<div class="selos">'+d.selos.map(function(s){return '<div class="selo-alerta">'+I.alerta+'<span>'+esc(s).replace(/\\n/g,'<br>')+'</span></div>'}).join('')+'</div>');
+    if(d.selos&&d.selos.length) h.push('<div class="selos">'+d.selos.map(function(s){return '<div class="selo-alerta">'+(s.icone==='carro'?I.roubo:I.alerta)+'<span>'+esc(s.texto).replace(/\\n/g,'<br>')+'</span></div>'}).join('')+'</div>');
     h.push(secao('Informações do veículo - Base Nacional','<div class="campos">'+d.campos.map(campo).join('')+'</div>',I.carro));
     h.push(secao('RESTRIÇÕES E OUTRAS INFORMAÇÕES','<div class="texto-formatado">'+esc(d.restricoes||'NADA CONSTA')+'</div>',I.info));
+    h.push(secao('Queixa e histórico de roubo e furto','<div class="queixa-box"><div class="queixa-linha">'+I.alerta+'<span>'+(d.queixaAtiva?'Existe ocorrência de roubo e furto':'Não existe queixa de roubo e furto ativa')+'</span></div><div class="queixa-linha">'+I.alerta+'<span>'+(d.historicoRfAtivo?'Existe histórico de roubo e furto':'Não existe histórico de roubo e furto')+'</span></div></div>',I.info));
+    if(d.ocorrencias&&d.ocorrencias.length){h.push(secao('HISTÓRICO DE OCORRÊNCIAS',d.ocorrencias.map(function(o){return '<div class="ocorrencia-card"><p><b>Ocorrência:</b> '+esc(o.ocorrencia)+'</p><p><b>Ano:</b> '+esc(o.ano)+'</p><p><b>Órgão de segurança:</b> '+esc(o.orgaoSeguranca)+'</p><p><b>Nº do boletim:</b> '+esc(o.numeroBo)+'</p><p><b>Município/UF:</b> '+esc(o.municipioUf)+'</p><p><b>Data da ocorrência:</b> '+esc(o.dataOcorrencia)+'</p></div>'}).join(''),I.info));}
     if(d.qrCode){h.push('<div class="spec-validacao"><img src="'+esc(d.qrCode)+'" alt="QR Code de validação"/><div><b>CONSULTA ORIGINAL E VALIDADA PELA OLHO NO DOC</b><small>Escaneie o QR Code para conferir a autenticidade.</small>'+(d.validationUrl?'<small>'+esc(d.validationUrl)+'</small>':'')+'</div></div>')}
     h.push('<div class="spec-selos"><span class="selo"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;vertical-align:middle"><path d="M9 16.2l-3.5-3.5L4 14.2 9 19l11-11-1.5-1.5z"/></svg> QUALIDADE GARANTIDA</span><span class="selo"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;vertical-align:middle"><path d="M12 2a10 10 0 0 0-10 10v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6A10 10 0 0 0 12 2z"/></svg> SITE SEGURO</span></div><div class="spec-fim">FIM DESTA PESQUISA.</div>');
     h.push('<div class="avisos"><h3>Avisos legais</h3><p>As informações desta consulta são confidenciais e destinadas exclusivamente ao solicitante, para fins legítimos de análise, prevenção à fraude e verificação de procedência veicular.</p><p>A Olho no Doc reúne e transmite fielmente informações obtidas em bases públicas e privadas na data da consulta, não se responsabilizando por alterações posteriores.</p><p>Esta consulta não substitui a verificação direta junto aos órgãos oficiais.</p></div>');
