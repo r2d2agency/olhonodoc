@@ -1,8 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { CompanyQueryStatus } from '@prisma/client';
 import { companyAction, getCompanySettings, requestCompany, requestCompanyDetailed, type CompanyProduct, CompanyTransportError } from '@/lib/company-conferi';
-import { renderGoldPdf, reportHash } from '@/lib/gold-report';
-import { renderGravamePdf, gravameReportHash } from '@/lib/gravame-report';
+import { renderReportForProduct } from '@/lib/report-renderer';
 import { completeOrder } from '@/lib/order-lifecycle';
 import { sendQueryCompleted, sendQueryInAnalysis, sendQueryProcessing } from '@/lib/email';
 
@@ -13,12 +12,7 @@ export const ANALYSIS_THRESHOLD_MS = 15 * 60 * 1000;
 
 async function renderReportPdf(providerProduct: string, data: unknown, plate: string, status: string, message: string, customerName?: string): Promise<{ pdf: Buffer; hash: string } | null> {
   try {
-    if (providerProduct === 'conferi-gravame') {
-      const pdf = Buffer.from(await renderGravamePdf(data, plate, customerName));
-      return { pdf, hash: gravameReportHash(pdf) };
-    }
-    const pdf = Buffer.from(await renderGoldPdf(data as any, plate, status, message));
-    return { pdf, hash: reportHash(pdf) };
+    return await renderReportForProduct({ providerProduct, report: data, plate, status, message, customerName });
   } catch (error) {
     console.error(`[company-query] falha ao gerar PDF (${providerProduct}):`, error);
     return null;

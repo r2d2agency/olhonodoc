@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { renderGoldPdf, reportHash } from '@/lib/gold-report';
-import type { CompanyResponse } from '@/lib/company-conferi';
+import { renderReportForProduct } from '@/lib/report-renderer';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +10,7 @@ export async function GET(_request: Request, { params }: { params: { orderId: st
   if (!user || user.role !== 'CUSTOMER') return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 401 });
   const order = await prisma.order.findFirst({
     where: { id: params.orderId, customer: { userId: user.id } },
-    select: { plate: true, query: { select: { id: true, report: true, normalizedPlate: true, companyStatus: true, providerMessage: true } } },
+    select: { plate: true, customer: { select: { name: true } }, query: { select: { id: true, report: true, normalizedPlate: true, companyStatus: true, providerMessage: true, providerProduct: true } } },
   });
   if (!order) return NextResponse.json({ error: 'Consulta não encontrada.' }, { status: 404 });
 
@@ -23,8 +22,7 @@ export async function GET(_request: Request, { params }: { params: { orderId: st
   }
 
   try {
-    const pdf = Buffer.from(await renderGoldPdf(order.query.report as unknown as CompanyResponse, order.query.normalizedPlate, 'COMPLETED', order.query.providerMessage || ''));
-    const hash = reportHash(pdf);
+    const { pdf, hash } = await renderReportForProduct({ providerProduct: order.query.providerProduct, report: order.query.report, plate: order.query.normalizedPlate, status: 'COMPLETED', message: order.query.providerMessage || '', customerName: order.customer?.name });
 
     void prisma.vehicleQuery.update({
       where: { id: order.query.id },

@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { renderGoldPdf, reportHash } from '@/lib/gold-report';
-import type { CompanyResponse } from '@/lib/company-conferi';
+import { renderReportForProduct } from '@/lib/report-renderer';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -14,15 +13,14 @@ export async function POST() {
   try {
     const queries = await prisma.vehicleQuery.findMany({
       where: { companyStatus: 'COMPLETED', report: { not: Prisma.JsonNull } },
-      select: { id: true, report: true, normalizedPlate: true, providerMessage: true },
+      select: { id: true, report: true, normalizedPlate: true, providerMessage: true, providerProduct: true, order: { select: { customer: { select: { name: true } } } } },
     });
 
     let regenerated = 0;
     let failed = 0;
     for (const q of queries) {
       try {
-        const pdf = Buffer.from(await renderGoldPdf(q.report as unknown as CompanyResponse, q.normalizedPlate, 'COMPLETED', q.providerMessage || ''));
-        const hash = reportHash(pdf);
+        const { pdf, hash } = await renderReportForProduct({ providerProduct: q.providerProduct, report: q.report, plate: q.normalizedPlate, status: 'COMPLETED', message: q.providerMessage || '', customerName: q.order?.customer?.name });
         await prisma.vehicleQuery.update({
           where: { id: q.id },
           data: { reportPdf: pdf, reportPdfHash: hash, reportPdfGeneratedAt: new Date() },

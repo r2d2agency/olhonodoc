@@ -82,7 +82,7 @@ async function resolveLogoDataUrl(): Promise<string> {
   return '';
 }
 
-export async function renderGravamePdf(input: unknown, plate: string, customerName?: string) {
+export async function gravameReportHtml(input: unknown, plate: string, customerName?: string) {
   const data = buildGravameData(input, plate, customerName);
   data.logoUrl = await resolveLogoDataUrl();
   try {
@@ -95,7 +95,11 @@ export async function renderGravamePdf(input: unknown, plate: string, customerNa
       }
     }
   } catch { /* QR opcional */ }
-  const html = GRAVAME_HTML_TEMPLATE.replace('__DATA__', JSON.stringify(data));
+  return GRAVAME_HTML_TEMPLATE.replace('__DATA__', JSON.stringify(data));
+}
+
+export async function renderGravamePdf(input: unknown, plate: string, customerName?: string) {
+  const html = await gravameReportHtml(input, plate, customerName);
   const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath();
   const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], executablePath: typeof executablePath === 'string' ? executablePath : await executablePath });
   try {

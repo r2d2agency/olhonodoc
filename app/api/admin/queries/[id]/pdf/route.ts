@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { renderGoldPdf, reportHash } from '@/lib/gold-report';
-import type { CompanyResponse } from '@/lib/company-conferi';
+import { renderReportForProduct } from '@/lib/report-renderer';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +10,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   if (!user) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 403 });
   const query = await prisma.vehicleQuery.findUnique({
     where: { id: params.id },
-    select: { id: true, report: true, normalizedPlate: true, companyStatus: true, providerMessage: true },
+    select: { id: true, report: true, normalizedPlate: true, companyStatus: true, providerMessage: true, providerProduct: true, order: { select: { customer: { select: { name: true } } } } },
   });
   if (!query) return NextResponse.json({ error: 'Consulta não encontrada.' }, { status: 404 });
 
@@ -23,8 +22,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   }
 
   try {
-    const pdf = Buffer.from(await renderGoldPdf(query.report as unknown as CompanyResponse, query.normalizedPlate, 'COMPLETED', query.providerMessage || ''));
-    const hash = reportHash(pdf);
+    const { pdf, hash } = await renderReportForProduct({ providerProduct: query.providerProduct, report: query.report, plate: query.normalizedPlate, status: 'COMPLETED', message: query.providerMessage || '', customerName: query.order?.customer?.name });
 
     void prisma.vehicleQuery.update({
       where: { id: query.id },

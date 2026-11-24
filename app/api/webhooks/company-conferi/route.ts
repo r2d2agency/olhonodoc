@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { renderGoldPdf, reportHash } from '@/lib/gold-report';
+import { renderReportForProduct } from '@/lib/report-renderer';
 import { getCompanySettings, requestCompany, companyAction, validWebhookToken, type CompanyProduct } from '@/lib/company-conferi';
 import { MAX_ATTEMPTS } from '@/lib/company-query';
 import { completeOrder } from '@/lib/order-lifecycle';
@@ -24,10 +24,10 @@ async function processWebhook(codigo: string, request: Request) {
     // O layout do laudo é genérico (módulos por base consultada): gera o PDF
     // para todos os produtos, não só para a Perícia Gold. Uma falha no PDF
     // não pode bloquear a gravação do retorno da Company.
-    let pdf: Buffer | null = null;
-    try { const raw = await renderGoldPdf(response, query.normalizedPlate, result.status, response.solicitacao?.mensagem || ''); pdf = Buffer.from(raw); }
+    let rendered: { pdf: Buffer; hash: string } | null = null;
+    try { rendered = await renderReportForProduct({ providerProduct: query.providerProduct, report: response, plate: query.normalizedPlate, status: result.status, message: response.solicitacao?.mensagem || '' }); }
     catch (error) { console.error('Company webhook: falha ao gerar PDF', error); }
-    await prisma.vehicleQuery.update({ where: { id: query.id }, data: { report: response as object, companyStatus: result.status, providerAction: result.action, providerMessage: response.solicitacao?.mensagem, providerStatusText: response.solicitacao?.status, hashPesquisa: response.hashPesquisa, responseReceivedAt: new Date(), attempts: { increment: 1 }, ...(pdf ? { reportPdf: pdf, reportPdfHash: reportHash(pdf), reportPdfGeneratedAt: new Date() } : {}) } });
+    await prisma.vehicleQuery.update({ where: { id: query.id }, data: { report: response as object, companyStatus: result.status, providerAction: result.action, providerMessage: response.solicitacao?.mensagem, providerStatusText: response.solicitacao?.status, hashPesquisa: response.hashPesquisa, responseReceivedAt: new Date(), attempts: { increment: 1 }, ...(rendered ? { reportPdf: rendered.pdf, reportPdfHash: rendered.hash, reportPdfGeneratedAt: new Date() } : {}) } });
     if (result.status === 'COMPLETED') await completeOrder(query.orderId);
     return NextResponse.json({ ok: true, status: result.status });
   } catch (error) { await prisma.vehicleQuery.update({ where: { id: query.id }, data: { lastError: error instanceof Error ? error.message : 'Falha no re-fetch', attempts: { increment: 1 } } }); return NextResponse.json({ error: 'Re-fetch agendado para nova tentativa.' }, { status: 503 }); }
