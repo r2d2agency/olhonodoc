@@ -596,7 +596,9 @@ export const MODEL_HTML_TEMPLATE = `
       }
 
       // CSV, comunicação de venda, recall, indício
-      if (s.csv) h.push(secao("info", "CSV", '<div class="v">' + esc(s.csv) + '</div>'));
+      if (s.csv) h.push(secao("info", "CSV", s.csv.url
+        ? '<div class="v"><b>CSV Encontrado</b><br><a href="' + esc(s.csv.url) + '" target="_blank" rel="noopener">' + esc(s.csv.url) + '</a></div>'
+        : '<div class="v">' + esc(s.csv.mensagem || 'NADA CONSTA') + '</div>'));
       if (s.comunicacaoVenda) h.push(secao("venda", "Comunicação de venda", '<div class="v">' + esc(s.comunicacaoVenda) + '</div>'));
       if (s.recall) h.push(secao("recall", "Recall", '<div class="v">' + esc(s.recall) + '</div>'));
       if (!s.essencial) h.push(secao("triangulo", "Informações de indício de sinistro (Cortesia)", '<div class="v">' + esc(s.indicioSinistro) + '</div>'));

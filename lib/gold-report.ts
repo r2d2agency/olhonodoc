@@ -199,7 +199,7 @@ function collectSectionRecords(value: unknown): Record<string, string>[] {
   if (value && typeof value === 'object') {
     const rec = asRecord(value);
     // common wrappers
-    for (const k of ['detalhes', 'detalhe', 'registros', 'itens', 'historico', 'ocorrencias', 'dados', 'lista', 'processos']) {
+    for (const k of ['detalhes', 'detalhe', 'registros', 'itens', 'historico', 'ocorrencias', 'dados', 'lista', 'processos', 'retorno']) {
       const inner = rec[k];
       if (Array.isArray(inner)) return registrosFromArray(inner);
     }
@@ -571,10 +571,16 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
     texto: dupAusente ? 'Informação não disponível.' : dupMsg,
   };
 
-  // CSV
+  // CSV — quando encontrado, mostra apenas o link do PDF.
   let csv = r.csv ?? r.CSV ?? est.csv ?? r.dadosCsv ?? r.informacoesCsv;
   if (!csv) { const f = findDeepKeyMatch(r, [/^csv$|csv/i]); if (f) csv = f.value; }
-  const csvInfo = typeof csv === 'string' ? formatTextBlock(csv) : hasMeaningful(csv) ? collectSectionRecords(csv) : null;
+  let csvUrl = '';
+  if (csv && typeof csv === 'object') {
+    const rec = asRecord(csv);
+    const first = Array.isArray(rec.retorno) ? asRecord(rec.retorno[0]) : null;
+    if (first) csvUrl = norm(first.pdf_path || first.pdfPath || first.url || '');
+  }
+  const csvInfo = csvUrl ? { encontrado: true, url: csvUrl } : null;
 
   // Detalhamento Renajud
   let renajud = r.renajudDetalhado ?? r.detalhamentoRenajud ?? r.detalhamento_renajud ?? r.renajudDetalhamento ?? est.detalhamentoRenajud ?? est.renajud ?? r.renajud;
@@ -698,7 +704,8 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
   const restricoesTextoSpec = todasRestricoes.length ? todasRestricoes.join(',') : 'NADA CONSTA';
 
   // 5b. Queixa e histórico de roubo/furto
-  const queixaAtiva = !isNegative(bin.ocorrencias) && !/NAO POSSUI OCORRENCIA/i.test(norm(bin.ocorrencias));
+  const ocorrenciasNorm = norm(bin.ocorrencias).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const queixaAtiva = !isNegative(bin.ocorrencias) && !/NAO POSSUI OCORRENCIA/.test(ocorrenciasNorm);
   const historicoRfAtivo = isPositive(rf.alertaCodigo) || !isNegative(est.restricaoFurto);
 
   // 6. Histórico de ocorrências
@@ -808,8 +815,12 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
   const odometroItens = Array.isArray(odometroHistorico.Odometro) ? odometroHistorico.Odometro : [];
   const odometroSpec = odometroItens.map((item: unknown) => {
     const o = asRecord(item);
-    const km = norm(o.Quilometragem || o.km || o.valorOdometro);
-    return `${dateBR(o.DataVistoria || o.data)} - ${numberBR(km)} km`;
+    // Company envia as chaves em minúsculas (dataVistoria/quilometragem);
+    // mantemos as variações em maiúsculas por compatibilidade.
+    const km = norm(o.quilometragem || o.Quilometragem || o.km || o.valorOdometro);
+    const data = norm(o.dataVistoria || o.DataVistoria || o.data);
+    if (!km && !data) return '';
+    return `${data ? dateBR(data) : 'Não informado'} - ${km ? numberBR(km) + ' km' : 'Não informado'}`;
   }).filter(Boolean);
 
   // 16. Duplicidade de Motor
