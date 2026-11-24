@@ -1087,8 +1087,9 @@ async function resolveLogoDataUrl(): Promise<string> {
   return '';
 }
 
-export async function goldReportHtml(input: CompanyResponse, plate: string, status: string, message: string) {
+export async function goldReportHtml(input: CompanyResponse, plate: string, status: string, message: string, essencial = false) {
   const data = buildData(input, plate, status, message);
+  if (essencial && data.spec) (data.spec as Record<string, unknown>).essencial = true;
   const logo = await resolveLogoDataUrl();
   if (logo && data.consulta) data.consulta.logoUrl = logo;
 
@@ -1110,8 +1111,20 @@ export async function goldReportHtml(input: CompanyResponse, plate: string, stat
   return template.replace('__DATA__', JSON.stringify(data));
 }
 
+export async function essentialReportHtml(response: CompanyResponse, plate: string, status: string, message: string) {
+  return goldReportHtml(response, plate, status, message, true);
+}
+
 export async function renderGoldPdf(response: CompanyResponse, plate: string, status: string, message: string) {
-  const html = await goldReportHtml(response, plate, status, message);
+  return renderGoldPdfCore(response, plate, status, message, false);
+}
+
+export async function renderEssentialPdf(response: CompanyResponse, plate: string, status: string, message: string) {
+  return renderGoldPdfCore(response, plate, status, message, true);
+}
+
+async function renderGoldPdfCore(response: CompanyResponse, plate: string, status: string, message: string, essencial: boolean) {
+  const html = await goldReportHtml(response, plate, status, message, essencial);
   const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath();
   const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], executablePath: typeof executablePath === 'string' ? executablePath : await executablePath });
   try {

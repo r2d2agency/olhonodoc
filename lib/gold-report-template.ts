@@ -520,8 +520,8 @@ export const MODEL_HTML_TEMPLATE = `
         }).join('') + '</div>'));
       }
 
-      // 7 — comparativo 4 linhas
-      if (s.comparativo) {
+      // 7 — comparativo 4 linhas (somente Gold)
+      if (!s.essencial && s.comparativo) {
         h.push(secao("setas", "Comparativo de Componentes Veiculares",
           '<table class="comp"><thead><tr><th>COMPONENTE</th><th>FÁBRICA</th><th>ESTADUAL</th><th>COMPARATIVO</th></tr></thead><tbody>' +
           s.comparativo.map(function (r) {
@@ -530,8 +530,8 @@ export const MODEL_HTML_TEMPLATE = `
           }).join('') + '</tbody></table>', { semPadding: true }));
       }
 
-      // 8
-      h.push(secao("info", "E-Decodificador de chassi", '<div class="spec-pares">' + s.decodificador.map(function (p) {
+      // 8 (somente Gold)
+      if (!s.essencial) h.push(secao("info", "E-Decodificador de chassi", '<div class="spec-pares">' + s.decodificador.map(function (p) {
         return '<div><b>' + esc(p[0]) + ':</b> ' + esc(p[1]) + '</div>';
       }).join('') + '</div>'));
 
@@ -590,14 +590,14 @@ export const MODEL_HTML_TEMPLATE = `
           blocoTitulo('MULTAS SSP') + tabelaMultas(dc.multas.itens, dc.multas.total) +
           blocoTitulo('RESUMO DAS AUTUAÇÕES DE TRÂNSITO') + tabelaMultas(dc.autuacoes.itens, dc.autuacoes.total) +
           blocoTitulo('ODÔMETRO') + '<div class="texto-formatado">' + esc(dc.odometro) + '</div>';
-        h.push(secao("info", "Informações Complementares (Cortesia)", dcHtml));
+        if (!s.essencial) h.push(secao("info", "Informações Complementares (Cortesia)", dcHtml));
       }
 
       // CSV, comunicação de venda, recall, indício
       if (s.csv) h.push(secao("info", "CSV", '<div class="v">' + esc(s.csv) + '</div>'));
       if (s.comunicacaoVenda) h.push(secao("venda", "Comunicação de venda", '<div class="v">' + esc(s.comunicacaoVenda) + '</div>'));
       if (s.recall) h.push(secao("recall", "Recall", '<div class="v">' + esc(s.recall) + '</div>'));
-      h.push(secao("triangulo", "Informações de indício de sinistro (Cortesia)", '<div class="v">' + esc(s.indicioSinistro) + '</div>'));
+      if (!s.essencial) h.push(secao("triangulo", "Informações de indício de sinistro (Cortesia)", '<div class="v">' + esc(s.indicioSinistro) + '</div>'));
 
       // 18 — Renajud Detalhado (tabela PROCESSOS)
       if (d.detalhamentoRenajud) {
@@ -651,8 +651,8 @@ export const MODEL_HTML_TEMPLATE = `
         '<div class="texto-formatado">' + (s.eventoCorporativo.consta ? 'CONSTA EVENTO CORPORATIVO' : 'NÃO CONSTA EVENTO CORPORATIVO / REMARKETING AUTOMOTIVO PARA A PLACA ' + s.placa.replace(/-/g, '') + ' NAS BASES CONSULTADAS') + '</div>' +
         blocoTitulo('HISTÓRICO DE VENDA DIRETA POR MAIOR OFERTA', s.vendaDireta.consta ? 'var(--vermelho)' : 'var(--verde)') +
         '<div class="texto-formatado">' + (s.vendaDireta.consta ? 'CONSTA HISTÓRICO DE VENDA DIRETA' : 'NÃO CONSTA HISTÓRICO DE VENDA DIRETA PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS') + '</div>' +
-        blocoTitulo('HISTÓRICO DE COMERCIALIZAÇÃO POR BANCO OU SEGURADORA', s.comercializacao.consta ? 'var(--vermelho)' : 'var(--verde)') +
-        '<div class="texto-formatado">' + (s.comercializacao.consta ? 'CONSTA COMERCIALIZAÇÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS' : 'NÃO CONSTA COMERCIALIZAÇÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS') + '</div>'));
+        (!s.essencial ? (blocoTitulo('HISTÓRICO DE COMERCIALIZAÇÃO POR BANCO OU SEGURADORA', s.comercializacao.consta ? 'var(--vermelho)' : 'var(--verde)') +
+        '<div class="texto-formatado">' + (s.comercializacao.consta ? 'CONSTA COMERCIALIZAÇÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS' : 'NÃO CONSTA COMERCIALIZAÇÃO PARA A PLACA ' + s.placa + ' NAS BASES CONSULTADAS') + '</div>') : '')));
 
       // 27 FIPE
       if (d.historicoFipe && !vazio(d.historicoFipe) && typeof d.historicoFipe === 'object' && !Array.isArray(d.historicoFipe) && d.historicoFipe.historico) {
