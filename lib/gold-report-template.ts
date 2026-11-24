@@ -210,10 +210,12 @@ export const MODEL_HTML_TEMPLATE = `
     .secao>.titulo{padding:8px 12px !important}
     .quebra{break-before:auto}
     .alertas{grid-template-columns:repeat(4,minmax(0,1fr)) !important;margin-bottom:8px !important}
-    .campos{grid-template-columns:repeat(3,minmax(0,1fr)) !important;column-gap:12px;row-gap:6px}
-    .campo{flex-direction:column !important;gap:1px;align-items:stretch;padding-bottom:2px}
-    .campo .l{flex:none}
-    .campo .v{text-align:left;flex:none}
+    .campos{grid-template-columns:repeat(2,minmax(0,1fr)) !important;column-gap:18px;row-gap:8px}
+    .spec-3col .campos{grid-template-columns:repeat(3,minmax(0,1fr)) !important;column-gap:12px}
+    .campo{flex-direction:column !important;gap:2px;align-items:stretch;padding-bottom:4px;overflow:hidden}
+    .campo .l{flex:none;font-size:10px;line-height:1.3}
+    .campo .v{text-align:left;flex:none;font-size:11px;line-height:1.45;overflow-wrap:anywhere;word-break:break-word}
+    .spec-2col .campos{grid-template-columns:repeat(2,minmax(0,1fr)) !important;column-gap:18px}
     .registro{grid-template-columns:repeat(2,minmax(0,1fr)) !important;padding:8px;margin-bottom:6px}
     .status-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;row-gap:6px}
     .odometro{grid-template-columns:1fr 1fr !important}

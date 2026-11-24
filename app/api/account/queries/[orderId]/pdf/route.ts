@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { renderReportForProduct } from '@/lib/report-renderer';
+import { reportFileName } from '@/lib/report-filename';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +33,7 @@ export async function GET(_request: Request, { params }: { params: { orderId: st
     return new NextResponse(pdf, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="consulta-${order.query.normalizedPlate || order.plate}-${Date.now()}.pdf"`,
+        'Content-Disposition': `attachment; filename="${reportFileName(order.query.providerProduct, order.query.normalizedPlate || order.plate)}"`,
         'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
         Pragma: 'no-cache',
         Expires: '0',
