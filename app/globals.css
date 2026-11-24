@@ -325,3 +325,24 @@ body{padding-bottom:65px}
 .customer-vehicle-queries>div{display:flex;align-items:center;gap:8px;padding:8px;border-radius:5px;background:#f7fafb;font-size:.72rem;color:#52707c}
 .customer-vehicle-queries small{margin-left:auto;white-space:nowrap}
 @media(max-width:560px){.customer-vehicle-grid{grid-template-columns:1fr}}
+
+/* Ajustes mobile: checkout e cards de consulta */
+@media(max-width:700px){
+  .checkout-page{padding:96px 14px 60px}
+  .checkout-shell{display:block;width:100%;max-width:100%}
+  .checkout-card,.checkout-summary{width:100%;max-width:100%;padding:18px 14px}
+  .checkout-card h1{font-size:1.5rem;line-height:1.25;overflow-wrap:anywhere}
+  .checkout-card p{overflow-wrap:anywhere}
+  .checkout-grid,.checkout-review-grid,.checkout-aggregate-grid,.checkout-order-summary{grid-template-columns:1fr !important}
+  .checkout-coupon-form{grid-template-columns:1fr}
+  .checkout-coupon-form button{width:100%}
+  .checkout-method-grid{grid-template-columns:1fr}
+  .checkout-card-form-row{grid-template-columns:1fr}
+  .checkout-price-row{flex-wrap:wrap;gap:4px}
+  .checkout-price-row strong{font-size:1.25rem}
+  .customer-product-grid{grid-template-columns:1fr !important}
+  .customer-product-bottom{flex-wrap:wrap;gap:12px}
+  .customer-product-bottom>div,.customer-select-plan{width:100%}
+  .customer-select-plan{justify-content:center}
+  .customer-aggregate-details{grid-template-columns:1fr 1fr}
+}

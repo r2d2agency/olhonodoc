@@ -20,22 +20,37 @@ export function Header() {
 export function Footer() { return <footer className="footer"><div className="footer-top"><div><Link href="/" className="brand brand-light"><img src="/logo-olho-no-doc.png" alt="Olho no Doc" style={{height:34,width:"auto"}}/></Link><p>Informação para você decidir melhor<br/>antes de comprar um veículo.</p></div><div className="footer-links"><div><strong>Consultas</strong><Link href="/consultas/consulta-premium">Consulta Premium</Link><Link href="/consultas/consulta-essencial">Consulta Essencial</Link><Link href="/comparar-consultas">Comparar consultas</Link></div><div><strong>Institucional</strong><Link href="/como-funciona">Como funciona</Link><Link href="/sobre">Sobre</Link><Link href="/faq">FAQ</Link><Link href="/contato">Contato</Link></div><div><strong>Conteúdos</strong><Link href="/blog">Blog</Link><Link href="/exemplo-relatorio">Exemplo de relatório</Link><Link href="/termos-de-uso">Termos de uso</Link><Link href="/politica-de-privacidade">Privacidade</Link></div></div></div><div className="footer-bottom"><span>© 2026 Olho no Doc. Conteúdo demonstrativo.</span><span>Consulte antes de comprar.</span></div></footer>; }
 
 export function PlateInput({ dark = false }: { dark?: boolean }) { const [plate, setPlate] = useState(''); const [error, setError] = useState(''); const [step, setStep] = useState<'plate' | 'choice' | 'register' | 'aggregate'>('plate'); const [loading, setLoading] = useState(false); const [form, setForm] = useState({ name: '', phone: '', email: '', password: '' }); const [turnstileSiteKey, setTurnstileSiteKey] = useState(''); const [turnstileToken, setTurnstileToken] = useState(''); const [recaptchaSiteKey, setRecaptchaSiteKey] = useState(''); const [aggregate, setAggregate] = useState<Record<string, unknown> | null>(null); const turnstileRef = useRef<HTMLDivElement | null>(null); useEffect(() => { fetch('/api/public/turnstile').then(r=>r.json()).then(b=>setTurnstileSiteKey(b.siteKey||'')).catch(()=>{}); fetch('/api/public/recaptcha').then(r=>r.json()).then(b=>setRecaptchaSiteKey(b.siteKey||'')).catch(()=>{}); }, []); useEffect(() => { if (!turnstileSiteKey) return; const render = () => { if (turnstileRef.current && (window as any).turnstile) { (window as any).turnstile.render(turnstileRef.current, { sitekey: turnstileSiteKey, callback: (t: string) => setTurnstileToken(t) }); } }; if ((window as any).turnstile) render(); else { const s = document.createElement('script'); s.src='https://challenges.cloudflare.com/turnstile/v0/api.js'; s.async=true; s.defer=true; s.onload=render; document.head.appendChild(s); } }, [turnstileSiteKey]); const id = useId(); const normalized = plate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(); function update(key: keyof typeof form, value: string) { setForm((current) => ({ ...current, [key]: value })); }
+  function loadRecaptcha(): Promise<any> {
+    return new Promise((resolve) => {
+      if ((window as any).grecaptcha?.execute) return resolve((window as any).grecaptcha);
+      const existing = document.querySelector('script[data-recaptcha]') as HTMLScriptElement | null;
+      const done = () => {
+        const g = (window as any).grecaptcha;
+        if (g?.ready) g.ready(() => resolve(g));
+        else if (g?.execute) resolve(g);
+        else setTimeout(() => resolve(g || null), 1500);
+      };
+      if (existing) { existing.addEventListener('load', done, { once: true }); setTimeout(done, 3000); return; }
+      const s = document.createElement('script');
+      s.src = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(recaptchaSiteKey);
+      s.async = true; s.defer = true; s.dataset.recaptcha = '1';
+      s.onload = done; s.onerror = () => resolve(null);
+      document.head.appendChild(s);
+      setTimeout(done, 6000);
+    });
+  }
   async function getRecaptchaToken(): Promise<string> {
     if (!recaptchaSiteKey) return '';
-    return new Promise((resolve) => {
-      const run = () => {
-        try {
-          (window as any).grecaptcha.execute(recaptchaSiteKey, { action: 'plate_search' }).then((t: string) => resolve(t)).catch(() => resolve(''));
-        } catch { resolve(''); }
-      };
-      if ((window as any).grecaptcha) run();
-      else {
-        const s = document.createElement('script');
-        s.src = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(recaptchaSiteKey);
-        s.async = true; s.defer = true; s.onload = run; s.onerror = () => resolve('');
-        document.head.appendChild(s);
-      }
-    });
+    const g = await loadRecaptcha();
+    if (!g?.execute) return '';
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const token = await g.execute(recaptchaSiteKey, { action: 'plate_search' });
+        if (token) return token;
+      } catch { /* tenta novamente */ }
+      await new Promise(r => setTimeout(r, 250));
+    }
+    return '';
   } async function submitRegister(event: React.FormEvent) { event.preventDefault(); setLoading(true); setError(''); try { const register = await fetch('/api/auth/quick-register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) }); const body = await readJson(register); if (!register.ok) throw new Error(body.error || 'Não foi possível criar a conta.'); trackEvent('sign_up'); window.location.href = `/minha-conta?placa=${normalized}`; } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível concluir.'); } finally { setLoading(false); } } async function submit(event: React.FormEvent) { event.preventDefault(); if (normalized.length !== 7) { setError('Digite uma placa com 7 caracteres.'); return; } setError(''); captureAttribution(); trackEvent('plate_submitted', { plate: normalized }); try { localStorage.setItem('olhonodoc_plate', normalized); } catch {} setLoading(true); try { const recaptchaToken = await getRecaptchaToken();
     const response = await fetch('/api/vehicle/aggregates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plate: normalized, turnstileToken, recaptchaToken }) }); const result = await readJson(response); if (!response.ok) { setError(result.error || 'Não foi possível consultar.'); setLoading(false); return; } setAggregate(result.data?.aggregates ?? null); } catch { setError('Falha de rede ao consultar.'); } finally { setLoading(false); } setStep('choice'); } if (step !== 'plate') return <div className={`plate-journey ${dark ? 'plate-journey-dark' : ''}`}>{step === 'choice' && <div className="plate-journey-card plate-journey-card-blue"><strong>Placa {normalized}</strong><h3>Você já tem cadastro?</h3>{aggregate && <div className="journey-aggregate-grid">{['marca','modelo','anoModelo','cor'].map(key => <div key={key}><small>{key}</small><b>{String(aggregate?.[key] || 'Não informado')}</b></div>)}</div>}<p>Entre para continuar ou faça um cadastro rápido para ver os dados completos do veículo.</p><div className="journey-actions"><Link className="button button-light" href={`/login?next=${encodeURIComponent(`/minha-conta?placa=${normalized}`)}`}>Já tenho cadastro</Link><button className="journey-secondary journey-secondary-light" onClick={() => setStep('register')}>Cadastro rápido</button></div></div>}{step === 'register' && <form className="plate-journey-card" onSubmit={submitRegister}><strong>Cadastro rápido · {normalized}</strong><h3>Crie sua conta para ver o veículo.</h3><div className="journey-fields"><input required placeholder="Nome completo" value={form.name} onChange={e => update('name', e.target.value)}/><input required type="tel" placeholder="WhatsApp com DDD" value={form.phone} onChange={e => update('phone', e.target.value)}/><input required type="email" placeholder="Seu e-mail" value={form.email} onChange={e => update('email', e.target.value)}/><input required minLength={8} type="password" placeholder="Crie uma senha" value={form.password} onChange={e => update('password', e.target.value)}/></div>{error && <small className="plate-error">{error}</small>}<button className="button" disabled={loading}>{loading ? 'Consultando…' : 'Ver dados do veículo'}</button></form>}{step === 'aggregate' && <div className="plate-journey-card"><strong>Dados encontrados · {normalized}</strong><h3>{String(aggregate?.marca || '')} {String(aggregate?.modelo || '')}</h3><div className="journey-aggregate-grid">{['placa', 'marca', 'modelo', 'anoModelo', 'cor', 'combustivel', 'situacao', 'Uf'].map(key => <div key={key}><small>{key}</small><b>{String(aggregate?.[key] || 'Não informado')}</b></div>)}</div><Link className="button" href={`/consultas?placa=${normalized}`}>Ver opções de consulta <ArrowRight size={16}/></Link></div>}</div>; return <form className={`plate-form ${dark ? 'plate-form-dark' : ''}`} onSubmit={submit}><label htmlFor={id}>Digite a placa</label><div className="plate-row"><div className="plate-input"><span>BR</span><input id={id} value={plate} onChange={(event) => { setError(''); setPlate(event.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7).toUpperCase()); }} placeholder="ABC1D23" maxLength={7} aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined}/></div>{turnstileSiteKey && <div ref={turnstileRef} style={{marginTop:8}}></div>}<button type="submit" className="button">Consultar veículo <ArrowRight size={17}/></button></div>{error ? <div className="plate-error" id={`${id}-error`} role="alert">{error}</div> : <div className="plate-note"><ShieldCheck size={14}/> Cadastro rápido · dados básicos antes do plano</div>}</form>; }
 
