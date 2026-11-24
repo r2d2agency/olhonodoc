@@ -15,11 +15,10 @@ export const GRAVAME_HTML_TEMPLATE = `
   .toolbar{display:flex;justify-content:flex-end;margin-bottom:12px}
   .btn-print{display:inline-flex;align-items:center;gap:8px;background:#1e3a8a;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 12px Inter,sans-serif;cursor:pointer}
   .btn-print svg{width:16px;height:16px;fill:#fff}
-  .cabecalho{border-bottom:2px solid var(--borda-2);padding-bottom:12px;margin-bottom:12px;text-align:center}
-  .cabecalho .logo img{height:82px;max-width:300px;display:block;margin:0 auto 8px}
-  .cabecalho .titulo{font-weight:800;font-size:18px;letter-spacing:1px;color:var(--azul);margin-bottom:6px}
-  .cabecalho .info{font-size:11.5px;color:var(--texto-2);line-height:1.8}
-  .placa-box{display:inline-block;border:2px solid #111;border-radius:8px;background:#eef2f5;padding:2px 14px;margin-top:10px;font-family:'Courier New',monospace;font-size:22px;font-weight:700;letter-spacing:4px}
+  .cabecalho{border-bottom:2px solid var(--borda-2);padding-bottom:10px;margin-bottom:14px;text-align:center}
+  .cabecalho .logo img{height:56px;max-width:240px;display:block;margin:0 auto 6px}
+  .cabecalho .info{font-size:11px;color:var(--texto-2);line-height:1.7}
+  .cabecalho .info b{color:var(--texto)}
   .secao{border:1px solid var(--borda);border-radius:10px;overflow:hidden;margin-bottom:10px;break-inside:avoid-page}
   .secao>.titulo{background:var(--azul);color:#fff;font-weight:700;font-size:12.5px;text-transform:uppercase;padding:12px 16px;display:flex;align-items:center;gap:10px}
   .secao>.titulo svg{width:16px;height:16px;fill:#fff;flex:none}
@@ -56,11 +55,10 @@ export const GRAVAME_HTML_TEMPLATE = `
   function secao(titulo,corpo){return '<section class="secao"><div class="titulo">'+esc(titulo)+'</div><div class="corpo">'+corpo+'</div></section>'}
   function render(d){
     var h=[];
+    // Cabeçalho enxuto: somente os dados do veículo presentes na consulta.
     h.push('<header class="cabecalho">'+
       (d.logoUrl?'<div class="logo"><img src="'+esc(d.logoUrl)+'" alt="Olho no Doc"></div>':'')+
-      '<div class="titulo">CONSULTA DE GRAVAME</div>'+
-      '<div class="info"><div><b>CONSULTA Nº:</b> '+esc(d.numero||'-')+'</div><div><b>CONFIDENCIAL PARA:</b> '+esc(d.cliente||'-')+'</div><div><b>REALIZADA EM:</b> '+esc(d.realizadaEm||'-')+'</div></div>'+
-      '<div class="placa-box">'+esc(d.placa||'-')+'</div></header>');
+      '<div class="info"><div><b>Placa:</b> '+esc(d.veiculo.placa)+' &nbsp; <b>Renavam:</b> '+esc(d.veiculo.renavam)+' &nbsp; <b>Chassi:</b> '+esc(d.veiculo.chassi)+' &nbsp; <b>UF:</b> '+esc(d.veiculo.uf)+'</div></div></header>');
     if(d.consta) h.push('<div class="status-box alerta">RESTRIÇÃO JUDICIAL!</div>');
     var g='';
     d.gravames.forEach(function(item,i){
@@ -69,7 +67,7 @@ export const GRAVAME_HTML_TEMPLATE = `
     h.push(secao('Histórico de Gravame',g));
     if(d.qrCode){h.push('<div class="spec-validacao"><img src="'+esc(d.qrCode)+'" alt="QR Code de validação"/><div><b>CONSULTA ORIGINAL E VALIDADA PELA OLHO NO DOC</b><small>Escaneie o QR Code para conferir a autenticidade.</small>'+(d.validationUrl?'<small>'+esc(d.validationUrl)+'</small>':'')+'</div></div>')}
     h.push('<div class="spec-selos"><span class="selo">✓ QUALIDADE GARANTIDA</span><span class="selo">🔒 SITE SEGURO</span></div><div class="spec-fim">FIM DESTA PESQUISA.</div>');
-    h.push('<div class="avisos"><h3>Avisos legais</h3><p>As informações desta consulta são confidenciais e destinadas exclusivamente ao solicitante, para fins legítimos de análise, prevenção à fraude e verificação de procedência veicular.</p><p>A Olho no Doc reúne e transmite fielmente informações obtidas em bases públicas e privadas na data da consulta, não se responsabilizando por alterações posteriores realizadas pelos órgãos competentes.</p><p>Esta consulta não substitui a verificação direta junto aos órgãos oficiais e instituições financeiras.</p></div>');
+    h.push('<div class="avisos"><h3>Avisos legais</h3><p>As informações desta consulta são confidenciais e destinadas exclusivamente ao solicitante, para fins legítimos de análise, prevenção à fraude e verificação de procedência veicular.</p><p>A Olho no Doc reúne e transmite fielmente informações obtidas em bases públicas e privadas na data da consulta, não se responsabilizando por alterações posteriores realizadas pelos órgãos competentes.</p><p>As informações apresentadas possuem caráter exclusivamente informativo e auxiliar, não devendo ser consideradas como único fator decisivo para compra, venda, financiamento ou negociação.</p><p>Esta consulta não substitui a verificação direta junto aos órgãos oficiais e instituições financeiras.</p></div>');
     document.getElementById('relatorio').innerHTML=h.join('');
   }
   var dados=window.DADOS_CONSULTA;

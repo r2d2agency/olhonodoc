@@ -44,7 +44,14 @@ export function buildGravameData(input: unknown, plate: string, customerName?: s
       ['Descrição de Status', '-'],
     ] as [string, string][];
   });
+  const first = asRecord(rawRecords[0]);
   return {
+    veiculo: {
+      placa: plateWithDash(first.placa || plate),
+      renavam: norm(first.renavam),
+      chassi: norm(first.chassi),
+      uf: norm(first.uf),
+    },
     numero: norm(sol.codigoConsulta) || '-',
     cliente: norm(customerName) || '-',
     realizadaEm: norm(sol.dataHora).replace(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}):(\d{2}):\d{2}/, '$1 às $2:$3') || '-',
