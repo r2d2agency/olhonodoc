@@ -1,6 +1,7 @@
 import { renderGoldPdf, goldReportHtml, renderEssentialPdf, essentialReportHtml, reportHash } from '@/lib/gold-report';
 import { renderGravamePdf, gravameReportHtml, gravameReportHash } from '@/lib/gravame-report';
 import { renderBinPdf, binReportHtml, binReportHash } from '@/lib/bin-report';
+import { renderEstadualPdf, estadualReportHtml, estadualReportHash } from '@/lib/estadual-report';
 
 /** HTML da consulta interna conforme o produto da consulta. */
 export async function renderReportHtmlForProduct(options: {
@@ -14,6 +15,7 @@ export async function renderReportHtmlForProduct(options: {
   const { providerProduct, report, plate, status, message, customerName } = options;
   if (providerProduct === 'conferi-gravame') return gravameReportHtml(report, plate, customerName || undefined);
   if (providerProduct === 'conferi-bin') return binReportHtml(report, plate, customerName || undefined);
+  if (providerProduct === 'conferi-estadual') return estadualReportHtml(report, plate, customerName || undefined);
   if (providerProduct === 'conferi-auto-veiculo') return essentialReportHtml(report as any, plate, status, message);
   return goldReportHtml(report as any, plate, status, message);
 }
@@ -35,6 +37,10 @@ export async function renderReportForProduct(options: {
   if (providerProduct === 'conferi-bin') {
     const pdf = Buffer.from(await renderBinPdf(report, plate, customerName || undefined));
     return { pdf, hash: binReportHash(pdf) };
+  }
+  if (providerProduct === 'conferi-estadual') {
+    const pdf = Buffer.from(await renderEstadualPdf(report, plate, customerName || undefined));
+    return { pdf, hash: estadualReportHash(pdf) };
   }
   if (providerProduct === 'conferi-auto-veiculo') {
     const pdf = Buffer.from(await renderEssentialPdf(report as any, plate, status, message));
