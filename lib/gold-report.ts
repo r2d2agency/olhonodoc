@@ -329,7 +329,7 @@ function deriveParecer(r: Record<string, unknown>, parecer: Record<string, unkno
   return { nivel, resumo: formatTextBlock(resumo) };
 }
 
-export function buildData(response: CompanyResponse, plate: string, status: string, message: string) {
+export function buildData(response: CompanyResponse, plate: string, status: string, message: string, essencial = false) {
   const r = asRecord(response);
   const bin = asRecord(r.bin);
   const est = asRecord(r.estadual);
@@ -944,7 +944,7 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
   const data = {
     consulta: {
       numero: norm(sol.codigoConsulta) || undefined,
-      produto: 'Auto Perícia Gold',
+      produto: essencial ? 'Consulta Essencial' : 'Auto Perícia Gold',
       realizadaEm: norm(sol.dataHora) || undefined,
       placa: plate,
       marcaModelo,
@@ -1088,8 +1088,11 @@ async function resolveLogoDataUrl(): Promise<string> {
 }
 
 export async function goldReportHtml(input: CompanyResponse, plate: string, status: string, message: string, essencial = false) {
-  const data = buildData(input, plate, status, message);
-  if (essencial && data.spec) (data.spec as Record<string, unknown>).essencial = true;
+  const data = buildData(input, plate, status, message, essencial);
+  if (data.spec) {
+    (data.spec as Record<string, unknown>).titulo = essencial ? 'CONSULTA ESSENCIAL' : 'AUTO PERÍCIA GOLD';
+    if (essencial) (data.spec as Record<string, unknown>).essencial = true;
+  }
   const logo = await resolveLogoDataUrl();
   if (logo && data.consulta) data.consulta.logoUrl = logo;
 

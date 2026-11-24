@@ -471,7 +471,7 @@ export const MODEL_HTML_TEMPLATE = `
     var realizada = realizadaRaw.length > 14 ? realizadaRaw.slice(0, 10) + ' às ' + realizadaRaw.slice(11, 16) : realizadaRaw;
     h.push('<header class="cabecalho' + (d.spec ? ' spec-header' : '') + '">' +
       '<div class="logo">' + (c.logoUrl ? '<img src="' + esc(c.logoUrl) + '" alt="Logo">' : '') + '</div>' +
-      (d.spec ? '<div class="spec-titulo-principal">AUTO PERÍCIA GOLD</div>' : '') +
+      (d.spec && d.spec.titulo ? '<div class="spec-titulo-principal">' + esc(d.spec.titulo) + '</div>' : '') +
       '<div class="info"><div><b>CONSULTA Nº:</b> ' + esc(c.numero || '-') + '</div>' +
       (d.spec ? '<div><b>CONFIDENCIAL PARA:</b> ' + esc(c.clienteNome || '-') + '</div>' : '') +
       '<div><b>REALIZADA EM:</b> ' + esc(realizada || '-') + '</div>' +
