@@ -5,7 +5,7 @@ import { HYBRID_HTML_TEMPLATE } from '@/lib/gold-report-template-hibrido';
 const LIST_KEY = 'report.templates';
 const ACTIVE_KEY = 'report.activeTemplate';
 /** Versão do layout do template padrão. Incrementar ao alterar MODEL_HTML_TEMPLATE. */
-const TEMPLATE_VERSION = '2026-11-19-spec-v6';
+const TEMPLATE_VERSION = '2026-11-24-essential-v7';
 const VERSION_KEY = 'report.templateVersion';
 
 export type ReportTemplate = { id: string; name: string; html: string; updatedAt: string };
@@ -66,9 +66,10 @@ async function ensureTemplateVersion() {
       if (t.html.includes('d{2}') && t.html.includes('$1 s')) { t.html = t.html.replace(/var realizada[^\n]*\n/, ''); changed = true; }
     }
     if (changed) await saveReportTemplates(stored);
-    // Se o ativo ainda tiver regex inválida, volta para o padrão corrigido
+    // Se o template ativo for uma versão antiga (sem suporte à flag essencial
+    // ou com a regex quebrada), volta para o padrão corrigido.
     const active = stored.find(t => t.id === id);
-    if (active && active.html.includes('d{2}/d')) await setActiveTemplateId(DEFAULT_TEMPLATES[0].id);
+    if (active && (!active.html.includes('s.essencial') || active.html.includes('d{2}/d'))) await setActiveTemplateId(DEFAULT_TEMPLATES[0].id);
     await prisma.setting.upsert({ where: { key: VERSION_KEY }, create: { key: VERSION_KEY, value: TEMPLATE_VERSION }, update: { value: TEMPLATE_VERSION } });
   } catch { /* segue com o que estiver salvo */ }
 }
