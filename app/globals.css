@@ -384,3 +384,11 @@ body{padding-bottom:65px}
 .simple-band,.simple-band *{color:#fff !important}
 .simple-band .eyebrow{color:#8de0c2 !important}
 .simple-band h2{font-size:2rem;line-height:1.2;color:#fff !important}
+
+/* Header das páginas internas igual ao estilo da home */
+.site-header{position:sticky !important;top:0;background:#f8fafb !important;border-bottom:1px solid #e3eaee !important;backdrop-filter:none !important}
+.site-header .header-inner{height:78px !important;max-width:1240px;margin:0 auto;padding:0 28px}
+.site-header .brand img{height:56px !important;max-width:190px;width:auto;object-fit:contain;background:transparent !important;padding:0 !important;border-radius:0 !important}
+.site-header .desktop-nav a,.site-header .desktop-nav summary{color:#17394c !important}
+.site-header .login-link{color:#17394c !important}
+.site-header .button{background:#0b9565}
