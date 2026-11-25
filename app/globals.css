@@ -373,3 +373,14 @@ body{padding-bottom:65px}
 .customer-footer img{height:38px;width:auto;background:#fff;border-radius:8px;padding:4px 10px}
 .customer-footer span{color:#52707c;font-size:.72rem}
 .customer-footer small{display:block;color:#8a9aa3;font-size:.68rem}
+
+/* Correções finais: CNPJ visível e faixa azul legível */
+.customer-footer small{display:block !important;color:#52707c !important;font-size:.72rem !important;font-weight:600 !important}
+.customer-footer img{height:52px !important;max-width:220px !important;background:#fff;border-radius:8px;padding:5px 12px}
+.customer-upsell h3,.customer-upsell p{color:#17394c !important}
+.customer-upsell .customer-eyebrow{color:#0b9565 !important}
+
+
+.simple-band,.simple-band *{color:#fff !important}
+.simple-band .eyebrow{color:#8de0c2 !important}
+.simple-band h2{font-size:2rem;line-height:1.2;color:#fff !important}
