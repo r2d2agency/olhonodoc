@@ -1044,7 +1044,7 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
         autuacoes: { itens: detranAutuacoesFmt, total: norm(detranAutuacoes.total) },
         odometro: detranOdometro.mensagem ? norm(detranOdometro.mensagem) : odometroSpec,
       },
-      csv: csvSpec,
+      csv: csvInfo || (csvSpec ? { mensagem: csvSpec } : null),
       comunicacaoVenda: comVendaSpec,
       recall: recallSpec,
       indicioSinistro: indicioSpec,

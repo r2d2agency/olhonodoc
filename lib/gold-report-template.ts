@@ -47,6 +47,7 @@ export const MODEL_HTML_TEMPLATE = `
   .alerta{border:1px solid var(--vermelho-borda);background:var(--vermelho-bg);border-radius:6px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px 8px;color:var(--vermelho-escuro);font-weight:800;font-size:10.5px;text-transform:uppercase;gap:8px}
   .alerta svg{width:24px;height:24px}
   .alerta.atencao{background:var(--amarelo-bg);border:2px solid var(--amarelo-borda);color:#92400e}
+  .alerta.csv-selo{width:118px;min-width:118px;max-width:118px;min-height:118px;flex:0 0 118px;padding:8px;font-size:9px;line-height:1.3}
   .alerta.ok{background:var(--verde-bg);border-color:var(--verde-borda);color:var(--verde-escuro)}
 
   /* Seções */
@@ -487,7 +488,7 @@ export const MODEL_HTML_TEMPLATE = `
       var selosHtml = (d.spec.selos || []).map(function (texto) {
         return '<div class="alerta"><span>' + esc(texto) + '</span></div>';
       }).join('');
-      if (d.spec.csv) selosHtml += '<div class="alerta atencao"><span>CONSTA CERTIFICADO DE SEGURANÇA VEICULAR</span></div>';
+      if (d.spec.csv) selosHtml += '<div class="alerta atencao csv-selo"><span>CONSTA CERTIFICADO DE SEGURANÇA VEICULAR</span></div>';
       h.push('<div class="alertas">' + selosHtml + '</div>');
     } else if (!d.spec && !vazio(d.alertas)) {
       h.push('<div class="alertas">' + d.alertas.map(function (a) {
