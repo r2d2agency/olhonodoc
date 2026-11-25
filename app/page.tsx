@@ -202,7 +202,7 @@ export default function Home() {
           </nav>
         </div>
         <div className="container footer-bottom">
-          <span>© 2026 Olho no Doc.</span>
+          <span>Olho no Doc Tecnologia e Informações Veiculares Ltda · CNPJ 69.283.015/0001-00 · © 2026 Olho no Doc.</span>
           <span>Consulte antes de comprar.</span>
         </div>
       </footer>
