@@ -5,7 +5,7 @@ import { HYBRID_HTML_TEMPLATE } from '@/lib/gold-report-template-hibrido';
 const LIST_KEY = 'report.templates';
 const ACTIVE_KEY = 'report.activeTemplate';
 /** Versão do layout do template padrão. Incrementar ao alterar MODEL_HTML_TEMPLATE. */
-const TEMPLATE_VERSION = '2026-11-24-csv-v9';
+const TEMPLATE_VERSION = '2026-11-25-default-v10';
 const VERSION_KEY = 'report.templateVersion';
 
 export type ReportTemplate = { id: string; name: string; html: string; updatedAt: string };
@@ -69,7 +69,10 @@ async function ensureTemplateVersion() {
     // Se o template ativo for uma versão antiga (sem suporte à flag essencial
     // ou com a regex quebrada), volta para o padrão corrigido.
     const active = stored.find(t => t.id === id);
-    if (active && (!active.html.includes('s.essencial') || !active.html.includes('CSV Encontrado') || active.html.includes('d{2}/d'))) await setActiveTemplateId(DEFAULT_TEMPLATES[0].id);
+    // Todos os layouts novos (Gold, Essencial, CSV, avisos) dependem do bloco
+    // d.spec. Templates sem esse suporte — inclusive o Híbrido antigo — não
+    // renderizam nada desses dados, então voltamos ao padrão automaticamente.
+    if (active && (!active.html.includes('d.spec') || !active.html.includes('s.essencial') || !active.html.includes('CSV Encontrado') || active.html.includes('d{2}/d'))) await setActiveTemplateId(DEFAULT_TEMPLATES[0].id);
     await prisma.setting.upsert({ where: { key: VERSION_KEY }, create: { key: VERSION_KEY, value: TEMPLATE_VERSION }, update: { value: TEMPLATE_VERSION } });
   } catch { /* segue com o que estiver salvo */ }
 }
