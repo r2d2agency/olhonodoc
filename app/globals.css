@@ -392,3 +392,16 @@ body{padding-bottom:65px}
 .site-header .desktop-nav a,.site-header .desktop-nav summary{color:#17394c !important}
 .site-header .login-link{color:#17394c !important}
 .site-header .button{background:#0b9565}
+
+/* Modal de login/cadastro sobre a pagina */
+.auth-modal-backdrop{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,26,40,.68);backdrop-filter:blur(4px)}
+.auth-modal{position:relative;width:min(100%,430px);max-height:92vh;overflow:auto;padding:30px;border-radius:14px;background:#fff;box-shadow:0 24px 80px rgba(3,26,40,.4)}
+.auth-modal-close{position:absolute;top:14px;right:14px;display:grid;place-items:center;width:32px;height:32px;border:1px solid #dce7ed;border-radius:50%;background:#fff;color:#52707c;cursor:pointer}
+.auth-modal h2{margin:8px 0 4px;font-size:1.4rem;color:#17394c}
+.auth-modal>p{margin:0 0 20px;color:#607682;font-size:.82rem}
+.auth-modal form{display:grid;gap:12px}
+.auth-modal label{display:grid;gap:5px;color:#536b77;font-size:.72rem;font-weight:700}
+.auth-modal input{min-height:44px;padding:0 12px;border:1px solid #d7e3e8;border-radius:6px;color:#17394c;font-size:.86rem}
+.auth-modal .button{width:100%;margin-top:6px}
+.auth-modal .auth-change{width:100%;margin-top:14px;text-align:center}
+@media(max-width:560px){.auth-modal{padding:22px}}
