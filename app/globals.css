@@ -367,3 +367,9 @@ body{padding-bottom:65px}
 .site-footer .footer-top, .site-footer .footer-links strong, .site-footer .footer-links a, footer.footer .footer-links strong, footer.footer .footer-links a{color:#17394c !important}
 .site-footer .brand img, footer.footer .brand img{background:#fff;border-radius:8px;padding:6px 10px;height:auto;width:auto;max-height:46px}
 .site-footer .footer-bottom, footer.footer .footer-bottom{color:#52707c !important;border-top:1px solid #dce7ed}
+
+.customer-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:28px 0 4px;padding:16px 20px;border:1px solid #e3eaee;border-radius:10px;background:#f3f6f8}
+.customer-footer div{display:flex;align-items:center;gap:12px}
+.customer-footer img{height:38px;width:auto;background:#fff;border-radius:8px;padding:4px 10px}
+.customer-footer span{color:#52707c;font-size:.72rem}
+.customer-footer small{display:block;color:#8a9aa3;font-size:.68rem}
