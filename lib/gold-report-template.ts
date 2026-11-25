@@ -599,9 +599,9 @@ export const MODEL_HTML_TEMPLATE = `
       }
 
       // CSV, comunicação de venda, recall, indício
-      if (s.csv) h.push(secao("info", "CSV", s.csv.url
-        ? '<div class="v"><b>CSV Encontrado</b><br><a href="' + esc(s.csv.url) + '" target="_blank" rel="noopener">' + esc(s.csv.url) + '</a></div>'
-        : '<div class="v">' + esc(s.csv.mensagem || 'NADA CONSTA') + '</div>'));
+      h.push(secao("info", "SENATRAN / CSV — Para mais informações",
+        (s.csv && s.csv.url ? '<div class="v"><b>ENCONTRADO CSV!</b> &nbsp; <a href="' + esc(s.csv.url) + '" target="_blank" rel="noopener">' + esc(s.csv.url) + '</a></div>' : '') +
+        '<div class="v"><b>Consultar site</b> <a href="https://portalservicos.senatran.serpro.gov.br/#/" target="_blank" rel="noopener">https://portalservicos.senatran.serpro.gov.br/#/</a></div>'));
       if (s.comunicacaoVenda) h.push(secao("venda", "Comunicação de venda", '<div class="v">' + esc(s.comunicacaoVenda) + '</div>'));
       if (s.recall) h.push(secao("recall", "Recall", '<div class="v">' + esc(s.recall) + '</div>'));
       if (!s.essencial) h.push(secao("triangulo", "Informações de indício de sinistro (Cortesia)", '<div class="v">' + esc(s.indicioSinistro) + '</div>'));
