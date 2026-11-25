@@ -668,7 +668,7 @@ export const MODEL_HTML_TEMPLATE = `
 
       h.push((s.qrCode ? '<div class="spec-validacao"><img src="' + esc(s.qrCode) + '" alt="QR Code de validação"/><div><b>CONSULTA ORIGINAL E VALIDADA PELA OLHO NO DOC</b><br><small>Escaneie o QR Code para conferir os dados básicos e a autenticidade desta consulta.</small>' + (s.validationUrl ? '<br><small>' + esc(s.validationUrl) + '</small>' : '') + '</div></div>' : '') +
         '<div class="spec-selos"><span class="selo">✓ QUALIDADE GARANTIDA</span><span class="selo">🔒 SITE SEGURO</span></div>' +
-        '<div class="spec-fim">FIM DESTA PESQUISA.</div>' +
+        '<div class="spec-fim">FIM DESTA PESQUISA.<br><small style="font-size:9px;font-weight:400">Olho no Doc Tecnologia e Informações Veiculares Ltda · CNPJ 69.283.015/0001-00</small></div>' +
         '<div class="avisos"><h3>Avisos legais</h3>' +
         '<p>As informações contidas nesta consulta são confidenciais e destinadas exclusivamente ao solicitante da pesquisa ' + (c.clienteNome ? '(' + esc(c.clienteNome) + (c.clienteCnpj ? ' — CNPJ ' + esc(c.clienteCnpj) : '') + ')' : '') + ', para fins legítimos de análise, prevenção à fraude, verificação de procedência veicular e apoio em negociações, sendo vedada sua utilização em desacordo com a legislação vigente.</p>' +
         '<p>A Olho no Doc limita-se a reunir, organizar e transmitir fielmente informações obtidas em bases públicas e privadas disponíveis na data e horário da consulta, não se responsabilizando por alterações posteriores realizadas pelos órgãos competentes ou entidades fornecedoras dos dados.</p>' +

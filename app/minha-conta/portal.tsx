@@ -58,7 +58,7 @@ export default function CustomerPortal({ name, email, products, initialPlate, so
           <button className={tab === 'veiculos' ? 'active' : ''} onClick={() => setTab('veiculos')}><CarFront size={17}/> Meus veículos</button>
           <button className={tab === 'consultas' ? 'active' : ''} onClick={() => setTab('consultas')}><FileText size={17}/> Minhas consultas</button><button className={tab === 'pagamentos' ? 'active' : ''} onClick={() => setTab('pagamentos')}><CreditCard size={17}/> Pagamentos</button><button className={tab === 'perfil' ? 'active' : ''} onClick={() => setTab('perfil')}><ShieldCheck size={17}/> Meu cadastro</button>
         </nav>
-        <div className="customer-sidebar-bottom"><div className="customer-help"><CircleHelp size={18}/><strong>Precisa de ajuda?</strong><p>Estamos aqui para ajudar você.</p><Link href="/contato">Fale com a gente <ArrowRight size={14}/></Link></div><Link href="/" className="customer-back">Voltar ao site <ChevronRight size={15}/></Link></div>
+        <div className="customer-sidebar-bottom"><div className="customer-help"><CircleHelp size={18}/><strong>Precisa de ajuda?</strong><p>Estamos aqui para ajudar você.</p><Link href="/contato">Fale com a gente <ArrowRight size={14}/></Link></div><p className="customer-cnpj">Olho no Doc Tecnologia e Informações Veiculares Ltda<br/>CNPJ 69.283.015/0001-00</p><Link href="/" className="customer-back">Voltar ao site <ChevronRight size={15}/></Link></div>
       </aside>
 
       <section className="customer-main">

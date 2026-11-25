@@ -140,3 +140,7 @@
 .query-modal-error pre{max-height:320px;overflow:auto;padding:14px;border:1px solid #e1e8ed;border-radius:8px;background:#f8fafb;color:#334956;font-size:.7rem;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
 .query-modal-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
 @media(max-width:700px){.query-modal-grid{grid-template-columns:1fr}}
+
+/* Topo do admin: fundo neutro para a logo ressaltar */
+.admin-sidebar-brand{background:#f3f6f8;border-radius:10px;margin:10px 10px 14px;padding:12px 16px;border-bottom:0}
+.admin-sidebar-brand img{width:170px;height:auto;object-fit:contain}

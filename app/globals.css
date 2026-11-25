@@ -355,3 +355,9 @@ body{padding-bottom:65px}
 .checkout-summary .checkout-aggregate-grid strong{font-size:.78rem}
 .checkout-card{background:#fff}
 .checkout-card h1{font-size:1.85rem}
+
+/* Logo do cliente: fundo neutro e destaque */
+.customer-brand{background:#f3f6f8;border-radius:10px;padding:10px 14px;margin-bottom:14px}
+.customer-brand img{height:46px;width:auto;object-fit:contain;background:transparent;padding:0}
+
+.customer-cnpj{margin:12px 0;color:#8a9aa3;font-size:.66rem;line-height:1.5}

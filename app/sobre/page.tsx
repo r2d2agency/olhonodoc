@@ -1,2 +1,11 @@
+import { getInstitutionalPages } from '@/lib/institutional-pages';
 import { GenericContent } from '@/components/page-blocks';
-export default function AboutPage() { return <GenericContent eyebrow="Sobre o Olho no Doc" title="Informação para ajudar você a comprar melhor." description="O objetivo desta plataforma é tornar a consulta veicular mais simples, clara e presente na decisão de compra."><div className="about-grid"><div><h2>Antes de comprar, vale olhar além.</h2><p>Um veículo é mais do que sua aparência. Reunir informações disponíveis sobre ele ajuda você a conversar melhor com o vendedor e entender o que está avaliando.</p></div><div className="about-list"><div><strong>Clareza</strong><p>Resultados organizados em uma experiência fácil de entender.</p></div><div><strong>Tecnologia</strong><p>Uma plataforma criada para aproximar você da informação veicular.</p></div><div><strong>Transparência</strong><p>Conteúdo demonstrativo sinalizado e linguagem sem promessas absolutas.</p></div></div></div></GenericContent>; }
+
+export const dynamic = 'force-dynamic';
+
+export default async function AboutPage() {
+  const pages = await getInstitutionalPages();
+  return <GenericContent eyebrow="Sobre o Olho no Doc" title={pages.sobre.title} description="Informação para ajudar você a comprar melhor.">
+    <div className="legal-copy" dangerouslySetInnerHTML={{ __html: pages.sobre.content }} />
+  </GenericContent>;
+}
