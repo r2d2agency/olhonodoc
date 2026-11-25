@@ -361,3 +361,9 @@ body{padding-bottom:65px}
 .customer-brand img{height:46px;width:auto;object-fit:contain;background:transparent;padding:0}
 
 .customer-cnpj{margin:12px 0;color:#8a9aa3;font-size:.66rem;line-height:1.5}
+
+/* Rodapé das páginas internas: fundo claro e logo legível */
+.site-footer, footer.footer{background:#f3f6f8 !important;color:#17394c !important}
+.site-footer .footer-top, .site-footer .footer-links strong, .site-footer .footer-links a, footer.footer .footer-links strong, footer.footer .footer-links a{color:#17394c !important}
+.site-footer .brand img, footer.footer .brand img{background:#fff;border-radius:8px;padding:6px 10px;height:auto;width:auto;max-height:46px}
+.site-footer .footer-bottom, footer.footer .footer-bottom{color:#52707c !important;border-top:1px solid #dce7ed}
