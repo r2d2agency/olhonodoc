@@ -139,7 +139,6 @@ export const MODEL_HTML_TEMPLATE = `
   /* Layout especificação */
   .spec-2col .campos{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
   .spec-titulo{font-weight:800;font-size:11.5px;text-transform:uppercase;margin:10px 0 6px;color:var(--texto)}
-  .csv-aviso{border:2px solid var(--amarelo-borda);background:var(--amarelo-bg);color:#854d0e;border-radius:8px;padding:10px 14px;margin:10px 0;font-weight:800;font-size:11px;text-transform:uppercase;text-align:center}
   .spec-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
   .spec-card{background:var(--fundo-card);border:1px solid var(--borda-2);border-radius:6px;padding:10px;font-size:10.5px;line-height:1.6;break-inside:avoid}
   .spec-card b{color:var(--muted);font-weight:600}
@@ -484,10 +483,12 @@ export const MODEL_HTML_TEMPLATE = `
       '<div class="modelo-carro">' + I.carro + '<div>' + esc(c.marcaModelo || '') + '</div></div>' +
       '</header>');
 
-    if (d.spec && d.spec.selos && d.spec.selos.length) {
-      h.push('<div class="alertas">' + d.spec.selos.map(function (texto) {
+    if (d.spec && ((d.spec.selos && d.spec.selos.length) || d.spec.csv)) {
+      var selosHtml = (d.spec.selos || []).map(function (texto) {
         return '<div class="alerta"><span>' + esc(texto) + '</span></div>';
-      }).join('') + '</div>');
+      }).join('');
+      if (d.spec.csv) selosHtml += '<div class="alerta atencao"><span>CONSTA CERTIFICADO DE SEGURANÇA VEICULAR</span></div>';
+      h.push('<div class="alertas">' + selosHtml + '</div>');
     } else if (!d.spec && !vazio(d.alertas)) {
       h.push('<div class="alertas">' + d.alertas.map(function (a) {
         var cls = a.tipo === "atencao" ? " atencao" : a.tipo === "ok" ? " ok" : "";
@@ -597,7 +598,6 @@ export const MODEL_HTML_TEMPLATE = `
       }
 
       // CSV, comunicação de venda, recall, indício
-      if (s.csv) h.push('<div class="csv-aviso"><strong>CONSTA CERTIFICADO DE SEGURANÇA VEICULAR</strong></div>');
       if (s.csv) h.push(secao("info", "CSV", s.csv.url
         ? '<div class="v"><b>CSV Encontrado</b><br><a href="' + esc(s.csv.url) + '" target="_blank" rel="noopener">' + esc(s.csv.url) + '</a></div>'
         : '<div class="v">' + esc(s.csv.mensagem || 'NADA CONSTA') + '</div>'));
