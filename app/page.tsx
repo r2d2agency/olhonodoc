@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowRight, Check, FileSearch, Gavel, LockKeyhole, ShieldCheck, Siren, Wrench } from 'lucide-react';
 import { FAQ, PlateInput, ProductCard, ReportPreview } from '@/components/site';
 import HomeAccountButton from '@/components/home-account-button';
+import HomeMobileNav from '@/components/home-mobile-nav';
 import { getCatalogProducts } from '@/lib/catalog';
 import './home.css';
 
@@ -50,6 +51,7 @@ export default async function Home() {
           </nav>
           <HomeAccountButton />
           <Link className="button header-cta" href="#consultar">Consultar placa <ArrowRight size={16} /></Link>
+          <HomeMobileNav />
         </div>
       </header>
 

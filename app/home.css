@@ -1385,3 +1385,16 @@
 .comparison-row>span:not(:first-child){display:flex;align-items:center;justify-content:center;min-height:42px}
 .comparison-check{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#168a62;color:#fff}
 .comparison-head strong:first-of-type{background:#e6f6ee;border-radius:8px;padding:8px}
+
+/* Menu mobile fixo no topo */
+@media(max-width:700px){
+  .home-shell .home-header{position:fixed !important;top:0;left:0;right:0;z-index:60;box-shadow:0 4px 18px rgba(3,26,40,.08)}
+  .home-shell .topbar{padding-top:6px}
+  .home-shell main{padding-top:70px}
+  .home-shell .home-mobile-nav-button{display:grid !important;place-items:center;width:40px;height:40px;border:1px solid #dce7ed;border-radius:8px;background:#fff;color:#17394c;cursor:pointer}
+  .home-shell .home-mobile-nav{position:absolute;top:100%;right:12px;left:12px;z-index:70;display:grid;gap:2px;padding:12px;border:1px solid #e3eaee;border-radius:12px;background:#fff;box-shadow:0 18px 45px rgba(3,26,40,.15)}
+  .home-shell .home-mobile-nav a,.home-shell .home-mobile-nav button{display:flex;align-items:center;min-height:40px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:#17394c;font-size:.85rem;font-weight:600;text-decoration:none}
+  .home-shell .home-mobile-nav a:hover,.home-shell .home-mobile-nav button:hover{background:#f3f6f8}
+  .home-shell .home-mobile-nav .button{display:flex;min-height:46px;align-items:center;justify-content:center;margin-top:6px;border-radius:8px;background:#168a62;color:#fff}
+}
+@media(min-width:701px){.home-shell .home-mobile-nav-button,.home-shell .home-mobile-nav{display:none !important}}
