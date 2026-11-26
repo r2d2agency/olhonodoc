@@ -1408,3 +1408,10 @@
 .home-shell .product-card-features li{display:flex;align-items:flex-start;gap:7px;color:#526671;font-size:.75rem;line-height:1.45}
 .home-shell .product-card-features li svg{flex:none;color:#168a62;margin-top:1px}
 @keyframes card-details-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* Cards crescem com a sanfona, alinhados no topo */
+.home-shell .product-grid{align-items:start}
+.home-shell .product-card{position:relative;overflow:visible;height:auto}
+.home-shell .product-card-details{position:static;inset:auto;z-index:auto;display:block;padding:12px 0 0;margin-top:2px;border-top:1px solid #edf2f4;background:transparent;overflow:visible;animation:card-details-in .18s ease-out}
+.home-shell .product-card-details-head{margin-bottom:8px;color:#0b3552;font-size:.74rem}
+.home-shell .product-card-price{margin-top:auto;padding-top:12px}

@@ -436,3 +436,29 @@ footer.footer .brand img,.site-footer .brand img{width:auto !important;height:48
 .product-card-expand:hover,.features-accordion-toggle:hover{background:#dff3ea}
 .product-card ul.expanded,.customer-product-card ul.expanded{max-height:none}
 .customer-product-card .features-accordion-toggle{width:100%;justify-content:center;margin-top:8px}
+
+/* Refresh visual Minha Conta — azul da marca */
+.customer-portal{background:#f6f9fb}
+.customer-sidebar{background:#f0f5f8;border-right:1px solid #dbe7ee}
+.customer-sidebar .customer-nav button.active{background:#0b3552;color:#fff;border-left-color:#18c887}
+.customer-eyebrow{color:#0b6e9c !important;letter-spacing:.09em}
+.customer-welcome{background:linear-gradient(120deg,#0b3552,#0d5f83);color:#fff;border-radius:14px;padding:26px 28px}
+.customer-welcome h1,.customer-welcome p{color:#fff}
+.customer-welcome .customer-eyebrow{color:#8de0c2 !important}
+.customer-welcome-art{color:#8de0c2}
+.customer-status-strip{border-left:4px solid #0b6e9c;background:#fff}
+.customer-status-icon{background:#e8f3f9;color:#0b6e9c}
+.customer-overview-section h2,.customer-tab-content h1{color:#0b3552}
+.customer-overview-vehicle,.customer-overview-query,.customer-vehicle-card-item,.customer-query-card{border:1px solid #dbe7ee;border-top:3px solid #0b6e9c;box-shadow:0 6px 20px rgba(11,53,82,.06)}
+.customer-vehicle-icon{background:#e8f3f9;color:#0b6e9c}
+.customer-overview-vehicle button,.customer-overview-query button{border-color:#b7d8e8;background:#edf6fb;color:#0b6e9c}
+.customer-primary-button{background:#0b6e9c}
+.customer-primary-button:hover{background:#0b3552}
+.customer-secondary-button{border-color:#b7d8e8;color:#0b6e9c}
+.customer-product-card.recommended{border-color:#0b6e9c;box-shadow:0 8px 24px rgba(11,110,156,.1)}
+.customer-product-card h3{color:#0b3552}
+.customer-select-plan{background:#edf6fb;color:#0b6e9c;border-color:#b7d8e8}
+.customer-account-card{border-top:3px solid #0b6e9c}
+.customer-topbar{border-bottom:1px solid #dbe7ee}
+.customer-protected{color:#0b6e9c}
+.customer-footer{border-top:3px solid #0b3552}
