@@ -4,6 +4,7 @@ import { ArrowRight, Check, FileSearch, Gavel, LockKeyhole, ShieldCheck, Siren, 
 import { FAQ, PlateInput, ProductCard, ReportPreview } from '@/components/site';
 import HomeAccountButton from '@/components/home-account-button';
 import HomeMobileNav from '@/components/home-mobile-nav';
+import TestimonialsSection from '@/components/testimonials-section';
 import { getCatalogProducts } from '@/lib/catalog';
 import './home.css';
 
@@ -173,6 +174,7 @@ export default async function Home() {
           </div>
         </section>
 
+        <TestimonialsSection />
         <section className="section faq-section" id="duvidas">
           <div className="container">
             <div className="section-heading centered">

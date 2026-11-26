@@ -153,3 +153,7 @@
 .admin-product-feature-input input{flex:1;min-width:0;min-height:38px;padding:0 10px;border:1px solid #d7e3e8;border-radius:5px;color:#17394c;font-size:.8rem}
 .admin-product-feature-input button{padding:6px 10px;border:1px solid #f0c9c9;border-radius:5px;background:#fff5f5;color:#b42318;font-size:.7rem;cursor:pointer}
 .admin-product-features-row>.admin-secondary-button{margin-top:12px}
+
+.admin-testimonial-row{padding:18px 0;border-bottom:1px solid #e3eaee}
+.admin-testimonial-head{display:flex;align-items:center;justify-content:space-between;color:#17394c}
+.admin-testimonial-head button{padding:6px 8px;border:1px solid #f0c9c9;border-radius:5px;background:#fff5f5;color:#b42318;cursor:pointer}

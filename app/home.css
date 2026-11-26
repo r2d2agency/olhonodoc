@@ -1415,3 +1415,15 @@
 .home-shell .product-card-details{position:static;inset:auto;z-index:auto;display:block;padding:12px 0 0;margin-top:2px;border-top:1px solid #edf2f4;background:transparent;overflow:visible;animation:card-details-in .18s ease-out}
 .home-shell .product-card-details-head{margin-bottom:8px;color:#0b3552;font-size:.74rem}
 .home-shell .product-card-price{margin-top:auto;padding-top:12px}
+
+.testimonials-section{padding-top:30px}
+.testimonials-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:22px}
+.testimonial-card{display:flex;flex-direction:column;gap:12px;padding:22px;border:1px solid #dbe7ee;border-top:3px solid #0b6e9c;border-radius:12px;background:#fff;box-shadow:0 6px 20px rgba(11,53,82,.06)}
+.testimonial-card>svg{color:#0b6e9c}
+.testimonial-card p{flex:1;color:#374151;font-size:.88rem;line-height:1.6}
+.testimonial-person{display:flex;align-items:center;gap:10px}
+.testimonial-person img,.testimonial-person span{display:grid;place-items:center;width:40px;height:40px;flex:none;border-radius:50%;object-fit:cover;background:#e8f3f9;color:#0b6e9c;font-weight:800}
+.testimonial-person strong{color:#0b3552;font-size:.82rem}
+.testimonial-video-wrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden}
+.testimonial-video-wrap iframe{width:100%;height:100%;border:0}
+.testimonial-video strong{color:#0b3552;font-size:.82rem}

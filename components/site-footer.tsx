@@ -2,8 +2,36 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Facebook, Instagram, Linkedin, Youtube, MessageCircle, Mail, Phone } from 'lucide-react';
 import { companyInfo } from '@/lib/company-info';
+import { defaultFooter } from '@/lib/site-footer-config';
 
-type FooterConfig = { description: string; copyright: string; columns: { title: string; links: { label: string; href: string }[] }[] };
-const fallback: FooterConfig = { description: 'Informação para você decidir melhor antes de comprar um veículo.', copyright: '© 2026 Olho no Doc', columns: [{ title: 'Consultas', links: [{ label: 'Consulta Premium', href: '/consultas/consulta-premium' }, { label: 'Consulta Essencial', href: '/consultas/consulta-essencial' }, { label: 'Comparar consultas', href: '/comparar-consultas' }] }, { title: 'Institucional', links: [{ label: 'Como funciona', href: '/como-funciona' }, { label: 'Sobre', href: '/sobre' }, { label: 'FAQ', href: '/faq' }, { label: 'Contato', href: '/contato' }] }, { title: 'Conteúdos', links: [{ label: 'Blog', href: '/blog' }, { label: 'Exemplo de relatório', href: '/exemplo-relatorio' }, { label: 'Termos de uso', href: '/termos-de-uso' }, { label: 'Privacidade', href: '/politica-de-privacidade' }] }] };
-export default function SiteFooter() { const [config, setConfig] = useState(fallback); useEffect(() => { fetch('/api/site/footer').then((response) => response.json()).then((data) => { if (data?.columns) setConfig(data); }).catch(() => undefined); }, []); const legal = `Olho no Doc Tecnologia e Informações Veiculares Ltda · CNPJ ${companyInfo.cnpj}`; const copyrightText = config.copyright.includes('CNPJ') ? config.copyright : `${config.copyright} · ${legal}`; return <footer className="footer"><div className="footer-top"><div><Link href="/" className="brand brand-light"><img src="/logo-olho-no-doc.png" alt="Olho no Doc" style={{height:34,width:"auto"}}/></Link><p>{config.description}</p></div><div className="footer-links">{config.columns.map((column) => <div key={column.title}><strong>{column.title}</strong>{column.links.map((link) => <Link href={link.href} key={`${column.title}-${link.label}`}>{link.label}</Link>)}</div>)}</div></div><div className="footer-bottom"><span>{copyrightText}</span><span>Consulte antes de comprar.</span></div></footer>; }
+type FooterConfig = typeof defaultFooter;
+const fallback = defaultFooter;
+
+export default function SiteFooter() {
+  const [config, setConfig] = useState<FooterConfig>(fallback);
+  useEffect(() => {
+    fetch('/api/site/footer').then(response => response.json()).then(data => { if (data?.columns) setConfig(data); }).catch(() => undefined);
+  }, []);
+  const legal = `Olho no Doc Tecnologia e Informações Veiculares Ltda · CNPJ ${companyInfo.cnpj}`;
+  const copyrightText = config.copyright.includes('CNPJ') ? config.copyright : `${config.copyright} · ${legal}`;
+  const social = config.social || {};
+  const links = [
+    ['Instagram', social.instagram, <Instagram size={17} key="i"/>],
+    ['Facebook', social.facebook, <Facebook size={17} key="f"/>],
+    ['YouTube', social.youtube, <Youtube size={17} key="y"/>],
+    ['LinkedIn', social.linkedin, <Linkedin size={17} key="l"/>],
+    ['WhatsApp', social.whatsapp, <MessageCircle size={17} key="w"/>],
+  ] as const;
+  return <footer className="footer">
+    <div className="footer-top">
+      <div><Link href="/" className="brand brand-light"><img src="/logo-olho-no-doc.png" alt="Olho no Doc" style={{height:34,width:"auto"}}/></Link><p>{config.description}</p></div>
+      <div className="footer-links">{config.columns.map((column) => <div key={column.title}><strong>{column.title}</strong>{column.links.map((link) => <Link href={link.href} key={`${column.title}-${link.label}`}>{link.label}</Link>)}</div>)}</div>
+    </div>
+    <div className="footer-social">{links.filter(([, url]) => url).map(([label, url, icon]) => <a href={url} target="_blank" rel="noopener noreferrer" aria-label={label} key={label}>{icon}<span>{label}</span></a>)}</div>
+    {(config.phone || config.email) && <div className="footer-contact">{config.phone && <a href={`tel:${config.phone.replace(/\D/g, '')}`}><Phone size={14}/> {config.phone}</a>}{config.email && <a href={`mailto:${config.email}`}><Mail size={14}/> {config.email}</a>}</div>}
+    {config.floatingWhatsapp && <a className="whatsapp-float" href={config.floatingWhatsapp} target="_blank" rel="noopener noreferrer" aria-label="Conversar no WhatsApp"><MessageCircle size={26}/></a>}
+    <div className="footer-bottom"><span>{copyrightText}</span><span>Consulte antes de comprar.</span></div>
+  </footer>;
+}
