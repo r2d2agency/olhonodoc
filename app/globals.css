@@ -413,3 +413,8 @@ body{padding-bottom:65px}
 
 .login-link{background:transparent;border:0;cursor:pointer;font-family:inherit}
 .mobile-nav button{background:transparent;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+
+/* Logo dos rodapés: manter proporção original */
+.footer-logo{width:auto !important;height:64px !important;max-height:none !important;object-fit:contain !important}
+footer.footer .brand img,.site-footer .brand img{width:auto !important;height:48px !important;max-height:none !important;padding:0 !important;background:transparent !important;object-fit:contain !important}
+.customer-footer img{width:auto !important;height:52px !important;max-height:none !important;object-fit:contain !important;padding:0 !important;background:transparent !important}
