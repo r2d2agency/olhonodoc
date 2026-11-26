@@ -430,3 +430,9 @@ footer.footer .brand img,.site-footer .brand img{width:auto !important;height:48
 .customer-overview-vehicle button,.customer-overview-query button{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border:1px solid #bfe6d3;border-radius:6px;background:#f0faf5;color:#0d8a5f;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap}
 .customer-overview-query .customer-query-status{font-size:.7rem;padding:4px 8px}
 @media(max-width:560px){.customer-overview-vehicle,.customer-overview-query{flex-wrap:wrap}.customer-overview-vehicle button,.customer-overview-query button{width:100%;justify-content:center}}
+
+/* Sanfona de características */
+.product-card-expand,.features-accordion-toggle{display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:6px 10px;border:1px solid #b9d9cc;border-radius:5px;background:#edf9f3;color:#13865f;font-size:.68rem;font-weight:700;cursor:pointer;transition:background .15s}
+.product-card-expand:hover,.features-accordion-toggle:hover{background:#dff3ea}
+.product-card ul.expanded,.customer-product-card ul.expanded{max-height:none}
+.customer-product-card .features-accordion-toggle{width:100%;justify-content:center;margin-top:8px}
