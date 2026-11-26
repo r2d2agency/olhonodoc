@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Eye, EyeOff, LoaderCircle, X } from 'lucide-react';
 import { readJson } from '@/lib/client-response';
 
@@ -24,7 +25,7 @@ export default function AuthModal({ open, onClose, onSuccess, initialMode = 'log
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
   async function forgot(event: FormEvent) {
     event.preventDefault(); setError(''); setLoading(true);
@@ -50,7 +51,7 @@ export default function AuthModal({ open, onClose, onSuccess, initialMode = 'log
     finally { setLoading(false); }
   }
 
-  return <div className="auth-modal-backdrop" role="dialog" aria-modal="true" aria-label={mode === 'login' ? 'Entrar na conta' : 'Criar conta'}>
+  return createPortal(<div className="auth-modal-backdrop" role="dialog" aria-modal="true" aria-label={mode === 'login' ? 'Entrar na conta' : 'Criar conta'}>
     <div className="auth-modal">
       <button type="button" className="auth-modal-close" onClick={onClose} aria-label="Fechar"><X size={18}/></button>
       <span className="eyebrow">Área do cliente</span>
@@ -76,5 +77,5 @@ export default function AuthModal({ open, onClose, onSuccess, initialMode = 'log
         {forgotMode ? 'Voltar para login' : mode === 'login' ? 'Primeiro acesso? Criar cadastro' : 'Já tenho cadastro'}
       </button>
     </div>
-  </div>;
+  </div>, document.body);
 }
