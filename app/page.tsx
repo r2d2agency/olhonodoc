@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight, Check, FileSearch, Gavel, LockKeyhole, ShieldCheck, Siren, Wrench } from 'lucide-react';
 import { FAQ, PlateInput, ProductCard, ReportPreview } from '@/components/site';
 import HomeAccountButton from '@/components/home-account-button';
-import { products } from '@/data/products';
+import { getCatalogProducts } from '@/lib/catalog';
 import './home.css';
 
 const faqs = [
@@ -30,7 +30,10 @@ const steps = [
   { n: '03', title: 'Receba o relatório', text: 'O relatório fica pronto em poucos minutos, na tela e no seu e-mail.' }
 ];
 
-export default function Home() {
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  const products = await getCatalogProducts();
   return (
     <div className="home-shell">
       <div className="topbar">CONSULTA VEICULAR ONLINE <span aria-hidden="true">•</span> SUA TRANQUILIDADE É NOSSO FOCO</div>
