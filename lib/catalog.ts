@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { getStoredFeatures } from '@/lib/product-features';
 
 export type CatalogProduct = {
   slug: string;
@@ -33,10 +34,12 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
     const products = await prisma.product.findMany({ where: { status: 'ACTIVE' }, orderBy: [{ sortOrder: 'asc' }, { priceCents: 'desc' }] });
     if (!products.length) return fallbackProducts;
     const now = Date.now();
+    const stored = await getStoredFeatures();
     return products.map((product) => {
       const inWindow = (!product.promotionStart || product.promotionStart.getTime() <= now) && (!product.promotionEnd || product.promotionEnd.getTime() >= now);
       const promo = inWindow && product.promotionalPriceCents != null ? product.promotionalPriceCents : null;
-      const features = Array.isArray(product.features) ? (product.features as string[]) : [];
+      // Features editadas no admin têm prioridade sobre o campo do produto.
+      const features = stored?.[product.slug]?.length ? stored[product.slug] : (Array.isArray(product.features) ? (product.features as string[]) : []);
       return { slug: product.slug, name: product.name, shortName: product.shortName, description: product.description, price: formatBRL(promo ?? product.priceCents), priceCents: promo ?? product.priceCents, oldPrice: promo != null ? formatBRL(product.priceCents) : null, accent: product.accent ?? '', features, useCase: product.useCase, ctaText: product.ctaText || 'Ver consulta', featured: product.featured === 'FEATURED', requiresChassi: product.providerProduct === 'conferi-gravame' || product.providerInputType === 'chassi' };
     });
   } catch { return fallbackProducts; }

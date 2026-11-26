@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { saveStoredFeatures } from '@/lib/product-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,5 +26,11 @@ export async function PUT(request: Request) {
     if (!Array.isArray(features) || features.length > 30 || features.some((f: unknown) => typeof f !== 'string' || f.length > 120)) return NextResponse.json({ error: 'Características inválidas.' }, { status: 400 });
     await prisma.product.update({ where: { id: item.id }, data: { features } });
   }
+  const bySlug: Record<string, string[]> = {};
+  for (const item of items) {
+    const product = await prisma.product.findUnique({ where: { id: item.id }, select: { slug: true } });
+    if (product) bySlug[product.slug] = item.features;
+  }
+  await saveStoredFeatures(bySlug);
   return NextResponse.json({ ok: true });
 }
