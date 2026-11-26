@@ -418,3 +418,15 @@ body{padding-bottom:65px}
 .footer-logo{width:auto !important;height:64px !important;max-height:none !important;object-fit:contain !important}
 footer.footer .brand img,.site-footer .brand img{width:auto !important;height:48px !important;max-height:none !important;padding:0 !important;background:transparent !important;object-fit:contain !important}
 .customer-footer img{width:auto !important;height:52px !important;max-height:none !important;object-fit:contain !important;padding:0 !important;background:transparent !important}
+
+.customer-overview-section{padding-top:28px}
+.customer-overview-section h2{font-size:1.35rem}
+.customer-overview-vehicles,.customer-overview-queries{display:grid;gap:10px;margin-top:16px}
+.customer-overview-vehicle,.customer-overview-query{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #e2e9ed;border-radius:8px;background:#fff}
+.customer-overview-vehicle>div:nth-child(2),.customer-overview-query>div:first-child{flex:1;min-width:0}
+.customer-overview-vehicle strong,.customer-overview-query strong{display:block;color:#17394c;font-size:.92rem;letter-spacing:.05em}
+.customer-overview-vehicle small,.customer-overview-query small{display:block;color:#7a8a93;font-size:.72rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.customer-overview-vehicle span{color:#52707c;font-size:.7rem}
+.customer-overview-vehicle button,.customer-overview-query button{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border:1px solid #bfe6d3;border-radius:6px;background:#f0faf5;color:#0d8a5f;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.customer-overview-query .customer-query-status{font-size:.7rem;padding:4px 8px}
+@media(max-width:560px){.customer-overview-vehicle,.customer-overview-query{flex-wrap:wrap}.customer-overview-vehicle button,.customer-overview-query button{width:100%;justify-content:center}}

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Bell, CarFront, Check, ChevronRight, CircleHelp, Clock3, CreditCard, FileText, Plus, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import type { CatalogProduct } from '@/lib/catalog';
 import { readJson } from '@/lib/client-response';
+import AccountOverview from './account-overview';
 import PaymentsTab from './payments-tab';
 import VehiclesTab from './vehicles-tab';
 import QueriesTab from './queries-tab';
@@ -39,6 +40,15 @@ export default function CustomerPortal({ name, email, products, initialPlate, so
   async function loadAggregates(normalized: string) { setAggregate(null); setAggregateError(''); setAggregateLoading(true); try { const response = await fetch('/api/account/aggregates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plate: normalized }) }); const body = await readJson(response); if (!response.ok) throw new Error(body.error || 'Não foi possível consultar o veículo.'); if (body.data.status === 'AUTH_ERROR' || body.data.status === 'INVALID_INPUT' || body.data.status === 'FAILED') throw new Error(body.data.request?.mensagem || 'A Company não conseguiu concluir a consulta.'); if (body.data.status === 'PROCESSING') { setAggregateError('A Company recebeu a consulta e está processando os dados.'); return; } setAggregate(body.data.aggregates || null); } catch (error) { setAggregateError(error instanceof Error ? error.message : 'Não foi possível consultar o veículo.'); } finally { setAggregateLoading(false); } }
   useEffect(() => { if (initialPlate) void loadAggregates(initialPlate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()); }, [initialPlate]);
 
+  function selectPlate(value: string) {
+    const normalized = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 7);
+    if (!normalized) return;
+    setPlate(normalized); setShowPlateForm(false); setShowPlans(true);
+    window.history.replaceState(null, '', `/minha-conta?placa=${normalized}`);
+    void loadAggregates(normalized);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   async function submitPlate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalized = plate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
@@ -65,6 +75,8 @@ export default function CustomerPortal({ name, email, products, initialPlate, so
         <header className="customer-topbar"><div className="customer-breadcrumb">Minha conta <ChevronRight size={14}/> <span>{tab === 'inicio' ? 'Visão geral' : tab === 'veiculos' ? 'Meus veículos' : tab === 'pagamentos' ? 'Pagamentos' : 'Minhas consultas'}</span></div><div className="customer-top-actions"><span className="customer-protected"><ShieldCheck size={15}/> Área segura</span><button aria-label="Notificações" className="customer-icon-button" title="Notificações"><Bell size={18}/></button></div></header>
 
         {tab === 'inicio' && <>
+          {!initialPlate && !showPlans && <AccountOverview queries={queries} loading={queriesLoading} onSelectPlate={selectPlate} />}
+          {(initialPlate || showPlans) && <>
           <section className="customer-welcome"><div><span className="customer-eyebrow">SEU ESPAÇO, SUAS DECISÕES</span><h1>Olá, {firstName}<span>.</span></h1><p>Acompanhe seus veículos e encontre a consulta certa para decidir com mais segurança.</p></div><div className="customer-welcome-art"><div className="customer-orbit orbit-one"/><div className="customer-orbit orbit-two"/><CarFront size={48}/><span>OD</span></div></section>
           <div className="customer-status-strip"><div className="customer-status-icon"><Clock3 size={19}/></div><div><strong>{queries.length ? `${queries.length} consulta(s) no seu histórico` : 'Seu histórico começa aqui'}</strong><p>{queries.length ? `${vehicleCount} veículo(s) acompanhado(s) na sua conta.` : 'Assim que você fizer uma consulta, o andamento e o relatório aparecerão nesta área.'}</p></div><span className="customer-status-pill">Tudo em dia</span></div>
           <section className="customer-start-card">{initialPlate && <div className="customer-aggregate-banner">{aggregateLoading ? <><Clock3 size={18}/> Buscando os dados básicos da placa {plate}…</> : aggregateError ? <><CircleHelp size={18}/> {aggregateError}</> : aggregate ? <><CarFront size={18}/><div><strong>{String(aggregate.marca || 'Marca não informada')} {String(aggregate.modelo || '')}</strong><div className="customer-aggregate-details">{[['Placa', 'placa'], ['Ano modelo', 'anoModelo'], ['Ano fabricação', 'anoFabricacao'], ['Cor', 'cor'], ['Combustível', 'combustivel'], ['Situação', 'situacao'], ['UF', 'Uf'], ['Município', 'municipio'], ['Chassi', 'chassi']].map(([label, key]) => <span key={key}><small>{label}</small><b>{String(aggregate[key] || 'Não informado')}</b></span>)}</div></div><Check size={18}/></> : <><Clock3 size={18}/> Não encontramos dados agregados para esta placa.</>}</div>}<div className="customer-section-title"><div><span className="customer-eyebrow">VEÍCULO EM ANÁLISE</span><h2>{plate || initialPlate ? `Placa ${plate || initialPlate}` : 'Qual carro você está avaliando?'}</h2><p>{plate || initialPlate ? 'Dados básicos do veículo que você está avaliando.' : 'Informe a placa para avançar para as opções de consulta.'}</p></div><span className="customer-step">01 <i>/ 02</i></span></div>
@@ -72,7 +84,7 @@ export default function CustomerPortal({ name, email, products, initialPlate, so
           </section>
           {(showPlans || Boolean(initialPlate)) && <section className="customer-plan-section"><div className="customer-section-title"><div><span className="customer-eyebrow">ESCOLHA SUA CONSULTA</span><h2>Qual consulta vamos fazer hoje?</h2><p>Selecione o nível de informação para a placa {plate || initialPlate}.</p></div><span className="customer-step">02 <i>/ 02</i></span></div><div className="customer-vehicle-preview"><div className="customer-vehicle-icon"><CarFront size={23}/></div><div><small>PLACA INFORMADA</small><strong>{plate || initialPlate}</strong></div><span className="customer-not-connected">{aggregate ? <><Check size={14}/> Dados básicos carregados</> : <><Clock3 size={14}/> Aguardando dados disponíveis</>}</span></div><div className="customer-product-grid">{products.map((product) => <article className={`customer-product-card ${product.slug === featured?.slug ? 'recommended' : ''}`} key={product.slug}>{product.slug === featured?.slug && <span className="customer-recommended"><Sparkles size={13}/> Mais completa</span>}<h3>{product.name}</h3><p>{product.description}</p><ul>{product.features.slice(0, 3).map((feature) => <li key={feature}><Check size={14}/>{feature}</li>)}</ul><div className="customer-product-bottom"><div><small>Por consulta</small><strong>{product.price}</strong></div><Link className="customer-select-plan" href={`/checkout?produto=${encodeURIComponent(product.slug)}&placa=${encodeURIComponent(plate || initialPlate)}`}>Selecionar <ArrowRight size={15}/></Link></div></article>)}</div><div className="customer-integration-note"><span><ShieldCheck size={16}/></span><p><strong>Próximo passo: seus dados de compra</strong> Ao selecionar um plano, você informa o endereço e revisa o pedido. O pagamento será confirmado em uma etapa própria.</p></div></section>}
           <section className="customer-upsell"><div className="customer-upsell-icon"><CarFront size={21}/></div><div><span className="customer-eyebrow">NOVA PLACA</span><h3>Precisa consultar outro veículo?</h3><p>Informe outra placa para começar uma nova análise.</p></div><button className="customer-secondary-button" onClick={() => { setPlate(''); setAggregate(null); setShowPlans(false); setShowPlateForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Consultar nova placa <Plus size={15}/></button></section>
-          {!showPlans && <section className="customer-empty-card"><span className="customer-empty-icon"><CarFront size={24}/></span><div><h3>Nenhum veículo por enquanto</h3><p>Quando você iniciar uma consulta, seus veículos e o histórico serão organizados aqui.</p></div><button onClick={() => document.getElementById('customer-plate')?.focus()}>Adicionar veículo <Plus size={16}/></button></section>}
+          </>}
         </>}
 
         {tab === 'veiculos' && <VehiclesTab queries={queries} onNewQuery={() => setTab('inicio')} />}
