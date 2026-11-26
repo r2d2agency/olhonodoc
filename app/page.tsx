@@ -211,9 +211,6 @@ export default async function Home() {
         </div>
       </footer>
 
-      <div className="mobile-cta">
-        <Link className="button" href="#consultar">Consultar minha placa <ArrowRight size={16} /></Link>
-      </div>
     </div>
   );
 }
