@@ -405,3 +405,11 @@ body{padding-bottom:65px}
 .auth-modal .button{width:100%;margin-top:6px}
 .auth-modal .auth-change{width:100%;margin-top:14px;text-align:center}
 @media(max-width:560px){.auth-modal{padding:22px}}
+
+.auth-password-wrap{position:relative;display:block}
+.auth-password-wrap input{width:100%;padding-right:44px}
+.auth-password-wrap button{position:absolute;top:50%;right:8px;transform:translateY(-50%);display:grid;place-items:center;width:30px;height:30px;border:0;background:transparent;color:#607682;cursor:pointer}
+.auth-forgot{justify-self:end;margin:-4px 0 2px;font-size:.7rem}
+
+.login-link{background:transparent;border:0;cursor:pointer;font-family:inherit}
+.mobile-nav button{background:transparent;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
