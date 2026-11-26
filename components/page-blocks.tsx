@@ -12,4 +12,18 @@ export function ProductCatalog({ products }: { products: CatalogProduct[] }) { r
 export function GenericContent({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: React.ReactNode }) { return <><PageHero eyebrow={eyebrow} title={title} description={description}/><section className="section generic-content">{children}</section></>; }
 
 export const comparisonRows = ['Dados cadastrais', 'Leilão', 'Sinistro', 'Roubo e furto', 'Restrições', 'Financiamento', 'Outras informações'];
-export function Comparison({ products }: { products: CatalogProduct[] }) { return <><PageHero eyebrow="Escolha com contexto" title="Encontre a consulta ideal para o que você precisa verificar." description="Compare as opções do Olho no Doc e escolha o nível de informação que faz sentido para sua decisão."/><section className="section comparison-section"><div className="comparison-table"><div className="comparison-head"><span>O que você verifica</span>{products.map((product) => <strong key={product.slug}>{product.shortName}<small>{product.price}</small></strong>)}</div>{comparisonRows.map((row, index) => <div className="comparison-row" key={row}><span>{row}</span>{products.map((product) => <span key={product.slug} className={index < (product.slug === 'consulta-premium' ? 6 : product.slug === 'consulta-essencial' ? 3 : 2) ? 'yes' : ''}>{index < (product.slug === 'consulta-premium' ? 6 : product.slug === 'consulta-essencial' ? 3 : 2) ? '✓' : '—'}</span>)}</div>)}</div></section><section className="simple-band"><span className="eyebrow">A opção mais completa</span><h2>Veja tudo o que a Consulta Premium reúne.</h2><Link className="button" href="/consultas/consulta-premium">Conhecer a Premium <ArrowRight size={16}/></Link></section></>; }
+export function Comparison({ products }: { products: CatalogProduct[] }) {
+  // Linhas a partir das características reais cadastradas no admin.
+  const rows = Array.from(new Set(products.flatMap(p => (p.features || []).map(f => f.trim()).filter(Boolean))));
+  return <><PageHero eyebrow="Escolha com contexto" title="Encontre a consulta ideal para o que você precisa verificar." description="Compare as opções do Olho no Doc e escolha o nível de informação que faz sentido para sua decisão."/>
+    <section className="section comparison-section"><div className="comparison-table">
+      <div className="comparison-head"><span>O que você verifica</span>{products.map((product) => <strong key={product.slug}>{product.shortName}<small>{product.price}</small></strong>)}</div>
+      {rows.map((row) => <div className="comparison-row" key={row}><span>{row}</span>{products.map((product) => {
+        const has = (product.features || []).some(f => f.trim().toLowerCase() === row.toLowerCase());
+        return <span key={product.slug} className={has ? 'yes' : ''}>{has ? <><Check size={15}/> Incluído</> : '—'}</span>;
+      })}</div>)}
+      <div className="comparison-row comparison-row-price"><span>Valor da consulta</span>{products.map((product) => <span key={product.slug}><strong>{product.price}</strong></span>)}</div>
+    </div></section>
+    <section className="simple-band"><span className="eyebrow">A opção mais completa</span><h2>Veja tudo o que a Consulta Premium reúne.</h2><Link className="button" href="/consultas/consulta-premium">Conhecer a Premium <ArrowRight size={16}/></Link></section>
+  </>;
+}
