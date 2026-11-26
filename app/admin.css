@@ -144,3 +144,12 @@
 /* Topo do admin: fundo neutro para a logo ressaltar */
 .admin-sidebar-brand{background:#f3f6f8;border-radius:10px;margin:10px 10px 14px;padding:12px 16px;border-bottom:0}
 .admin-sidebar-brand img{width:170px;height:auto;object-fit:contain}
+
+.admin-product-features-row{padding:18px 0;border-bottom:1px solid #e3eaee}
+.admin-product-features-row h2{font-size:1rem;color:#17394c;margin-bottom:2px}
+.admin-product-features-row>small{color:#7a8a93;font-size:.7rem}
+.admin-product-feature-input{display:flex;align-items:center;gap:10px;margin-top:10px}
+.admin-product-feature-input span{width:22px;color:#8a9aa3;font-size:.72rem}
+.admin-product-feature-input input{flex:1;min-width:0;min-height:38px;padding:0 10px;border:1px solid #d7e3e8;border-radius:5px;color:#17394c;font-size:.8rem}
+.admin-product-feature-input button{padding:6px 10px;border:1px solid #f0c9c9;border-radius:5px;background:#fff5f5;color:#b42318;font-size:.7rem;cursor:pointer}
+.admin-product-features-row>.admin-secondary-button{margin-top:12px}

@@ -1,105 +1,52 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Check, Save } from 'lucide-react';
+import { readJson } from '@/lib/client-response';
 
-type Product = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  useCase: string;
-  features: string[];
-};
+type Item = { id: string; slug: string; name: string; shortName: string; features: string[] };
 
-export default function FeaturesPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+export default function ProductFeaturesAdmin() {
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/admin/products')
-      .then((response) => response.json())
-      .then((body) => {
-        const items = Array.isArray(body.data) ? body.data : [];
-        setProducts(
-          items.map((item: Product) => ({
-            ...item,
-            features: Array.isArray(item.features) ? item.features : [],
-          })),
-        );
-      })
-      .catch(() => setMessage('Não foi possível carregar os produtos.'));
+    fetch('/api/admin/product-features').then(async r => {
+      const b = await readJson(r);
+      if (!r.ok) throw new Error(b.error || 'Não foi possível carregar.');
+      setItems(b.data);
+    }).catch(e => setError(e.message)).finally(() => setLoading(false));
   }, []);
 
-  async function save(product: Product) {
-    const response = await fetch(`/api/admin/products/${product.slug}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        description: product.description,
-        useCase: product.useCase,
-        features: product.features,
-      }),
-    });
-
-    setMessage(response.ok ? 'Características salvas.' : 'Não foi possível salvar.');
+  async function save() {
+    setSaving(true); setError(''); setMessage('');
+    try {
+      const r = await fetch('/api/admin/product-features', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) });
+      const b = await readJson(r);
+      if (!r.ok) throw new Error(b.error || 'Não foi possível salvar.');
+      setMessage('Características atualizadas nos cards e na conta.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Falha ao salvar.'); }
+    finally { setSaving(false); }
   }
 
-  function updateProduct(id: string, changes: Partial<Product>) {
-    setProducts((current) =>
-      current.map((item) => (item.id === id ? { ...item, ...changes } : item)),
-    );
-  }
-
-  return (
-    <main className="admin-cms">
-      <header className="admin-cms-header">
-        <div>
-          <span className="admin-cms-kicker">PRODUTOS / CARACTERÍSTICAS</span>
-          <h1>Características</h1>
-          <p>Edite o conteúdo apresentado em cada consulta.</p>
-        </div>
-      </header>
-
-      {message && <div className="admin-cms-message success">{message}</div>}
-
-      <div className="admin-product-editor-grid">
-        {products.map((product) => (
-          <section className="admin-panel-card" key={product.id}>
-            <h2>{product.name}</h2>
-            <label>
-              Descrição
-              <textarea
-                value={product.description || ''}
-                onChange={(event) => updateProduct(product.id, { description: event.target.value })}
-              />
-            </label>
-            <label>
-              Uso recomendado
-              <textarea
-                value={product.useCase || ''}
-                onChange={(event) => updateProduct(product.id, { useCase: event.target.value })}
-              />
-            </label>
-            <label>
-              Características (uma por linha)
-              <textarea
-                value={product.features.join('\n')}
-                onChange={(event) =>
-                  updateProduct(product.id, {
-                    features: event.target.value
-                      .split('\n')
-                      .map((value) => value.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
-            </label>
-            <button className="admin-primary-button" onClick={() => save(product)}>
-              Salvar características
-            </button>
-          </section>
-        ))}
-      </div>
-    </main>
-  );
+  return <main className="admin-cms">
+    <header className="admin-cms-header"><div><span className="admin-cms-kicker">PRODUTOS / CARACTERÍSTICAS</span><h1>Características das consultas</h1><p>Edite os itens exibidos nos cards da home e na área do cliente.</p></div></header>
+    {error && <div className="admin-cms-message error">{error}</div>}
+    {message && <div className="admin-cms-message">{message}</div>}
+    {loading ? <div className="admin-cms-card"><p>Carregando…</p></div> : <section className="admin-cms-card">
+      {items.map((item, index) => <div className="admin-product-features-row" key={item.id}>
+        <h2>{item.name}</h2><small>{item.slug}</small>
+        {item.features.map((feature, featureIndex) => <div className="admin-product-feature-input" key={featureIndex}>
+          <span>{featureIndex + 1}</span>
+          <input value={feature} maxLength={120} onChange={e => setItems(items.map((it, i) => i !== index ? it : { ...it, features: it.features.map((f, j) => j === featureIndex ? e.target.value : f) }))}/>
+          <button type="button" onClick={() => setItems(items.map((it, i) => i !== index ? it : { ...it, features: it.features.filter((_, j) => j !== featureIndex) }))}>Remover</button>
+        </div>)}
+        <button type="button" className="admin-secondary-button" onClick={() => setItems(items.map((it, i) => i !== index ? it : { ...it, features: [...it.features, 'Nova característica'] }))}>+ Adicionar característica</button>
+      </div>)}
+      <div className="admin-cms-actions"><button className="admin-cms-primary" onClick={save} disabled={saving}>{saving ? 'Salvando…' : <><Save size={15}/> Salvar características</>}</button></div>
+    </section>}
+  </main>;
 }
