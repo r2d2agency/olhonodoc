@@ -68,15 +68,15 @@ export function PlateInput({ dark = false }: { dark?: boolean }) { const [plate,
 export function ProductCard({ product, featured = false }: { product: CatalogProduct; featured?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const features = product.features || [];
-  const visible = expanded ? features : features.slice(0, 3);
   return <article className={`product-card ${featured ? 'featured' : ''}`}>
-    {featured && <div className="featured-label">Mais escolhida</div>}
-    <div className="product-card-top"><span className="eyebrow">Consulta {product.accent && `· ${product.accent}`}</span><span className="card-arrow"><ArrowRight size={19}/></span></div>
-    <h3>{product.name}</h3>
+    {featured && <div className="featured-label">Mais completa</div>}
+    <div className="product-card-top"><span className="eyebrow"><ShieldCheck size={14}/> ANÁLISE OLHO NO DOC</span></div>
+    <h3>{product.shortName || product.name}</h3>
     <p>{product.description}</p>
-    <ul className={expanded ? 'expanded' : ''}>{visible.map((feature, i) => <li key={`${feature}-${i}`}><Check size={15}/>{feature}</li>)}</ul>
-    {features.length > 3 && <button type="button" className="product-card-expand" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>{expanded ? <Minus size={15}/> : <Plus size={15}/>} {expanded ? 'Menos detalhes' : 'Ver todas as características'}</button>}
-    <div className="product-card-bottom"><div><small>A partir de</small><strong>{product.price}</strong></div><Link href={`/consultas/${product.slug}`} aria-label={`Ver ${product.name}`}><ArrowRight size={20}/></Link></div>
+    <Link className="product-card-request" href={`/consultas/${product.slug}`}>SOLICITAR ANÁLISE</Link>
+    <button type="button" className="product-card-expand" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>{expanded ? <Minus size={15}/> : <Plus size={15}/>} {expanded ? 'Menos detalhes' : 'Ver informações contempladas'}</button>
+    {expanded && <ul className="product-card-features expanded">{features.map((feature, i) => <li key={`${feature}-${i}`}><Check size={14}/>{feature}</li>)}</ul>}
+    <div className="product-card-price"><small>A partir de</small><strong>{product.price}</strong></div>
   </article>;
 }
 

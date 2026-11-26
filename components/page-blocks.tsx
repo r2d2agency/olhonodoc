@@ -11,16 +11,46 @@ export function ProductCatalog({ products }: { products: CatalogProduct[] }) { r
 
 export function GenericContent({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: React.ReactNode }) { return <><PageHero eyebrow={eyebrow} title={title} description={description}/><section className="section generic-content">{children}</section></>; }
 
-export const comparisonRows = ['Dados cadastrais', 'Leilão', 'Sinistro', 'Roubo e furto', 'Restrições', 'Financiamento', 'Outras informações'];
+export const comparisonRows = [
+  'Dados originais de fabricação', 'Queixa ativa de roubo e furto', 'Histórico de roubo e furto',
+  'Dados atuais do veículo', 'Restrições e bloqueios', 'Impeditivos de transferência',
+  'Comunicação de venda', 'Financiamento e gravame', 'Certificado de Segurança Veicular (CSV)',
+  'Recall do veículo', 'Indícios de sinistros e avarias', 'Sinistro de indenização integral (PT)',
+  'Parecer técnico de aceitação seguritária', 'Histórico de leilões',
+  'Comercialização por bancos', 'Comercialização por seguradoras', 'Precificador veicular',
+  'Desvalorização de mercado', 'Detalhamento do financiamento', 'Informações do documento CRLV',
+];
+/** Quais produtos incluem cada linha (por slug). Ajustável no admin pela edição das características. */
+const comparisonMatrix: Record<string, string[]> = {
+  'Dados originais de fabricação': ['consulta-premium', 'consulta-essencial', 'roubo-furto'],
+  'Queixa ativa de roubo e furto': ['consulta-premium', 'consulta-essencial', 'roubo-furto'],
+  'Histórico de roubo e furto': ['consulta-premium', 'consulta-essencial', 'roubo-furto'],
+  'Dados atuais do veículo': ['consulta-premium', 'consulta-essencial', 'dados-veiculo'],
+  'Restrições e bloqueios': ['consulta-premium', 'consulta-essencial', 'dados-veiculo'],
+  'Impeditivos de transferência': ['consulta-premium', 'consulta-essencial', 'dados-veiculo'],
+  'Comunicação de venda': ['consulta-premium', 'consulta-essencial', 'dados-veiculo'],
+  'Financiamento e gravame': ['consulta-premium', 'consulta-essencial', 'financiamento'],
+  'Certificado de Segurança Veicular (CSV)': ['consulta-premium', 'consulta-essencial'],
+  'Recall do veículo': ['consulta-premium', 'consulta-essencial'],
+  'Indícios de sinistros e avarias': ['consulta-premium', 'consulta-essencial'],
+  'Sinistro de indenização integral (PT)': ['consulta-premium', 'consulta-essencial'],
+  'Parecer técnico de aceitação seguritária': ['consulta-premium', 'consulta-essential'],
+  'Histórico de leilões': ['consulta-premium', 'consulta-essencial'],
+  'Comercialização por bancos': ['consulta-premium'],
+  'Comercialização por seguradoras': ['consulta-premium'],
+  'Precificador veicular': ['consulta-premium'],
+  'Desvalorização de mercado': ['consulta-premium'],
+  'Detalhamento do financiamento': ['financiamento'],
+  'Informações do documento CRLV': ['documento-crlv'],
+};
 export function Comparison({ products }: { products: CatalogProduct[] }) {
-  // Linhas a partir das características reais cadastradas no admin.
-  const rows = Array.from(new Set(products.flatMap(p => (p.features || []).map(f => f.trim()).filter(Boolean))));
+  const rows = comparisonRows;
   return <><PageHero eyebrow="Escolha com contexto" title="Encontre a consulta ideal para o que você precisa verificar." description="Compare as opções do Olho no Doc e escolha o nível de informação que faz sentido para sua decisão."/>
     <section className="section comparison-section"><div className="comparison-table">
       <div className="comparison-head"><span>O que você verifica</span>{products.map((product) => <strong key={product.slug}>{product.shortName}<small>{product.price}</small></strong>)}</div>
       {rows.map((row) => <div className="comparison-row" key={row}><span>{row}</span>{products.map((product) => {
-        const has = (product.features || []).some(f => f.trim().toLowerCase() === row.toLowerCase());
-        return <span key={product.slug} className={has ? 'yes' : ''}>{has ? <><Check size={15}/> Incluído</> : '—'}</span>;
+        const has = (comparisonMatrix[row] || []).includes(product.slug);
+        return <span key={product.slug} className={has ? 'yes' : ''}>{has ? <span className="comparison-check"><Check size={14}/></span> : '—'}</span>;
       })}</div>)}
       <div className="comparison-row comparison-row-price"><span>Valor da consulta</span>{products.map((product) => <span key={product.slug}><strong>{product.price}</strong></span>)}</div>
     </div></section>

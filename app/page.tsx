@@ -164,7 +164,7 @@ export default async function Home() {
               <Link className="text-link" href="/comparar-consultas">Comparar consultas <ArrowRight size={16} /></Link>
             </div>
             <div className="product-grid">
-              {products.slice(0, 3).map((product, index) => (
+              {products.map((product, index) => (
                 <ProductCard key={product.slug} product={product} featured={index === 0} />
               ))}
             </div>
