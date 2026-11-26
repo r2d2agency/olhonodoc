@@ -14,8 +14,9 @@ export function Header() {
   const [authOpen, setAuthOpen] = useState(false);
   async function goAccount() {
     try {
-      const r = await fetch('/api/account/profile', { cache: 'no-store' });
-      if (r.ok) { window.location.href = '/minha-conta'; return; }
+      const r = await fetch('/api/auth/session', { cache: 'no-store' });
+      const data = await readJson(r);
+      if (data.authenticated) { window.location.href = '/minha-conta'; return; }
       setAuthOpen(true);
     } catch { setAuthOpen(true); }
   }
