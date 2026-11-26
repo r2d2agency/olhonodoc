@@ -1398,3 +1398,13 @@
   .home-shell .home-mobile-nav .button{display:flex;min-height:46px;align-items:center;justify-content:center;margin-top:6px;border-radius:8px;background:#168a62;color:#fff}
 }
 @media(min-width:701px){.home-shell .home-mobile-nav-button,.home-shell .home-mobile-nav{display:none !important}}
+
+/* Detalhes do card em overlay: nao empurra os outros cards */
+.home-shell .product-card{position:relative;overflow:hidden}
+.home-shell .product-card-details{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;padding:18px;background:#f8fbfd;overflow:auto;animation:card-details-in .18s ease-out}
+.home-shell .product-card-details-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;color:#17394c;font-size:.82rem}
+.home-shell .product-card-details-head button{display:grid;place-items:center;width:28px;height:28px;border:1px solid #dce7ed;border-radius:6px;background:#fff;color:#52707c;cursor:pointer}
+.home-shell .product-card-features{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.home-shell .product-card-features li{display:flex;align-items:flex-start;gap:7px;color:#526671;font-size:.75rem;line-height:1.45}
+.home-shell .product-card-features li svg{flex:none;color:#168a62;margin-top:1px}
+@keyframes card-details-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}

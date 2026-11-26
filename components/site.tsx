@@ -75,7 +75,7 @@ export function ProductCard({ product, featured = false }: { product: CatalogPro
     <p>{product.description}</p>
     <Link className="product-card-request" href={`/consultas/${product.slug}`}>SOLICITAR ANÁLISE</Link>
     <button type="button" className="product-card-expand" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>{expanded ? <Minus size={15}/> : <Plus size={15}/>} {expanded ? 'Menos detalhes' : 'Ver informações contempladas'}</button>
-    {expanded && <ul className="product-card-features expanded">{features.map((feature, i) => <li key={`${feature}-${i}`}><Check size={14}/>{feature}</li>)}</ul>}
+    {expanded && <div className="product-card-details"><div className="product-card-details-head"><strong>O que está contemplado</strong><button type="button" onClick={() => setExpanded(false)} aria-label="Fechar detalhes"><X size={15}/></button></div><ul className="product-card-features expanded">{features.map((feature, i) => <li key={`${feature}-${i}`}><Check size={14}/>{feature}</li>)}</ul></div>}
     <div className="product-card-price"><small>A partir de</small><strong>{product.price}</strong></div>
   </article>;
 }
