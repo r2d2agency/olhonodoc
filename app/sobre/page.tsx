@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+export const metadata: Metadata = { title: 'Sobre a Olho no Doc', alternates: { canonical: '/sobre' } };
 import { getInstitutionalPages } from '@/lib/institutional-pages';
 import { GenericContent } from '@/components/page-blocks';
 

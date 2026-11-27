@@ -6,6 +6,7 @@ import AdminHomePage from '@/app/admin/site/home/page';
 import CampaignsPage from '@/app/admin/campanhas/page';
 import TemplatesPage from '@/app/admin/templates/page';
 import FaqAdminPage from '@/app/admin/faq/page';
+import ExampleReportAdmin from '@/app/admin/exemplo-relatorio/page';
 
 export default function AdminModulePage({ params }: { params: { slug: string[] } }) {
   const key = params.slug[params.slug.length - 1];
@@ -14,6 +15,7 @@ export default function AdminModulePage({ params }: { params: { slug: string[] }
   if (key === 'campanhas') return <CampaignsPage />;
   if (key === 'templates') return <TemplatesPage />;
   if (key === 'faq') return <FaqAdminPage />;
+  if (key === 'exemplo-relatorio') return <ExampleReportAdmin />;
   const currentModule = adminModules[key];
   if (!currentModule) notFound();
   return <AdminPlaceholderPage title={currentModule.title} section={currentModule.section}/>;

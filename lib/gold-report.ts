@@ -362,9 +362,11 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
 
   // Comercialização - prioriza a mensagem descritiva; resposta "1"/"0" é só flag
   const comercialFlagSim = ['1', 'SIM', 'S', 'TRUE'].includes(upper(comercial.resposta));
-  const comercialTxt = comercialFlagSim
-    ? 'Consta comercialização por seguradora'
-    : (isNadaConstaMsg(comercial.mensagem) || isNadaConstaMsg(comercial.resposta) ? '' : norm(comercial.mensagem || comercial.resposta));
+  const comercialRawTxt = isNadaConstaMsg(comercial.mensagem) || isNadaConstaMsg(comercial.resposta) ? '' : norm(comercial.mensagem || comercial.resposta);
+  const comercialPorFrota = /por\s+frota/i.test(comercialRawTxt);
+  const comercialTxt = comercialPorFrota
+    ? 'CONSTA COMERCIALIZAÇÃO POR FROTA'
+    : (comercialFlagSim ? 'Consta comercialização por seguradora' : comercialRawTxt);
   if (comercialTxt && isPositiveMsg(comercialTxt)) {
     alertas.push({ icone: 'info', texto: comercialTxt, tipo: 'alerta' });
   }
@@ -876,6 +878,15 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
     ['Última atualização', dateBR(agg.ultimaAtualizacao)],
   ];
 
+  // 18b. Intenção de gravame (Cortesia) — dados do estágio de intenção no estadual.
+  const intencaoGravame = {
+    restricaoFinanceira: norm(est.intencaoRestricaoFinanceira),
+    nomeAgente: norm(est.intencaoNomeAgente),
+    nomeFinanciado: norm(est.intencaoNomeFinanciado),
+    dataInclusao: norm(est.intencaoDataInclusao),
+  };
+  const intencaoGravameAtiva = Object.values(intencaoGravame).some(Boolean);
+
   // 19. Gravame (layout A)
   const gravameFormatado = gravameRegs.map((g) => {
     const situacao = upper(g['Situacao'] || g['situacao'] || '');
@@ -1030,11 +1041,12 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
       selos: [
         sinistroPos && 'SINISTRO ENCONTRADO!',
         leiloesArr.length > 0 && 'CONSTA OFERTA EM LEILÃO',
-        comercializacaoPos && 'CONSTA COMERCIALIZAÇÃO',
+        comercializacaoPos && (comercialPorFrota ? '@AMARELO@CONSTA COMERCIALIZAÇÃO POR FROTA' : 'CONSTA COMERCIALIZAÇÃO'),
         rfPositive && 'HISTÓRICO DE ROUBO E/OU FURTO!',
         hasRestricao && 'RESTRIÇÃO JUDICIAL!',
       ].filter(Boolean),
       fabricacao,
+      intencaoGravame: intencaoGravameAtiva ? intencaoGravame : null,
       gravameFormatado,
       detranCompleto: {
         informacoes: detranInfoFmt,
@@ -1044,7 +1056,7 @@ export function buildData(response: CompanyResponse, plate: string, status: stri
         autuacoes: { itens: detranAutuacoesFmt, total: norm(detranAutuacoes.total) },
         odometro: detranOdometro.mensagem ? norm(detranOdometro.mensagem) : odometroSpec,
       },
-      csv: csvInfo || (csvSpec ? { mensagem: csvSpec } : null),
+      csv: csvInfo,
       comunicacaoVenda: comVendaSpec,
       recall: recallSpec,
       indicioSinistro: indicioSpec,

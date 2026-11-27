@@ -486,7 +486,9 @@ export const MODEL_HTML_TEMPLATE = `
 
     if (d.spec && ((d.spec.selos && d.spec.selos.length) || d.spec.csv)) {
       var selosHtml = (d.spec.selos || []).map(function (texto) {
-        return '<div class="alerta"><span>' + esc(texto) + '</span></div>';
+        var amarelo = typeof texto === 'string' && texto.indexOf('@AMARELO@') === 0;
+        var label = amarelo ? texto.slice(9) : texto;
+        return '<div class="alerta' + (amarelo ? ' atencao' : '') + '"><span>' + esc(label) + '</span></div>';
       }).join('');
       if (d.spec.csv) selosHtml += '<div class="alerta atencao csv-selo"><span>CONSTA CERTIFICADO DE SEGURANÇA VEICULAR</span></div>';
       h.push('<div class="alertas">' + selosHtml + '</div>');
@@ -616,6 +618,10 @@ export const MODEL_HTML_TEMPLATE = `
       }
 
       // 19 — gravame (layout A)
+      if (s.intencaoGravame) {
+        var ig = s.intencaoGravame;
+        h.push(secao("cadeado", "Intenção Gravame (Cortesia)", '<div class="spec-pares"><div><b>Intenção restrição financeira:</b> ' + esc(ig.restricaoFinanceira || '-') + '</div><div><b>Nome agente financeira:</b> ' + esc(ig.nomeAgente || '-') + '</div><div><b>Nome do financiado:</b> ' + esc(ig.nomeFinanciado || '-') + '</div><div><b>Intenção data inclusão:</b> ' + esc(ig.dataInclusao || '-') + '</div></div>'));
+      }
       if (s.gravameFormatado && s.gravameFormatado.length) {
         h.push(secao("cadeado", "Histórico de Gravame", s.gravameFormatado.map(function (g) {
           return '<div class="spec-card"><div><b>Placa:</b> ' + esc(g.placa) + '</div><div><b>Chassi:</b> ' + esc(g.chassi) + '</div><div><b>Renavam:</b> ' + esc(g.renavam) + '</div><div><b>UF:</b> ' + esc(g.uf) + '</div><div><b>UF da Placa:</b> ' + esc(g.ufPlaca) + '</div><div><b>Nome Financiado:</b> ' + esc(g.nomeFinanciado) + '</div><div><b>Nome Agente:</b> ' + esc(g.nomeAgente) + '</div><div><b>Data Contrato:</b> ' + esc(g.dataContrato) + '</div><div><b>Data do Gravame:</b> ' + esc(g.dataGravame) + '</div><div><b>Número Gravame:</b> ' + esc(g.numeroGravame) + '</div><div><b>Status Veículo:</b> ' + esc(g.statusVeiculo) + '</div><div><b>Descrição de Status:</b> ' + esc(g.descricaoStatus) + '</div></div>';

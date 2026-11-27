@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+export const metadata: Metadata = { title: 'Política de privacidade', alternates: { canonical: '/politica-de-privacidade' } };
 import { getInstitutionalPages } from '@/lib/institutional-pages';
 import { LegalPage } from '@/components/legal';
 

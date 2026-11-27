@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 92" width="360" height="92">
+  <path d="M52 2 L86 14 V44 C86 66 70 82 52 90 C34 82 18 66 18 44 V14 Z" fill="#dfe6e9"/>
+  <path d="M52 5 L83 16 V44 C83 64 68 79 52 87 C36 79 21 64 21 44 V16 Z" fill="#25a34a"/>
+  <path d="M52 5 V87 C36 79 21 64 21 44 V16 Z" fill="#1b7d38"/>
+  <path d="M36 44 l11 12 21-25" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="102" y="27" fill="#7f8c8d" font-family="Arial,sans-serif" font-size="15" font-weight="bold">SITE SEGURO</text>
+  <text x="102" y="65" fill="#4285f4" font-family="Arial,sans-serif" font-size="40" font-weight="bold">G</text>
+  <text x="140" y="65" fill="#ea4335" font-family="Arial,sans-serif" font-size="40" font-weight="bold">o</text>
+  <text x="168" y="65" fill="#fbbc05" font-family="Arial,sans-serif" font-size="40" font-weight="bold">o</text>
+  <text x="196" y="65" fill="#4285f4" font-family="Arial,sans-serif" font-size="40" font-weight="bold">g</text>
+  <text x="228" y="65" fill="#34a853" font-family="Arial,sans-serif" font-size="40" font-weight="bold">l</text>
+  <text x="244" y="65" fill="#ea4335" font-family="Arial,sans-serif" font-size="40" font-weight="bold">e</text>
+  <rect x="96" y="72" width="262" height="18" rx="2" fill="#555"/>
+  <text x="227" y="85" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="11" font-weight="bold">CLIQUE PARA VERIFICAR</text>
+</svg>

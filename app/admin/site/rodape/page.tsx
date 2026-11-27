@@ -30,6 +30,8 @@ export default function FooterAdminPage() {
   }
   function updateColumn(i: number, patch: Partial<Column>) { setConfig(c => ({ ...c, columns: c.columns.map((col, j) => j === i ? { ...col, ...patch } : col) })); }
   function updateLink(ci: number, li: number, patch: Partial<LinkItem>) { setConfig(c => ({ ...c, columns: c.columns.map((col, i) => i === ci ? { ...col, links: col.links.map((l, j) => j === li ? { ...l, ...patch } : l) } : col) })); }
+  function removeLink(ci: number, li: number) { setConfig(c => ({ ...c, columns: c.columns.map((col, i) => i === ci ? { ...col, links: col.links.filter((_, j) => j !== li) } : col) })); }
+  function removeColumn(ci: number) { setConfig(c => ({ ...c, columns: c.columns.filter((_, i) => i !== ci) })); }
 
   return <main className="admin-cms">
     <header className="admin-cms-header"><div><span className="admin-cms-kicker">SITE / RODAPÉ</span><h1>Rodapé do site</h1><p>Descrição, contatos, redes sociais, WhatsApp flutuante e links legais.</p></div><button className="admin-cms-primary" onClick={save} disabled={saving}>{saving ? 'Salvando…' : <><Save size={15}/> Salvar alterações</>}</button></header>
@@ -60,8 +62,8 @@ export default function FooterAdminPage() {
     <section className="admin-panel-card">
       <div className="admin-card-heading"><div><span className="admin-eyebrow">LINKS LEGAIS</span><h2>Colunas do rodapé</h2><p>Garanta que a coluna Conteúdos tenha Termos de uso, Privacidade, Cookies e Reembolso.</p></div></div>
       <div className="admin-product-editor-grid">{config.columns.map((column, ci) => <section className="admin-panel-card" key={`${column.title}-${ci}`}>
-        <label>Título da coluna<input value={column.title} onChange={e => updateColumn(ci, { title: e.target.value })}/></label>
-        {column.links.map((link, li) => <div className="admin-footer-link-row" key={`${link.label}-${li}`}><input value={link.label} onChange={e => updateLink(ci, li, { label: e.target.value })}/><input value={link.href} onChange={e => updateLink(ci, li, { href: e.target.value })}/></div>)}
+        <div className="admin-footer-column-head"><label>Título da coluna<input value={column.title} onChange={e => updateColumn(ci, { title: e.target.value })}/></label><button type="button" className="admin-footer-remove" onClick={() => removeColumn(ci)} aria-label="Remover coluna">Remover coluna</button></div>
+        {column.links.map((link, li) => <div className="admin-footer-link-row" key={`${link.label}-${li}`}><input value={link.label} onChange={e => updateLink(ci, li, { label: e.target.value })}/><input value={link.href} onChange={e => updateLink(ci, li, { href: e.target.value })}/><button type="button" className="admin-footer-remove" onClick={() => removeLink(ci, li)} aria-label="Remover link">✕</button></div>)}
         <button type="button" className="admin-secondary-button" onClick={() => updateColumn(ci, { links: [...column.links, { label: 'Novo link', href: '/' }] })}>+ Adicionar link</button>
       </section>)}</div>
     </section>

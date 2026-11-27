@@ -12,19 +12,7 @@ const fallback = defaultFooter;
 export default function SiteFooter() {
   const [config, setConfig] = useState<FooterConfig>(fallback);
   useEffect(() => {
-    fetch('/api/site/footer').then(response => response.json()).then(data => {
-      if (!data?.columns) return;
-      const required = [
-        { label: 'Termos de uso', href: '/termos-de-uso' }, { label: 'Privacidade', href: '/politica-de-privacidade' },
-        { label: 'Cookies', href: '/politica-de-cookies' }, { label: 'Reembolso', href: '/politica-de-reembolso' },
-      ];
-      const columns = data.columns.map((col: any) => {
-        const links = Array.isArray(col.links) ? [...col.links] : [];
-        for (const item of required) if (!links.some((l: any) => l.href === item.href)) links.push(item);
-        return { ...col, links };
-      });
-      setConfig({ ...data, columns });
-    }).catch(() => undefined);
+    fetch('/api/site/footer').then(response => response.json()).then(data => { if (data?.columns) setConfig(data); }).catch(() => undefined);
   }, []);
   const legal = `Olho no Doc Tecnologia e Informações Veiculares Ltda · CNPJ ${companyInfo.cnpj}`;
   const copyrightText = config.copyright.includes('CNPJ') ? config.copyright : `${config.copyright} · ${legal}`;
@@ -44,6 +32,7 @@ export default function SiteFooter() {
     <div className="footer-social">{links.filter(([, url]) => url).map(([label, url, icon]) => <a href={url} target="_blank" rel="noopener noreferrer" aria-label={label} key={label}>{icon}<span>{label}</span></a>)}</div>
     {(config.phone || config.email) && <div className="footer-contact">{config.phone && <a href={`tel:${config.phone.replace(/\D/g, '')}`}><Phone size={14}/> {config.phone}</a>}{config.email && <a href={`mailto:${config.email}`}><Mail size={14}/> {config.email}</a>}</div>}
     {config.floatingWhatsapp && <a className="whatsapp-float" href={config.floatingWhatsapp} target="_blank" rel="noopener noreferrer" aria-label="Conversar no WhatsApp"><MessageCircle size={26}/></a>}
+    <div className="footer-ssl"><img src="/selo-ssl.svg" alt="Site 100% seguro — SSL certificado"/><img src="/selo-google-seguro.svg" alt="Site seguro — clique para verificar"/></div>
     <div className="footer-bottom"><span>{copyrightText}</span><span>Consulte antes de comprar.</span></div>
   </footer>;
 }

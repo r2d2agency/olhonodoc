@@ -154,9 +154,9 @@ export default async function Home() {
           <div className="container">
             <div className="section-heading">
               <div>
-                <span className="eyebrow">Escolha seu nível de informação</span>
-                <h2>Uma consulta para cada momento.</h2>
-                <p className="lead">Compare as opções disponíveis e escolha o relatório ideal para sua decisão.</p>
+                <span className="eyebrow">TECNOLOGIA • INFORMAÇÃO • SEGURANÇA</span>
+                <h2>ANÁLISE DIGITAL VEICULAR</h2>
+                <p className="lead"><strong>Conheça nossas soluções em inteligência veicular.</strong><br/>Informações estratégicas para conhecer a procedência, o histórico e a situação do veículo. Mais segurança para comprar, vender e negociar.</p>
               </div>
               <Link className="text-link" href="/comparar-consultas">Comparar consultas <ArrowRight size={16} /></Link>
             </div>

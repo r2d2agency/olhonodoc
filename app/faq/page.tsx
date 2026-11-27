@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+export const metadata: Metadata = { title: 'Perguntas frequentes', alternates: { canonical: '/faq' } };
 import { GenericContent } from '@/components/page-blocks';
 import { FAQ, SearchBar } from '@/components/site';
 import { getPublishedFaqs } from '@/lib/faq';

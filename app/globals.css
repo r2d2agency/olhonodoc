@@ -471,3 +471,14 @@ footer.footer .brand img,.site-footer .brand img{width:auto !important;height:48
 .footer-contact a{display:inline-flex;align-items:center;gap:6px;color:#0b6e9c;font-size:.74rem;font-weight:600;text-decoration:none}
 .whatsapp-float{position:fixed;right:20px;bottom:20px;z-index:150;display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:#25d366;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.22);text-decoration:none}
 .whatsapp-float:hover{transform:scale(1.05)}
+
+.footer-contact{justify-content:center;text-align:center}
+.admin-footer-remove{padding:6px 9px;border:1px solid #f0c9c9;border-radius:5px;background:#fff5f5;color:#b42318;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.admin-footer-column-head{display:flex;align-items:flex-end;gap:10px}
+.admin-footer-column-head label{flex:1}
+.admin-footer-link-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:8px}
+
+.example-pdf-viewer{display:grid;gap:14px;justify-items:center;margin:20px 0}
+.example-pdf-viewer iframe{width:100%;max-width:900px;height:80vh;border:1px solid #dce7ed;border-radius:10px;background:#fff}
+.footer-ssl{display:flex;justify-content:center;padding:10px 0 4px}
+.footer-ssl img{height:58px;width:auto}

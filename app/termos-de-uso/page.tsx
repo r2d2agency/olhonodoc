@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+export const metadata: Metadata = { title: 'Termos de uso', alternates: { canonical: '/termos-de-uso' } };
 import { getInstitutionalPages } from '@/lib/institutional-pages';
 import { LegalPage } from '@/components/legal';
 

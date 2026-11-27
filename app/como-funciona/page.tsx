@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+export const metadata: Metadata = { title: 'Como funciona', alternates: { canonical: '/como-funciona' } };
 import { GenericContent } from '@/components/page-blocks';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
