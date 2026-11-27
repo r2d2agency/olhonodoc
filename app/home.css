@@ -1451,3 +1451,12 @@
 .testimonial-rating{display:flex;align-items:center;gap:2px;padding-top:8px;border-top:1px solid #edf2f4;color:#d1d5db}
 .testimonial-rating .filled{color:#f59e0b}
 .testimonial-rating span{margin-left:6px;color:#52707c;font-size:.7rem;font-weight:700}
+
+.need-callout{max-width:860px;margin:0 auto 26px;padding:20px 22px;border:1px solid #cfe0ea;border-radius:14px;background:linear-gradient(135deg,#f0f7fb,#fff)}
+.need-callout-title{display:inline-block;padding:6px 12px;border-radius:99px;background:#0b3552;color:#fff;font-size:.74rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.need-callout>p{margin:10px 0 14px;color:#52707c;font-size:.85rem}
+.need-rows{display:grid;gap:8px}
+.need-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:9px 12px;border-left:3px solid #0b6e9c;border-radius:6px;background:rgba(255,255,255,.85);font-size:.8rem}
+.need-row span{color:#374151}
+.need-row strong{flex:none;color:#0b3552;font-size:.78rem}
+@media(max-width:560px){.need-row{align-items:flex-start;flex-direction:column;gap:4px}.need-row strong{align-self:flex-start}}

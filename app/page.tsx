@@ -160,6 +160,20 @@ export default async function Home() {
               </div>
               <Link className="text-link" href="/comparar-consultas">Comparar consultas <ArrowRight size={16} /></Link>
             </div>
+            <div className="need-callout">
+              <span className="need-callout-title">Não sabe qual consulta escolher?</span>
+              <p>Veja qual opção combina com o que você precisa:</p>
+              <div className="need-rows">
+                {[
+                  ['Vou comprar um veículo usado e quero a análise mais completa possível', 'Premium'],
+                  ['Quero conhecer o histórico e a procedência do veículo', 'Essencial'],
+                  ['Quero conferir as características originais do veículo', 'Fabricação + Roubo e Furto'],
+                  ['Quero saber se existem impedimentos de transferência', 'Dados Atuais'],
+                  ['Quero verificar se o veículo possui financiamento', 'Financiamento'],
+                  ['Quero conferir as informações do documento veicular', 'Documento CLV'],
+                ].map(([need, query]) => <div className="need-row" key={need}><span>{need}</span><strong>{query}</strong></div>)}
+              </div>
+            </div>
             <div className="product-grid">
               {products.map((product, index) => (
                 <ProductCard key={product.slug} product={product} featured={index === 0} />
