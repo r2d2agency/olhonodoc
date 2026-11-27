@@ -6,6 +6,7 @@ import HomeAccountButton from '@/components/home-account-button';
 import HomeMobileNav from '@/components/home-mobile-nav';
 import TestimonialsSection from '@/components/testimonials-section';
 import { getCatalogProducts } from '@/lib/catalog';
+import { prisma } from '@/lib/prisma';
 import './home.css';
 
 const faqs = [
@@ -36,6 +37,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const products = await getCatalogProducts();
+  const publishedFaqs = await prisma.faqEntry.findMany({ where: { status: 'PUBLISHED' as any }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }] }).catch(() => []);
+  const homeFaqs = publishedFaqs.length ? publishedFaqs.map(e => ({ q: e.question, a: e.answer })) : faqs;
   return (
     <div className="home-shell">
       <div className="topbar">CONSULTA VEICULAR ONLINE <span aria-hidden="true">•</span> SUA TRANQUILIDADE É NOSSO FOCO</div>
@@ -181,7 +184,7 @@ export default async function Home() {
               <span className="eyebrow">Dúvidas frequentes</span>
               <h2>Perguntas que todo mundo faz.</h2>
             </div>
-            <FAQ items={faqs} />
+            <FAQ items={homeFaqs} />
           </div>
         </section>
 

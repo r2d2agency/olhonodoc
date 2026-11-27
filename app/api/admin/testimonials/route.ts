@@ -19,7 +19,7 @@ export async function PUT(request: Request) {
     type: t?.type === 'video' ? 'video' : 'text',
     name: String(t?.name || '').slice(0, 120),
     text: String(t?.text || '').slice(0, 2000),
-    photoUrl: String(t?.photoUrl || '').slice(0, 2000),
+    photoUrl: String(t?.photoUrl || '').slice(0, 3_000_000),
     youtubeUrl: String(t?.youtubeUrl || '').slice(0, 500),
     active: Boolean(t?.active),
     sortOrder: Number(t?.sortOrder) || i + 1,

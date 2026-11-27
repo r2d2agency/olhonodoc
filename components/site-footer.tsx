@@ -12,7 +12,19 @@ const fallback = defaultFooter;
 export default function SiteFooter() {
   const [config, setConfig] = useState<FooterConfig>(fallback);
   useEffect(() => {
-    fetch('/api/site/footer').then(response => response.json()).then(data => { if (data?.columns) setConfig(data); }).catch(() => undefined);
+    fetch('/api/site/footer').then(response => response.json()).then(data => {
+      if (!data?.columns) return;
+      const required = [
+        { label: 'Termos de uso', href: '/termos-de-uso' }, { label: 'Privacidade', href: '/politica-de-privacidade' },
+        { label: 'Cookies', href: '/politica-de-cookies' }, { label: 'Reembolso', href: '/politica-de-reembolso' },
+      ];
+      const columns = data.columns.map((col: any) => {
+        const links = Array.isArray(col.links) ? [...col.links] : [];
+        for (const item of required) if (!links.some((l: any) => l.href === item.href)) links.push(item);
+        return { ...col, links };
+      });
+      setConfig({ ...data, columns });
+    }).catch(() => undefined);
   }, []);
   const legal = `Olho no Doc Tecnologia e Informações Veiculares Ltda · CNPJ ${companyInfo.cnpj}`;
   const copyrightText = config.copyright.includes('CNPJ') ? config.copyright : `${config.copyright} · ${legal}`;

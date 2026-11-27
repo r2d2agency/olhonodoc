@@ -18,6 +18,15 @@ export default function TestimonialsAdmin() {
   }, []);
 
   function update(id: string, patch: Partial<Testimonial>) { setItems(items.map(t => t.id === id ? { ...t, ...patch } : t)); }
+  function uploadPhoto(id: string, file: File | undefined) {
+    if (!file) return;
+    if (file.size > 2_000_000) { setError('A foto deve ter no máximo 2 MB.'); return; }
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { setError('Use uma imagem PNG, JPG ou WebP.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => update(id, { photoUrl: String(reader.result || '') });
+    reader.onerror = () => setError('Não foi possível ler a imagem.');
+    reader.readAsDataURL(file);
+  }
   function add(type: 'text' | 'video') { setItems([...items, { id: `new-${Date.now()}`, type, name: '', text: '', photoUrl: '', youtubeUrl: '', active: true, sortOrder: items.length + 1 }]); }
 
   async function save() {
@@ -43,7 +52,9 @@ export default function TestimonialsAdmin() {
           <label>Nome da pessoa<input value={t.name} onChange={e => update(t.id, { name: e.target.value })} placeholder="Nome completo"/></label>
           {t.type === 'text' && <>
             <label className="wide">Depoimento<textarea rows={3} value={t.text} onChange={e => update(t.id, { text: e.target.value })} placeholder="O que a pessoa disse"/></label>
-            <label className="wide">Foto (URL ou data URL)<input value={t.photoUrl} onChange={e => update(t.id, { photoUrl: e.target.value })} placeholder="https://..."/></label>
+            <label className="wide">Foto — enviar do computador<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => uploadPhoto(t.id, e.target.files?.[0])}/></label>
+            {t.photoUrl && <div className="admin-testimonial-photo"><img src={t.photoUrl} alt="Prévia"/><button type="button" onClick={() => update(t.id, { photoUrl: '' })}>Remover foto</button></div>}
+            <label className="wide">Ou URL da foto<input value={t.photoUrl.startsWith('data:') ? '' : t.photoUrl} onChange={e => update(t.id, { photoUrl: e.target.value })} placeholder="https://..."/></label>
           </>}
           {t.type === 'video' && <label className="wide">Link do YouTube<input value={t.youtubeUrl} onChange={e => update(t.id, { youtubeUrl: e.target.value })} placeholder="https://www.youtube.com/watch?v=..."/></label>}
           <label>Ordem<input type="number" value={t.sortOrder} onChange={e => update(t.id, { sortOrder: Number(e.target.value) })}/></label>
