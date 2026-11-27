@@ -5,8 +5,9 @@ import { FAQ, PlateInput, ProductCard, ReportPreview } from '@/components/site';
 import HomeAccountButton from '@/components/home-account-button';
 import HomeMobileNav from '@/components/home-mobile-nav';
 import TestimonialsSection from '@/components/testimonials-section';
+import SiteFooter from '@/components/site-footer';
 import { getCatalogProducts } from '@/lib/catalog';
-import { prisma } from '@/lib/prisma';
+import { getPublishedFaqs } from '@/lib/faq';
 import './home.css';
 
 const faqs = [
@@ -37,8 +38,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const products = await getCatalogProducts();
-  const publishedFaqs = await prisma.faqEntry.findMany({ where: { status: 'PUBLISHED' as any }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }] }).catch(() => []);
-  const homeFaqs = publishedFaqs.length ? publishedFaqs.map(e => ({ q: e.question, a: e.answer })) : faqs;
+  const publishedFaqs = await getPublishedFaqs();
+  const homeFaqs = publishedFaqs.length ? publishedFaqs : faqs;
   return (
     <div className="home-shell">
       <div className="topbar">CONSULTA VEICULAR ONLINE <span aria-hidden="true">•</span> SUA TRANQUILIDADE É NOSSO FOCO</div>
@@ -197,26 +198,7 @@ export default async function Home() {
         </section>
       </main>
 
-      <footer className="home-footer">
-        <div className="container footerrow">
-          <div>
-            <Link href="/" aria-label="Olho no Doc — página inicial">
-              <Image className="footer-logo" src="/logo-olho-no-doc.png" alt="Olho no Doc" width={919} height={637} />
-            </Link>
-            <p>Informação para você decidir melhor antes de comprar um veículo.</p>
-          </div>
-          <nav aria-label="Links institucionais">
-            <Link href="/consultas">Consultas</Link>
-            <Link href="/exemplo-relatorio">Exemplo de relatório</Link>
-            <Link href="/politica-de-privacidade">Privacidade</Link>
-            <Link href="/termos-de-uso">Termos de uso</Link>
-          </nav>
-        </div>
-        <div className="container footer-bottom">
-          <span>Olho no Doc Tecnologia e Informações Veiculares Ltda · CNPJ 69.283.015/0001-00 · © 2026 Olho no Doc.</span>
-          <span>Consulte antes de comprar.</span>
-        </div>
-      </footer>
+      <SiteFooter />
 
     </div>
   );

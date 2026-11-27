@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 
 const KEY = 'institutional.pages';
 
-export type InstitutionalPageKey = 'termos' | 'privacidade' | 'cookies' | 'sobre';
+export type InstitutionalPageKey = 'termos' | 'privacidade' | 'cookies' | 'reembolso' | 'sobre';
 
 export const DEFAULT_PAGES: Record<InstitutionalPageKey, { title: string; content: string }> = {
   termos: {
@@ -16,6 +16,10 @@ export const DEFAULT_PAGES: Record<InstitutionalPageKey, { title: string; conten
   cookies: {
     title: 'Política de Cookies',
     content: `<h2>1. O que são cookies</h2><p>Cookies são pequenos arquivos armazenados no seu navegador para manter sessões e melhorar a experiência de uso.</p><h2>2. Cookies essenciais</h2><p>São necessários para manter você logado, processar pagamentos e proteger a plataforma contra abusos. Não podem ser desativados sem comprometer o funcionamento.</p><h2>3. Cookies de medição</h2><p>Podem ser utilizados para entender o uso do site somente após seu consentimento.</p><h2>4. Como gerenciar</h2><p>Você pode gerenciar suas preferências nas configurações do navegador.</p>`,
+  },
+  reembolso: {
+    title: 'Política de reembolso',
+    content: `<h2>1. Solicitação</h2><p>Se você teve algum problema com uma consulta contratada, entre em contato pelo canal de atendimento informando seu e-mail e o número do pedido.</p><h2>2. Análise</h2><p>A solicitação será analisada conforme o motivo apresentado e o status da consulta. Consultas já entregues e com acesso ao relatório liberado podem não ser elegíveis.</p><h2>3. Reembolso</h2><p>Quando aprovado, o reembolso é feito na forma de pagamento original, no prazo informado pela instituição financeira ou operador de pagamento.</p><h2>4. Contato</h2><p>Use a página de contato do site para solicitar a análise do seu pedido.</p>`,
   },
   sobre: {
     title: 'Sobre a Olho no Doc',

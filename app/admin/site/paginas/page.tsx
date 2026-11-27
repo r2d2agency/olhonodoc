@@ -4,12 +4,13 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Check, FileText } from 'lucide-react';
 import { readJson } from '@/lib/client-response';
 
-type PageKey = 'termos' | 'privacidade' | 'cookies' | 'sobre';
+type PageKey = 'termos' | 'privacidade' | 'cookies' | 'reembolso' | 'sobre';
 type Page = { title: string; content: string };
 const KEYS: { key: PageKey; label: string }[] = [
   { key: 'termos', label: 'Termos de uso' },
   { key: 'privacidade', label: 'Política de privacidade' },
   { key: 'cookies', label: 'Política de cookies' },
+  { key: 'reembolso', label: 'Política de reembolso' },
   { key: 'sobre', label: 'Página Sobre' },
 ];
 

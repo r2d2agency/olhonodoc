@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       const answer = typeof body.answer === 'string' ? body.answer.trim() : '';
       if (!question || !answer || question.length > 300 || answer.length > 5000) return NextResponse.json({ error: 'Pergunta e resposta são obrigatórias e devem respeitar os limites de tamanho.' }, { status: 400 });
       if (body.sortOrder !== undefined && (!Number.isInteger(body.sortOrder) || (body.sortOrder as number) < 0)) return NextResponse.json({ error: 'Ordem inválida.' }, { status: 400 });
-      const status = isContentStatus(body.status) ? body.status : ContentStatus.DRAFT;
+      const status = isContentStatus(body.status) ? body.status : ContentStatus.PUBLISHED;
       const item = await prisma.faqEntry.create({ data: { question, answer, status, sortOrder: typeof body.sortOrder === 'number' ? body.sortOrder : 0 } });
       return NextResponse.json({ data: item }, { status: 201 });
     }
