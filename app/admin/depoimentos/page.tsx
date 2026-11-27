@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Check, Save, Trash2 } from 'lucide-react';
 import { readJson } from '@/lib/client-response';
 
-type Testimonial = { id: string; type: 'text' | 'video'; name: string; text: string; photoUrl: string; youtubeUrl: string; active: boolean; sortOrder: number };
+type Testimonial = { id: string; type: 'text' | 'video'; name: string; text: string; photoUrl: string; youtubeUrl: string; active: boolean; sortOrder: number; rating: number };
 
 export default function TestimonialsAdmin() {
   const [items, setItems] = useState<Testimonial[]>([]);
@@ -27,7 +27,7 @@ export default function TestimonialsAdmin() {
     reader.onerror = () => setError('Não foi possível ler a imagem.');
     reader.readAsDataURL(file);
   }
-  function add(type: 'text' | 'video') { setItems([...items, { id: `new-${Date.now()}`, type, name: '', text: '', photoUrl: '', youtubeUrl: '', active: true, sortOrder: items.length + 1 }]); }
+  function add(type: 'text' | 'video') { setItems([...items, { id: `new-${Date.now()}`, type, name: '', text: '', photoUrl: '', youtubeUrl: '', active: true, sortOrder: items.length + 1, rating: 5 }]); }
 
   async function save() {
     setSaving(true); setError(''); setMessage('');
@@ -58,6 +58,7 @@ export default function TestimonialsAdmin() {
           </>}
           {t.type === 'video' && <label className="wide">Link do YouTube<input value={t.youtubeUrl} onChange={e => update(t.id, { youtubeUrl: e.target.value })} placeholder="https://www.youtube.com/watch?v=..."/></label>}
           <label>Ordem<input type="number" value={t.sortOrder} onChange={e => update(t.id, { sortOrder: Number(e.target.value) })}/></label>
+          <label>Avaliação (estrelas)<select value={t.rating ?? 5} onChange={e => update(t.id, { rating: Number(e.target.value) })}>{[5,4,3,2,1,0].map(n => <option key={n} value={n}>{n} {n === 1 ? 'estrela' : 'estrelas'}</option>)}</select></label>
           <label className="admin-settings-check"><input type="checkbox" checked={t.active} onChange={e => update(t.id, { active: e.target.checked })}/> Ativo</label>
         </div>
       </div>)}

@@ -1447,3 +1447,7 @@
 
 .testimonials-section .section-heading.centered{display:flex;justify-content:center;text-align:center}
 .testimonials-section .section-heading.centered>div{margin:0 auto}
+
+.testimonial-rating{display:flex;align-items:center;gap:2px;padding-top:8px;border-top:1px solid #edf2f4;color:#d1d5db}
+.testimonial-rating .filled{color:#f59e0b}
+.testimonial-rating span{margin-left:6px;color:#52707c;font-size:.7rem;font-weight:700}

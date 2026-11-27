@@ -23,6 +23,7 @@ export async function PUT(request: Request) {
     youtubeUrl: String(t?.youtubeUrl || '').slice(0, 500),
     active: Boolean(t?.active),
     sortOrder: Number(t?.sortOrder) || i + 1,
+    rating: Math.max(0, Math.min(5, Number(t?.rating ?? 5))),
   }));
   if (clean.some(t => !t.name || (t.type === 'text' && !t.text) || (t.type === 'video' && !t.youtubeUrl))) {
     return NextResponse.json({ error: 'Preencha nome e texto ou link do vídeo.' }, { status: 400 });
