@@ -20,10 +20,25 @@ export default function TestimonialsAdmin() {
   function update(id: string, patch: Partial<Testimonial>) { setItems(items.map(t => t.id === id ? { ...t, ...patch } : t)); }
   function uploadPhoto(id: string, file: File | undefined) {
     if (!file) return;
-    if (file.size > 2_000_000) { setError('A foto deve ter no máximo 2 MB.'); return; }
     if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { setError('Use uma imagem PNG, JPG ou WebP.'); return; }
     const reader = new FileReader();
-    reader.onload = () => update(id, { photoUrl: String(reader.result || '') });
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 320;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { setError('Não foi possível processar a imagem.'); return; }
+        const side = Math.min(img.width, img.height);
+        ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
+        const data = canvas.toDataURL('image/jpeg', 0.8);
+        update(id, { photoUrl: data });
+        setError('');
+      };
+      img.onerror = () => setError('Não foi possível processar a imagem.');
+      img.src = String(reader.result || '');
+    };
     reader.onerror = () => setError('Não foi possível ler a imagem.');
     reader.readAsDataURL(file);
   }

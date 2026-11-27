@@ -1460,3 +1460,5 @@
 .need-row span{color:#374151}
 .need-row strong{flex:none;color:#0b3552;font-size:.78rem}
 @media(max-width:560px){.need-row{align-items:flex-start;flex-direction:column;gap:4px}.need-row strong{align-self:flex-start}}
+
+.testimonial-person img,.testimonial-person span{width:48px !important;height:48px !important;flex:0 0 48px}
