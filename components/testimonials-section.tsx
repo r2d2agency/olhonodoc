@@ -5,7 +5,7 @@ export default async function TestimonialsSection() {
   const items = await getTestimonials();
   if (!items.length) return null;
   return <section className="section testimonials-section" id="depoimentos">
-    <div className="section-heading"><div><span className="eyebrow"> QUEM CONSULTOU, APROVA</span><h2>Depoimentos de quem já usou.</h2><p>Experiências reais de pessoas que buscaram mais segurança antes de decidir.</p></div></div>
+    <div className="section-heading centered"><div><span className="eyebrow">QUEM CONSULTOU, APROVA</span><h2>Depoimentos de quem já usou.</h2><p>Experiências reais de pessoas que buscaram mais segurança antes de decidir.</p></div></div>
     <div className="testimonials-grid">{items.map(t => t.type === 'video'
       ? <article className="testimonial-card testimonial-video" key={t.id}>
           {youtubeId(t.youtubeUrl || '') ? <div className="testimonial-video-wrap"><iframe src={`https://www.youtube-nocookie.com/embed/${youtubeId(t.youtubeUrl || '')}?rel=0&modestbranding=1&controls=1&showinfo=0`} title={`Depoimento de ${t.name}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen loading="lazy"/></div> : null}

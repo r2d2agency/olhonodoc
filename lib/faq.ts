@@ -6,7 +6,7 @@ export type FaqItem = { q: string; a: string };
 export async function getPublishedFaqs(): Promise<FaqItem[]> {
   try {
     const entries = await prisma.faqEntry.findMany({
-      where: { status: 'PUBLISHED' as any },
+      where: { status: { not: 'ARCHIVED' as any } },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
     return entries.map(e => ({ q: e.question, a: e.answer }));

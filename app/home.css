@@ -1444,3 +1444,6 @@
 .home-faq-empty{text-align:center;color:#7a8a93;font-size:.85rem;margin-top:16px}
 @media(max-width:900px){.testimonials-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}}
 @media(max-width:600px){.testimonials-grid{grid-template-columns:1fr !important}}
+
+.testimonials-section .section-heading.centered{display:flex;justify-content:center;text-align:center}
+.testimonials-section .section-heading.centered>div{margin:0 auto}
