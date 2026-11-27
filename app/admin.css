@@ -161,3 +161,7 @@
 .admin-testimonial-photo{display:flex;align-items:center;gap:10px;margin-top:8px}
 .admin-testimonial-photo img{width:56px;height:56px;border-radius:50%;object-fit:cover}
 .admin-testimonial-photo button{padding:6px 10px;border:1px solid #f0c9c9;border-radius:5px;background:#fff5f5;color:#b42318;font-size:.7rem;cursor:pointer}
+
+.admin-sidebar-brand{height:auto !important;min-height:80px !important;overflow:visible !important;padding:12px 16px !important}
+.admin-sidebar-brand a{width:100% !important;overflow:visible !important;display:block !important}
+.admin-sidebar-brand img{width:100% !important;max-width:160px !important;height:auto !important;max-height:none !important;object-fit:contain !important;object-position:center !important}

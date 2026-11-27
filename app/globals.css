@@ -482,3 +482,7 @@ footer.footer .brand img,.site-footer .brand img{width:auto !important;height:48
 .example-pdf-viewer iframe{width:100%;max-width:900px;height:80vh;border:1px solid #dce7ed;border-radius:10px;background:#fff}
 .footer-ssl{display:flex;justify-content:center;padding:10px 0 4px}
 .footer-ssl img{height:58px;width:auto}
+
+.footer-ssl{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;padding:12px 0;overflow:visible}
+.footer-ssl img{height:64px;width:auto;max-width:100%;object-fit:contain;display:block}
+@media(max-width:560px){.footer-ssl{gap:10px}.footer-ssl img{height:48px}}
