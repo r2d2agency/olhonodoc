@@ -10,15 +10,6 @@ import { getCatalogProducts } from '@/lib/catalog';
 import { getPublishedFaqs } from '@/lib/faq';
 import './home.css';
 
-const faqs = [
-  { q: 'A Olho no Doc é um órgão do governo?', a: 'Não. Somos uma empresa privada, sem vínculo com Detran, Senatran ou qualquer órgão público. Trabalhamos exclusivamente com serviços de consulta de informações veiculares.' },
-  { q: 'Vocês pagam ou regularizam débitos do veículo?', a: 'Não. Oferecemos exclusivamente serviços de consulta de informações veiculares; não realizamos pagamento, parcelamento ou regularização de débitos.' },
-  { q: 'Em quanto tempo recebo o relatório?', a: 'Após a confirmação do pagamento, o relatório fica pronto em poucos minutos e é exibido na tela e enviado para o seu e-mail.' },
-  { q: 'Quais formas de pagamento são aceitas?', a: 'Pix e cartão de crédito, processados em ambiente seguro.' },
-  { q: 'E se a consulta não retornar resultado?', a: 'Se houver falha técnica e o relatório não for entregue, entre em contato pelo nosso atendimento para reprocessamento ou reembolso, conforme nossos Termos de Uso.' },
-  { q: 'Meus dados ficam protegidos?', a: 'Sim. Tratamos seus dados conforme a LGPD e usamos só o necessário para entregar sua consulta. Veja nossa Política de Privacidade.' }
-];
-
 const checks = [
   { icon: Gavel, title: 'Passagem por leilão', text: 'Saiba se o veículo já foi leiloado e em que condições, um dos fatores que mais derrubam o valor de revenda.' },
   { icon: Siren, title: 'Sinistro e perda total', text: 'Verifique registros de acidentes, indenizações e indícios de perda total.' },
@@ -38,8 +29,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const products = await getCatalogProducts();
-  const publishedFaqs = await getPublishedFaqs();
-  const homeFaqs = publishedFaqs.length ? publishedFaqs : faqs;
+  const homeFaqs = await getPublishedFaqs();
   return (
     <div className="home-shell">
       <div className="topbar">CONSULTA VEICULAR ONLINE <span aria-hidden="true">•</span> SUA TRANQUILIDADE É NOSSO FOCO</div>
@@ -185,7 +175,7 @@ export default async function Home() {
               <span className="eyebrow">Dúvidas frequentes</span>
               <h2>Perguntas que todo mundo faz.</h2>
             </div>
-            <FAQ items={homeFaqs} />
+            {homeFaqs.length ? <FAQ items={homeFaqs} /> : <p className="home-faq-empty">As perguntas frequentes serão publicadas em breve.</p>}
           </div>
         </section>
 

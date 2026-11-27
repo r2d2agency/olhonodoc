@@ -3,7 +3,7 @@ import { requireSuperadmin } from '@/lib/auth';
 import { getInstitutionalPages, saveInstitutionalPages, type InstitutionalPageKey, DEFAULT_PAGES } from '@/lib/institutional-pages';
 
 export const dynamic = 'force-dynamic';
-const KEYS: InstitutionalPageKey[] = ['termos', 'privacidade', 'cookies', 'sobre'];
+const KEYS: InstitutionalPageKey[] = ['termos', 'privacidade', 'cookies', 'reembolso', 'sobre'];
 
 export async function GET() {
   if (!await requireSuperadmin()) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 403 });

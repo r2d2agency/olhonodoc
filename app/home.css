@@ -1436,3 +1436,11 @@
 .testimonial-card p{font-size:.78rem;line-height:1.5}
 .testimonial-person img,.testimonial-person span{width:34px;height:34px;font-size:.8rem}
 .testimonial-video strong,.testimonial-person strong{font-size:.76rem}
+
+.testimonials-grid{grid-template-columns:repeat(3,minmax(0,1fr)) !important;max-width:980px;margin:16px auto 0;gap:12px}
+.testimonial-card{padding:14px 16px !important;gap:8px !important;min-width:0}
+.testimonial-card p{font-size:.78rem !important;line-height:1.5 !important}
+.testimonial-video-wrap{aspect-ratio:16/9}
+.home-faq-empty{text-align:center;color:#7a8a93;font-size:.85rem;margin-top:16px}
+@media(max-width:900px){.testimonials-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}}
+@media(max-width:600px){.testimonials-grid{grid-template-columns:1fr !important}}
